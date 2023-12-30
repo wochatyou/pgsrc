@@ -441,7 +441,7 @@ ExtendBufferedRelLocal(BufferManagerRelation bmr,
  *	  mark a local buffer dirty
  */
 void
-MarkLocalBufferDirty(Buffer buffer)
+MarkLocalBufferDirty(Buffer buffer) // buffer的编号是-1, -2, -3等等
 {
 	int			bufid;
 	BufferDesc *bufHdr;
@@ -453,20 +453,20 @@ MarkLocalBufferDirty(Buffer buffer)
 	fprintf(stderr, "LB DIRTY %d\n", buffer);
 #endif
 
-	bufid = -buffer - 1;
+	bufid = -buffer - 1; // 如果是-1,就变成了0，如果是-2,就变成了1
 
-	Assert(LocalRefCount[bufid] > 0);
+	Assert(LocalRefCount[bufid] > 0); // 判断计数器的值
 
 	bufHdr = GetLocalBufferDescriptor(bufid);
 
-	buf_state = pg_atomic_read_u32(&bufHdr->state);
+	buf_state = pg_atomic_read_u32(&bufHdr->state); // 原子性读入
 
-	if (!(buf_state & BM_DIRTY))
-		pgBufferUsage.local_blks_dirtied++;
+	if (!(buf_state & BM_DIRTY)) // 如果不是脏页
+		pgBufferUsage.local_blks_dirtied++; // 这个应该是统计信息
 
-	buf_state |= BM_DIRTY;
+	buf_state |= BM_DIRTY; // 把这个页的标志变为脏
 
-	pg_atomic_unlocked_write_u32(&bufHdr->state, buf_state);
+	pg_atomic_unlocked_write_u32(&bufHdr->state, buf_state); // 原子性写入
 }
 
 /*
@@ -648,12 +648,12 @@ bool
 PinLocalBuffer(BufferDesc *buf_hdr, bool adjust_usagecount)
 {
 	uint32		buf_state;
-	Buffer		buffer = BufferDescriptorGetBuffer(buf_hdr);
+	Buffer		buffer = BufferDescriptorGetBuffer(buf_hdr); // 根据descriptor拿到数据页的编号
 	int			bufid = -buffer - 1;
 
 	buf_state = pg_atomic_read_u32(&buf_hdr->state);
 
-	if (LocalRefCount[bufid] == 0)
+	if (LocalRefCount[bufid] == 0) 
 	{
 		NLocalPinnedBuffers++;
 		if (adjust_usagecount &&
@@ -671,16 +671,16 @@ PinLocalBuffer(BufferDesc *buf_hdr, bool adjust_usagecount)
 }
 
 void
-UnpinLocalBuffer(Buffer buffer)
+UnpinLocalBuffer(Buffer buffer) // buffer是从0开始的，0,1,2,3,....
 {
-	int			buffid = -buffer - 1;
+	int			buffid = -buffer - 1; // 获得实际的编号
 
 	Assert(BufferIsLocal(buffer));
-	Assert(LocalRefCount[buffid] > 0);
+	Assert(LocalRefCount[buffid] > 0); // 计数器必须是大于0的
 	Assert(NLocalPinnedBuffers > 0);
 
 	ResourceOwnerForgetBuffer(CurrentResourceOwner, buffer);
-	if (--LocalRefCount[buffid] == 0)
+	if (--LocalRefCount[buffid] == 0) // 计数器减一
 		NLocalPinnedBuffers--;
 }
 
@@ -711,18 +711,18 @@ check_temp_buffers(int *newval, void **extra, GucSource source)
  * within a particular process, no point in burdening memmgr with separately
  * managed chunks.
  */
-static Block
+static Block // 这个函数的思想是一次性批发很多，然后零售。不够了再批发。内存来自LocalBufferContext指向的内存池
 GetLocalBufferStorage(void)
 {
 	static char *cur_block = NULL;
-	static int	next_buf_in_block = 0;
-	static int	num_bufs_in_block = 0;
+	static int	next_buf_in_block = 0; // 注意这里是static的内部变量
+	static int	num_bufs_in_block = 0; // 这个也是static的内部变量
 	static int	total_bufs_allocated = 0;
 	static MemoryContext LocalBufferContext = NULL;
 
 	char	   *this_buf;
 
-	Assert(total_bufs_allocated < NLocBuffer);
+	Assert(total_bufs_allocated < NLocBuffer); // 确保已经分配的数据页的个数不超标
 
 	if (next_buf_in_block >= num_bufs_in_block)
 	{
@@ -741,7 +741,7 @@ GetLocalBufferStorage(void)
 									  ALLOCSET_DEFAULT_SIZES);
 
 		/* Start with a 16-buffer request; subsequent ones double each time */
-		num_bufs = Max(num_bufs_in_block * 2, 16);
+		num_bufs = Max(num_bufs_in_block * 2, 16); // 最少也是16个
 		/* But not more than what we need for all remaining local bufs */
 		num_bufs = Min(num_bufs, NLocBuffer - total_bufs_allocated);
 		/* And don't overflow MaxAllocSize, either */
@@ -751,17 +751,17 @@ GetLocalBufferStorage(void)
 		cur_block = (char *)
 			TYPEALIGN(PG_IO_ALIGN_SIZE,
 					  MemoryContextAlloc(LocalBufferContext,
-										 num_bufs * BLCKSZ + PG_IO_ALIGN_SIZE));
+										 num_bufs * BLCKSZ + PG_IO_ALIGN_SIZE)); // PG_IO_ALIGN_SIZE是4096
 		next_buf_in_block = 0;
 		num_bufs_in_block = num_bufs;
 	}
 
 	/* Allocate next buffer in current memory block */
 	this_buf = cur_block + next_buf_in_block * BLCKSZ;
-	next_buf_in_block++;
-	total_bufs_allocated++;
+	next_buf_in_block++; // 跳到下一个空闲的页面
+	total_bufs_allocated++; // 已经分配的数据页的个数加一
 
-	return (Block) this_buf;
+	return (Block) this_buf; // 返回这个分配的页面
 }
 
 /*

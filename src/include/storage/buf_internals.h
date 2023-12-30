@@ -321,12 +321,12 @@ GetBufferDescriptor(uint32 id) // 这个函数根据下标直接读数组的元�
 }
 
 static inline BufferDesc *
-GetLocalBufferDescriptor(uint32 id)
+GetLocalBufferDescriptor(uint32 id) // 直接数组操作
 {
 	return &LocalBufferDescriptors[id];
 }
 
-static inline Buffer // BufferDesc里面有数据页编号，从0开始，要加1才行，注意是共享内存中的数据页
+static inline Buffer // BufferDesc里面有数据页编号，从0开始，要加1才行，注意是共享内存中的数据页从1开始
 BufferDescriptorGetBuffer(const BufferDesc *bdesc)
 {
 	return (Buffer) (bdesc->buf_id + 1);

@@ -1025,13 +1025,13 @@ MemoryContextAlloc(MemoryContext context, Size size)
 	Assert(MemoryContextIsValid(context));
 	AssertNotInCriticalSection(context);
 
-	if (!AllocSizeIsValid(size))
+	if (!AllocSizeIsValid(size)) // size必须小于1GB - 1
 		elog(ERROR, "invalid memory alloc request size %zu", size);
 
-	context->isReset = false;
+	context->isReset = false; // 因为要分配内存了，isReset就变为false了，表示有内存从这个内存池中分配出去了
 
-	ret = context->methods->alloc(context, size);
-	if (unlikely(ret == NULL))
+	ret = context->methods->alloc(context, size); // 调用内存分配函数从本内存池中分配一块内存
+	if (unlikely(ret == NULL)) // 如果分配失败，就报错退出了
 	{
 		MemoryContextStats(TopMemoryContext);
 
@@ -1050,7 +1050,7 @@ MemoryContextAlloc(MemoryContext context, Size size)
 
 	VALGRIND_MEMPOOL_ALLOC(context, ret, size);
 
-	return ret;
+	return ret; // 返回从这个内存池中分配的内存
 }
 
 /*
