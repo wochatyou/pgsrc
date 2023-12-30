@@ -211,7 +211,7 @@ typedef PageHeaderData *PageHeader;
 /*
  * line pointer(s) do not count as part of header
  */
-#define SizeOfPageHeaderData (offsetof(PageHeaderData, pd_linp))
+#define SizeOfPageHeaderData (offsetof(PageHeaderData, pd_linp)) // 起始就是24个字节
 
 /*
  * PageIsEmpty

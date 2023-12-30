@@ -48,7 +48,7 @@ BufTableShmemSize(int size)
  * Initialize shmem hash table for mapping buffers
  *		size is the desired hash table size (possibly more than NBuffers)
  */
-void
+void // 初始化数据页查找的哈希表，这个哈希表根据BufferTag找到数据页的编号
 InitBufTable(int size)
 {
 	HASHCTL		info;
@@ -57,7 +57,7 @@ InitBufTable(int size)
 
 	/* BufferTag maps to Buffer */
 	info.keysize = sizeof(BufferTag);
-	info.entrysize = sizeof(BufferLookupEnt);
+	info.entrysize = sizeof(BufferLookupEnt); // K是tag, V是一个整型，表示数据页的编号
 	info.num_partitions = NUM_BUFFER_PARTITIONS;
 
 	SharedBufHash = ShmemInitHash("Shared Buffer Lookup Table",
@@ -78,7 +78,7 @@ InitBufTable(int size)
 uint32
 BufTableHashCode(BufferTag *tagPtr)
 {
-	return get_hash_value(SharedBufHash, (void *) tagPtr);
+	return get_hash_value(SharedBufHash, (void *) tagPtr); // 计算哈希值，每个哈希表都包含一个计算哈希值的函数，就是利用这个函数来进行计算
 }
 
 /*
@@ -87,7 +87,7 @@ BufTableHashCode(BufferTag *tagPtr)
  *
  * Caller must hold at least share lock on BufMappingLock for tag's partition
  */
-int
+int // 根据tag的值在哈希表中快速搜索这个数据页，如果没有找到，就返回-1
 BufTableLookup(BufferTag *tagPtr, uint32 hashcode)
 {
 	BufferLookupEnt *result;
@@ -115,7 +115,7 @@ BufTableLookup(BufferTag *tagPtr, uint32 hashcode)
  *
  * Caller must hold exclusive lock on BufMappingLock for tag's partition
  */
-int
+int // 返回值-1表示没有找到，就把这一个数据页的tag插入到哈希表中。如果返回的不是-1，说明这个数据页以前已经插入到这个哈希表中了
 BufTableInsert(BufferTag *tagPtr, uint32 hashcode, int buf_id)
 {
 	BufferLookupEnt *result;
@@ -145,7 +145,7 @@ BufTableInsert(BufferTag *tagPtr, uint32 hashcode, int buf_id)
  *
  * Caller must hold exclusive lock on BufMappingLock for tag's partition
  */
-void
+void // 从哈希表中删除某一个元素，如果没有找到，说明这个哈希表的内容损坏了
 BufTableDelete(BufferTag *tagPtr, uint32 hashcode)
 {
 	BufferLookupEnt *result;

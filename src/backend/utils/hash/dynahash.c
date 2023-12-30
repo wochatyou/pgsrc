@@ -905,7 +905,7 @@ hash_stats(const char *where, HTAB *hashp)
  * the partition number (from the low-order bits of the hash value) before
  * searching.
  */
-uint32
+uint32 // 每个哈希表都有一个计算哈希值的函数指针，利用这个函数计算哈希值
 get_hash_value(HTAB *hashp, const void *keyPtr)
 {
 	return hashp->hash(keyPtr, hashp->keysize);

@@ -363,7 +363,7 @@ pg_atomic_fetch_and_u32(volatile pg_atomic_uint32 *ptr, uint32 and_)
  *
  * Full barrier semantics.
  */
-static inline uint32
+static inline uint32 // 原子性对ptr的值进行OR运算，置位某一个bit，返回之前的值，类似TAS指令
 pg_atomic_fetch_or_u32(volatile pg_atomic_uint32 *ptr, uint32 or_)
 {
 	AssertPointerAlignment(ptr, 4);

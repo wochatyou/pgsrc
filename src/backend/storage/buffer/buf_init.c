@@ -156,7 +156,7 @@ InitBufferPool(void)
  * compute the size of shared memory for the buffer pool including
  * data pages, buffer descriptors, hash tables, etc.
  */
-Size
+Size // 计算buffer pool所需要的内存的总尺寸，包括数据页，descriptor，哈希表等
 BufferShmemSize(void)
 {
 	Size		size = 0;

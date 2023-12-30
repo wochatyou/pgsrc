@@ -38,24 +38,24 @@ bool		ignore_checksum_failure = false;
  *		Note that we don't calculate an initial checksum here; that's not done
  *		until it's time to write.
  */
-void
+void // 初始化一个数据页
 PageInit(Page page, Size pageSize, Size specialSize)
 {
 	PageHeader	p = (PageHeader) page;
 
-	specialSize = MAXALIGN(specialSize);
+	specialSize = MAXALIGN(specialSize); // 特殊区域也要按照8字节对齐
 
-	Assert(pageSize == BLCKSZ);
-	Assert(pageSize > specialSize + SizeOfPageHeaderData);
+	Assert(pageSize == BLCKSZ); // 既然是常值，为啥还要当做一个变量传进来呢？
+	Assert(pageSize > specialSize + SizeOfPageHeaderData); // 页头 + 内容 + 特殊区域
 
 	/* Make sure all fields of page are zero, as well as unused space */
-	MemSet(p, 0, pageSize);
+	MemSet(p, 0, pageSize); // 把这个数据页清零
 
 	p->pd_flags = 0;
-	p->pd_lower = SizeOfPageHeaderData;
-	p->pd_upper = pageSize - specialSize;
+	p->pd_lower = SizeOfPageHeaderData; // 一开始p->pd_lower指向了数据页页头后面
+	p->pd_upper = pageSize - specialSize; // pd_upper指向了特殊区域的开始位置
 	p->pd_special = pageSize - specialSize;
-	PageSetPageSizeAndVersion(page, pageSize, PG_PAGE_LAYOUT_VERSION);
+	PageSetPageSizeAndVersion(page, pageSize, PG_PAGE_LAYOUT_VERSION); // PG_PAGE_LAYOUT_VERSION是一个常值， 4
 	/* p->pd_prune_xid = InvalidTransactionId;		done by above MemSet */
 }
 

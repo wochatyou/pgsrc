@@ -29,7 +29,7 @@ typedef void *Block;
  * If adding a new BufferAccessStrategyType, also add a new IOContext so
  * IO statistics using this strategy are tracked.
  */
-typedef enum BufferAccessStrategyType
+typedef enum BufferAccessStrategyType // 四种策略类型：正常，批量读，批量写，VACUUM
 {
 	BAS_NORMAL,					/* Normal random access */
 	BAS_BULKREAD,				/* Large read-only scan (hint bit updates are

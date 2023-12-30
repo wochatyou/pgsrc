@@ -1231,16 +1231,16 @@ BufferAlloc(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 	uint32		victim_buf_state;
 
 	/* create a tag so we can lookup the buffer */
-	InitBufferTag(&newTag, &smgr->smgr_rlocator.locator, forkNum, blockNum);
+	InitBufferTag(&newTag, &smgr->smgr_rlocator.locator, forkNum, blockNum); // 初始化tag五元组
 
 	/* determine its hash code and partition lock ID */
-	newHash = BufTableHashCode(&newTag);
-	newPartitionLock = BufMappingPartitionLock(newHash);
+	newHash = BufTableHashCode(&newTag); // 计算哈希值，应该可以加速查找
+	newPartitionLock = BufMappingPartitionLock(newHash); // 根据哈希值找到对应的分区。共享内存中的哈希表要分区，减少冲突的可能性
 
 	/* see if the block is in the buffer pool already */
 	LWLockAcquire(newPartitionLock, LW_SHARED);
 	existing_buf_id = BufTableLookup(&newTag, newHash);
-	if (existing_buf_id >= 0)
+	if (existing_buf_id >= 0) // 找到这个数据页了
 	{
 		BufferDesc *buf;
 		bool		valid;
@@ -1280,7 +1280,7 @@ BufferAlloc(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 
 		return buf;
 	}
-
+	// 没有找到这个数据页，就要初始化一个
 	/*
 	 * Didn't find it in the buffer pool.  We'll have to initialize a new
 	 * buffer.  Remember to unlock the mapping lock while doing the work.
@@ -1581,7 +1581,7 @@ InvalidateVictimBuffer(BufferDesc *buf_hdr)
 	return true;
 }
 
-static Buffer
+static Buffer // 选择要驱逐的数据页，受害者
 GetVictimBuffer(BufferAccessStrategy strategy, IOContext io_context)
 {
 	BufferDesc *buf_hdr;
@@ -1603,7 +1603,7 @@ again:
 	 * Select a victim buffer.  The buffer is returned with its header
 	 * spinlock still held!
 	 */
-	buf_hdr = StrategyGetBuffer(strategy, &buf_state, &from_ring);
+	buf_hdr = StrategyGetBuffer(strategy, &buf_state, &from_ring); // 选择给要驱逐的数据页
 	buf = BufferDescriptorGetBuffer(buf_hdr);
 
 	Assert(BUF_STATE_GET_REFCOUNT(buf_state) == 0);
@@ -1623,7 +1623,7 @@ again:
 	 * our share-lock won't prevent hint-bit updates).  We will recheck the
 	 * dirty bit after re-locking the buffer header.
 	 */
-	if (buf_state & BM_DIRTY)
+	if (buf_state & BM_DIRTY) // 如果这个数据页是脏页，就要写回磁盘
 	{
 		LWLock	   *content_lock;
 
@@ -4711,13 +4711,13 @@ UnlockBuffers(void)
 /*
  * Acquire or release the content_lock for the buffer.
  */
-void
+void // 根据mode来决定对这个数据页进行加锁还是解锁
 LockBuffer(Buffer buffer, int mode)
 {
 	BufferDesc *buf;
 
 	Assert(BufferIsPinned(buffer));
-	if (BufferIsLocal(buffer))
+	if (BufferIsLocal(buffer))  // 本地数据页根本不需要加锁
 		return;					/* local buffers need no lock */
 
 	buf = GetBufferDescriptor(buffer - 1);
@@ -5269,7 +5269,7 @@ local_buffer_write_error_callback(void *arg)
 /*
  * RelFileLocator qsort/bsearch comparator; see RelFileLocatorEquals.
  */
-static int
+static int // 相等就返回0， 别的返回值是1和-1
 rlocator_comparator(const void *p1, const void *p2)
 {
 	RelFileLocator n1 = *(const RelFileLocator *) p1;
@@ -5296,22 +5296,22 @@ rlocator_comparator(const void *p1, const void *p2)
 /*
  * Lock buffer header - set BM_LOCKED in buffer state.
  */
-uint32
+uint32 // 利用自旋锁的机制来锁住一个数据页
 LockBufHdr(BufferDesc *desc)
 {
 	SpinDelayStatus delayStatus;
 	uint32		old_buf_state;
 
-	Assert(!BufferIsLocal(BufferDescriptorGetBuffer(desc)));
+	Assert(!BufferIsLocal(BufferDescriptorGetBuffer(desc))); // 这个数据页是共享内存中的数据页
 
 	init_local_spin_delay(&delayStatus);
 
-	while (true)
+	while (true) // 不断尝试加锁。这块有点类似自旋锁？
 	{
 		/* set BM_LOCKED flag */
-		old_buf_state = pg_atomic_fetch_or_u32(&desc->state, BM_LOCKED);
+		old_buf_state = pg_atomic_fetch_or_u32(&desc->state, BM_LOCKED); // 把state的BM_LOCKED比特设置为1
 		/* if it wasn't set before we're OK */
-		if (!(old_buf_state & BM_LOCKED))
+		if (!(old_buf_state & BM_LOCKED)) // 看看原来的值是否为1, 如果是，说明别的进程锁住了它，就反复测试，直到成功
 			break;
 		perform_spin_delay(&delayStatus);
 	}
@@ -5326,7 +5326,7 @@ LockBufHdr(BufferDesc *desc)
  * Obviously the buffer could be locked by the time the value is returned, so
  * this is primarily useful in CAS style loops.
  */
-static uint32
+static uint32 // 也是利用自旋锁的机制来解锁？？？
 WaitBufHdrUnlocked(BufferDesc *buf)
 {
 	SpinDelayStatus delayStatus;
@@ -5350,7 +5350,7 @@ WaitBufHdrUnlocked(BufferDesc *buf)
 /*
  * BufferTag comparator.
  */
-static inline int
+static inline int // 比较两个Tag，相等返回0， 其余的可能值是-1和1
 buffertag_comparator(const BufferTag *ba, const BufferTag *bb)
 {
 	int			ret;

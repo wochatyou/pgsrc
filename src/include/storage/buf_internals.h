@@ -89,7 +89,7 @@
  * Note: if there's any pad bytes in the struct, InitBufferTag will have
  * to be fixed to zero them, since this struct is used as a hash key.
  */
-typedef struct buftag
+typedef struct buftag // 五元组：哪个表空间？哪个数据库？哪张表？哪个fork?哪个数据块？
 {
 	Oid			spcOid;			/* tablespace oid */
 	Oid			dbOid;			/* database oid */
@@ -98,7 +98,7 @@ typedef struct buftag
 	BlockNumber blockNum;		/* blknum relative to begin of reln */
 } BufferTag;
 
-static inline RelFileNumber
+static inline RelFileNumber // 返回tag中的表的编号
 BufTagGetRelNumber(const BufferTag *tag)
 {
 	return tag->relNumber;
@@ -110,7 +110,7 @@ BufTagGetForkNum(const BufferTag *tag)
 	return tag->forkNum;
 }
 
-static inline void
+static inline void // 把后两者的值塞进第一个数据结构中
 BufTagSetRelForkDetails(BufferTag *tag, RelFileNumber relnumber,
 						ForkNumber forknum)
 {
@@ -121,7 +121,7 @@ BufTagSetRelForkDetails(BufferTag *tag, RelFileNumber relnumber,
 static inline RelFileLocator
 BufTagGetRelFileLocator(const BufferTag *tag)
 {
-	RelFileLocator rlocator;
+	RelFileLocator rlocator; // RelFileLocator是一个三元组：表空间，数据库，表
 
 	rlocator.spcOid = tag->spcOid;
 	rlocator.dbOid = tag->dbOid;
@@ -139,7 +139,7 @@ ClearBufferTag(BufferTag *tag)
 	tag->blockNum = InvalidBlockNumber;
 }
 
-static inline void
+static inline void // tag是五元组，后面的参数就是五元组，塞进第一个数据结构中
 InitBufferTag(BufferTag *tag, const RelFileLocator *rlocator,
 			  ForkNumber forkNum, BlockNumber blockNum)
 {
@@ -315,7 +315,7 @@ extern PGDLLIMPORT BufferDesc *LocalBufferDescriptors;
 
 
 static inline BufferDesc *
-GetBufferDescriptor(uint32 id)
+GetBufferDescriptor(uint32 id) // 这个函数根据下标直接读数组的元素
 {
 	return &(BufferDescriptors[id]).bufferdesc;
 }
@@ -326,7 +326,7 @@ GetLocalBufferDescriptor(uint32 id)
 	return &LocalBufferDescriptors[id];
 }
 
-static inline Buffer
+static inline Buffer // BufferDesc里面有数据页编号，从0开始，要加1才行，注意是共享内存中的数据页
 BufferDescriptorGetBuffer(const BufferDesc *bdesc)
 {
 	return (Buffer) (bdesc->buf_id + 1);

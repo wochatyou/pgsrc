@@ -72,7 +72,7 @@ static BufferStrategyControl *StrategyControl = NULL;
 typedef struct BufferAccessStrategyData
 {
 	/* Overall strategy type */
-	BufferAccessStrategyType btype;
+	BufferAccessStrategyType btype;  // 策略类型，一共四种：正常，批量读，批量写，VACUUM
 	/* Number of elements in buffers[] array */
 	int			nbuffers;
 
@@ -208,8 +208,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	 */
 	if (strategy != NULL)
 	{
-		buf = GetBufferFromRing(strategy, buf_state);
-		if (buf != NULL)
+		buf = GetBufferFromRing(strategy, buf_state); // 从这个策略中获得一个数据页
+		if (buf != NULL) // 找到了，返回
 		{
 			*from_ring = true;
 			return buf;
@@ -658,7 +658,7 @@ GetBufferFromRing(BufferAccessStrategy strategy, uint32 *buf_state)
 
 
 	/* Advance to next ring slot */
-	if (++strategy->current >= strategy->nbuffers)
+	if (++strategy->current >= strategy->nbuffers) // 把当前的指针往前进一步，如果到头了就返回开始，形成一个圈
 		strategy->current = 0;
 
 	/*
@@ -666,8 +666,8 @@ GetBufferFromRing(BufferAccessStrategy strategy, uint32 *buf_state)
 	 * buffer with the normal allocation strategy.  He will then fill this
 	 * slot by calling AddBufferToRing with the new buffer.
 	 */
-	bufnum = strategy->buffers[strategy->current];
-	if (bufnum == InvalidBuffer)
+	bufnum = strategy->buffers[strategy->current]; // 拿到下一个buffer的编号
+	if (bufnum == InvalidBuffer) // 如果是0，就是无效的，说明这个槽里面还没有数据页
 		return NULL;
 
 	/*
@@ -680,9 +680,9 @@ GetBufferFromRing(BufferAccessStrategy strategy, uint32 *buf_state)
 	 * shouldn't re-use it.
 	 */
 	buf = GetBufferDescriptor(bufnum - 1);
-	local_buf_state = LockBufHdr(buf);
+	local_buf_state = LockBufHdr(buf); // 锁住这个数据页
 	if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0
-		&& BUF_STATE_GET_USAGECOUNT(local_buf_state) <= 1)
+		&& BUF_STATE_GET_USAGECOUNT(local_buf_state) <= 1) // 这块的判断条件回头研究一下
 	{
 		*buf_state = local_buf_state;
 		return buf;

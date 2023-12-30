@@ -611,10 +611,10 @@ vm_readbuf(Relation rel, BlockNumber blkno, bool extend)
 	 */
 	if (PageIsNew(BufferGetPage(buf))) // 这个数据页还没有被初始化
 	{
-		LockBuffer(buf, BUFFER_LOCK_EXCLUSIVE);
+		LockBuffer(buf, BUFFER_LOCK_EXCLUSIVE); // 对这个数据页进行加锁，方便初始化
 		if (PageIsNew(BufferGetPage(buf)))
-			PageInit(BufferGetPage(buf), BLCKSZ, 0);
-		LockBuffer(buf, BUFFER_LOCK_UNLOCK);
+			PageInit(BufferGetPage(buf), BLCKSZ, 0); // 初始化一个数据页
+		LockBuffer(buf, BUFFER_LOCK_UNLOCK); // 初始化完毕后解锁
 	}
 	return buf;
 }

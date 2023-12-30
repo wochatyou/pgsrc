@@ -734,7 +734,7 @@ GetLocalBufferStorage(void)
 		 * space eaten for them is easily recognizable in MemoryContextStats
 		 * output.  Create the context on first use.
 		 */
-		if (LocalBufferContext == NULL)
+		if (LocalBufferContext == NULL) // 第一次，创建一个内存池专供它使用
 			LocalBufferContext =
 				AllocSetContextCreate(TopMemoryContext,
 									  "LocalBufferContext",
@@ -780,7 +780,7 @@ CheckForLocalBufferLeaks(void)
 
 		for (i = 0; i < NLocBuffer; i++)
 		{
-			if (LocalRefCount[i] != 0)
+			if (LocalRefCount[i] != 0) // 如果计数器不为0，表示还有人在使用
 			{
 				Buffer		b = -i - 1;
 
