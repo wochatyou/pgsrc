@@ -170,7 +170,7 @@ CalculateShmemSize(int *num_semaphores)
  * check IsUnderPostmaster, rather than EXEC_BACKEND, to detect this case.
  * This is a bit code-wasteful and could be cleaned up.)
  */
-void
+void  // 创建固定大小的共享内存和信号量
 CreateSharedMemoryAndSemaphores(void)
 {
 	PGShmemHeader *shim = NULL;
@@ -182,13 +182,13 @@ CreateSharedMemoryAndSemaphores(void)
 		int			numSemas;
 
 		/* Compute the size of the shared-memory block */
-		size = CalculateShmemSize(&numSemas);
+		size = CalculateShmemSize(&numSemas); // 计算共享内存的大小，所以分配的时候共享内存的大小是固定的
 		elog(DEBUG3, "invoking IpcMemoryCreate(size=%zu)", size);
 
 		/*
 		 * Create the shmem segment
 		 */
-		seghdr = PGSharedMemoryCreate(size, &shim);
+		seghdr = PGSharedMemoryCreate(size, &shim); // 创建共享内存
 
 		InitShmemAccess(seghdr);
 
@@ -332,7 +332,7 @@ InitializeShmemGUCs(void)
 	/*
 	 * Calculate the shared memory size and round up to the nearest megabyte.
 	 */
-	size_b = CalculateShmemSize(NULL);
+	size_b = CalculateShmemSize(NULL); 
 	size_mb = add_size(size_b, (1024 * 1024) - 1) / (1024 * 1024);
 	sprintf(buf, "%zu", size_mb);
 	SetConfigOption("shared_memory_size", buf,

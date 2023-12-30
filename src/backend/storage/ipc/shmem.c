@@ -97,7 +97,7 @@ static HTAB *ShmemIndex = NULL; /* primary index hashtable for shmem */
  * Note: the argument should be declared "PGShmemHeader *seghdr",
  * but we use void to avoid having to include ipc.h in shmem.h.
  */
-void
+void // 就是设置三个全局变量指针，指向共享内存的头尾
 InitShmemAccess(void *seghdr)
 {
 	PGShmemHeader *shmhdr = (PGShmemHeader *) seghdr;
@@ -112,7 +112,7 @@ InitShmemAccess(void *seghdr)
  *
  * This should be called only in the postmaster or a standalone backend.
  */
-void
+void // 在整个共享内存分配完成后，初始化一些东西。这个函数只在启动阶段执行一次
 InitShmemAllocation(void)
 {
 	PGShmemHeader *shmhdr = ShmemSegHdr;
@@ -124,10 +124,11 @@ InitShmemAllocation(void)
 	 * Initialize the spinlock used by ShmemAlloc.  We must use
 	 * ShmemAllocUnlocked, since obviously ShmemAlloc can't be called yet.
 	 */
-	ShmemLock = (slock_t *) ShmemAllocUnlocked(sizeof(slock_t));
+	// 此时ShmemLock还没有创建，这段代码只在postmaster启动阶段执行
+	ShmemLock = (slock_t *) ShmemAllocUnlocked(sizeof(slock_t)); // 分配自旋锁控制未来的共享内存分配
 
 	SpinLockInit(ShmemLock);
-
+	// 从此之后，共享内存的分配都要使用这把锁才能分配
 	/*
 	 * Allocations after this point should go through ShmemAlloc, which
 	 * expects to allocate everything on cache line boundaries.  Make sure the
@@ -157,7 +158,7 @@ InitShmemAllocation(void)
  *
  * Assumes ShmemLock and ShmemSegHdr are initialized.
  */
-void *
+void * // 在共享内存中分配指定大小的内存块,如果分配失败就报错。
 ShmemAlloc(Size size)
 {
 	void	   *newSpace;
@@ -177,7 +178,7 @@ ShmemAlloc(Size size)
  *
  * As ShmemAlloc, but returns NULL if out of space, rather than erroring.
  */
-void *
+void * // 不报错的分配共享内存函数，如果分配失败就返回NULL
 ShmemAllocNoError(Size size)
 {
 	Size		allocated_size;
@@ -191,7 +192,7 @@ ShmemAllocNoError(Size size)
  * Also sets *allocated_size to the number of bytes allocated, which will
  * be equal to the number requested plus any padding we choose to add.
  */
-static void *
+static void * // 此时ShmemLock已经准备好了，所以这个分配是串行执行的
 ShmemAllocRaw(Size size, Size *allocated_size)
 {
 	Size		newStart;
@@ -214,8 +215,8 @@ ShmemAllocRaw(Size size, Size *allocated_size)
 
 	Assert(ShmemSegHdr != NULL);
 
-	SpinLockAcquire(ShmemLock);
-
+	SpinLockAcquire(ShmemLock); // 获取自旋锁，这是串行的关键
+	// 下面的代码逻辑和ShmemAllocUnlocked是一样的
 	newStart = ShmemSegHdr->freeoffset;
 
 	newFree = newStart + size;
@@ -243,7 +244,7 @@ ShmemAllocRaw(Size size, Size *allocated_size)
  *
  * We consider maxalign, rather than cachealign, sufficient here.
  */
-void *
+void *  // 在共享内存中分配一块内存，此时分配共享内存的自旋锁还没有就绪，所以无锁分配
 ShmemAllocUnlocked(Size size)
 {
 	Size		newStart;
@@ -257,19 +258,19 @@ ShmemAllocUnlocked(Size size)
 
 	Assert(ShmemSegHdr != NULL);
 
-	newStart = ShmemSegHdr->freeoffset;
+	newStart = ShmemSegHdr->freeoffset; // 被分配内存的起始地址
 
-	newFree = newStart + size;
-	if (newFree > ShmemSegHdr->totalsize)
+	newFree = newStart + size; // 挖去一块内存，要调整空闲内存的起始地址
+	if (newFree > ShmemSegHdr->totalsize) // 没有足够的空闲空间，就报错退出
 		ereport(ERROR,
 				(errcode(ERRCODE_OUT_OF_MEMORY),
 				 errmsg("out of shared memory (%zu bytes requested)",
 						size)));
-	ShmemSegHdr->freeoffset = newFree;
+	ShmemSegHdr->freeoffset = newFree; // 更新头部的空闲内存的指针
 
 	newSpace = (void *) ((char *) ShmemBase + newStart);
 
-	Assert(newSpace == (void *) MAXALIGN(newSpace));
+	Assert(newSpace == (void *) MAXALIGN(newSpace)); // 确保分配的尺寸是按8字节对齐的
 
 	return newSpace;
 }
@@ -279,7 +280,7 @@ ShmemAllocUnlocked(Size size)
  *
  * Returns true if the pointer points within the shared memory segment.
  */
-bool
+bool // 就是判断这个地址是否在共享内存的起始终止指针之间
 ShmemAddrIsValid(const void *addr)
 {
 	return (addr >= ShmemBase) && (addr < ShmemEnd);
@@ -303,8 +304,8 @@ InitShmemIndex(void)
 	 */
 	info.keysize = SHMEM_INDEX_KEYSIZE;
 	info.entrysize = sizeof(ShmemIndexEnt);
-
-	ShmemIndex = ShmemInitHash("ShmemIndex",
+	// 创建主哈希表
+	ShmemIndex = ShmemInitHash("ShmemIndex", 
 							   SHMEM_INDEX_SIZE, SHMEM_INDEX_SIZE,
 							   &info,
 							   HASH_ELEM | HASH_STRINGS);
@@ -337,7 +338,7 @@ InitShmemIndex(void)
  * cases.  Now, it always throws error instead, so callers need not check
  * for NULL.
  */
-HTAB *
+HTAB *  // 各种共享内存结构都是在postermaster中创建的，子进程只是贴上去使用。这个函数在共享内存中创建一个哈希表
 ShmemInitHash(const char *name,		/* table string name for shmem index */
 			  long init_size,	/* initial table size */
 			  long max_size,	/* max size of the table */
@@ -392,13 +393,13 @@ ShmemInitHash(const char *name,		/* table string name for shmem index */
  *	cases.  Now, it always throws error instead, so callers need not check
  *	for NULL.
  */
-void *
+void * // 创建或者贴上去
 ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 {
 	ShmemIndexEnt *result;
 	void	   *structPtr;
 
-	LWLockAcquire(ShmemIndexLock, LW_EXCLUSIVE);
+	LWLockAcquire(ShmemIndexLock, LW_EXCLUSIVE); // ShmemIndexLock是控制访问索引表的轻量级锁
 
 	if (!ShmemIndex)
 	{
@@ -425,17 +426,17 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 			 * process can be accessing shared memory yet.
 			 */
 			Assert(shmemseghdr->index == NULL);
-			structPtr = ShmemAlloc(size);
-			shmemseghdr->index = structPtr;
+			structPtr = ShmemAlloc(size);  // 此时主哈希表还没有创建，在这里创建主哈希表
+			shmemseghdr->index = structPtr; // 头部结构的index指向了主哈希表
 			*foundPtr = false;
 		}
 		LWLockRelease(ShmemIndexLock);
 		return structPtr;
 	}
-
+	// 此时主哈希表已经创建，现在是在里面搜索条目
 	/* look it up in the shmem index */
 	result = (ShmemIndexEnt *)
-		hash_search(ShmemIndex, name, HASH_ENTER_NULL, foundPtr);
+		hash_search(ShmemIndex, name, HASH_ENTER_NULL, foundPtr); // 如果没有找到就创建这个条目
 
 	if (!result)
 	{
@@ -446,7 +447,7 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 						name)));
 	}
 
-	if (*foundPtr)
+	if (*foundPtr) // 如果找到了，说明别人已经创建了，我直接拿到内存地址就返回了
 	{
 		/*
 		 * Structure is in the shmem index so someone else has allocated it
@@ -464,7 +465,7 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 		structPtr = result->location;
 	}
 	else
-	{
+	{   // 第一次创建这个条目，分配具体的内存，返回这个内存地址
 		Size		allocated_size;
 
 		/* It isn't in the table yet. allocate and initialize it */
@@ -498,14 +499,14 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 /*
  * Add two Size values, checking for overflow
  */
-Size
+Size // 把两个值相加，溢出就报错。因为Size类型是64位，所以溢出的可能性不大
 add_size(Size s1, Size s2)
 {
 	Size		result;
 
 	result = s1 + s2;
 	/* We are assuming Size is an unsigned type here... */
-	if (result < s1 || result < s2)
+	if (result < s1 || result < s2) // 溢出了
 		ereport(ERROR,
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 				 errmsg("requested shared memory size overflows size_t")));
@@ -515,7 +516,7 @@ add_size(Size s1, Size s2)
 /*
  * Multiply two Size values, checking for overflow
  */
-Size
+Size // 把两个值相乘，检查是否溢出，如果溢出就报错
 mul_size(Size s1, Size s2)
 {
 	Size		result;

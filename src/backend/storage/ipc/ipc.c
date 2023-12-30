@@ -361,7 +361,7 @@ before_shmem_exit(pg_on_exit_callback function, Datum arg)
  *		callbacks and before on_proc_exit callbacks.
  * ----------------------------------------------------------------
  */
-void
+void // 有一个函数指针数组，最后退出的时候依次执行这些回调函数进行资源销毁工作
 on_shmem_exit(pg_on_exit_callback function, Datum arg)
 {
 	if (on_shmem_exit_index >= MAX_ON_EXITS)

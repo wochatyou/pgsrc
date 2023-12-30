@@ -454,7 +454,7 @@ XLogRecoveryShmemSize(void)
 	return size;
 }
 
-void
+void // 初始化XlogReocovery的 共享内存，老套路，先在主索引表中创建一条记录，再分配相应的共享内存
 XLogRecoveryShmemInit(void)
 {
 	bool		found;
@@ -463,6 +463,7 @@ XLogRecoveryShmemInit(void)
 		ShmemInitStruct("XLOG Recovery Ctl", XLogRecoveryShmemSize(), &found);
 	if (found)
 		return;
+	// 第一次创建，初始化
 	memset(XLogRecoveryCtl, 0, sizeof(XLogRecoveryCtlData));
 
 	SpinLockInit(&XLogRecoveryCtl->info_lck);
@@ -474,7 +475,7 @@ XLogRecoveryShmemInit(void)
  * A thin wrapper to enable StandbyMode and do other preparatory work as
  * needed.
  */
-static void
+static void // 这个函数很简单
 EnableStandbyMode(void)
 {
 	StandbyMode = true;
@@ -528,6 +529,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	 * Initialize on the assumption we want to recover to the latest timeline
 	 * that's active according to pg_control.
 	 */
+	// recoveryTargetTLI取两者中最大的值作为恢复的目标时间线
 	if (ControlFile->minRecoveryPointTLI >
 		ControlFile->checkPointCopy.ThisTimeLineID)
 		recoveryTargetTLI = ControlFile->minRecoveryPointTLI;
@@ -537,8 +539,8 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	/*
 	 * Check for signal files, and if so set up state for offline recovery
 	 */
-	readRecoverySignalFile();
-	validateRecoveryParameters();
+	readRecoverySignalFile(); // 读取恢复的信号文件，包括standby.signal和recovery.signal
+	validateRecoveryParameters(); // 检查恢复参数
 
 	if (ArchiveRecoveryRequested)
 	{
@@ -989,13 +991,13 @@ readRecoverySignalFile(void)
 {
 	struct stat stat_buf;
 
-	if (IsBootstrapProcessingMode())
+	if (IsBootstrapProcessingMode()) // 如果是单用户模式，就直接返回
 		return;
 
 	/*
 	 * Check for old recovery API file: recovery.conf
 	 */
-	if (stat(RECOVERY_COMMAND_FILE, &stat_buf) == 0)
+	if (stat(RECOVERY_COMMAND_FILE, &stat_buf) == 0) // 如果该目录下有recovery.conf，就报错，因为不再支持了
 		ereport(FATAL,
 				(errcode_for_file_access(),
 				 errmsg("using recovery command file \"%s\" is not supported",
@@ -1004,7 +1006,7 @@ readRecoverySignalFile(void)
 	/*
 	 * Remove unused .done file, if present. Ignore if absent.
 	 */
-	unlink(RECOVERY_COMMAND_DONE);
+	unlink(RECOVERY_COMMAND_DONE); // 把recovery.done这个文件删除掉
 
 	/*
 	 * Check for recovery signal files and if found, fsync them since they
@@ -1014,10 +1016,10 @@ readRecoverySignalFile(void)
 	 * If present, standby signal file takes precedence. If neither is present
 	 * then we won't enter archive recovery.
 	 */
-	if (stat(STANDBY_SIGNAL_FILE, &stat_buf) == 0)
+	if (stat(STANDBY_SIGNAL_FILE, &stat_buf) == 0) // standby.signal这个文件是否存在？
 	{
 		int			fd;
-
+		// 如果存在，就简单打开关闭一下，设置standby_signal_file_found = true;
 		fd = BasicOpenFilePerm(STANDBY_SIGNAL_FILE, O_RDWR | PG_BINARY,
 							   S_IRUSR | S_IWUSR);
 		if (fd >= 0)
@@ -1027,7 +1029,7 @@ readRecoverySignalFile(void)
 		}
 		standby_signal_file_found = true;
 	}
-	else if (stat(RECOVERY_SIGNAL_FILE, &stat_buf) == 0)
+	else if (stat(RECOVERY_SIGNAL_FILE, &stat_buf) == 0) // recovery.signal这个文件是否存在？
 	{
 		int			fd;
 
@@ -1043,12 +1045,12 @@ readRecoverySignalFile(void)
 
 	StandbyModeRequested = false;
 	ArchiveRecoveryRequested = false;
-	if (standby_signal_file_found)
+	if (standby_signal_file_found) // 如果standby.signal文件存在
 	{
 		StandbyModeRequested = true;
 		ArchiveRecoveryRequested = true;
 	}
-	else if (recovery_signal_file_found)
+	else if (recovery_signal_file_found) // 如果recovery.signal文件存在
 	{
 		StandbyModeRequested = false;
 		ArchiveRecoveryRequested = true;
@@ -1060,7 +1062,7 @@ readRecoverySignalFile(void)
 	 * We don't support standby mode in standalone backends; that requires
 	 * other processes such as the WAL receiver to be alive.
 	 */
-	if (StandbyModeRequested && !IsUnderPostmaster)
+	if (StandbyModeRequested && !IsUnderPostmaster) //在单用户模式下，备库模式不被允许
 		ereport(FATAL,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("standby mode is not supported by single-user servers")));
@@ -1069,13 +1071,13 @@ readRecoverySignalFile(void)
 static void
 validateRecoveryParameters(void)
 {
-	if (!ArchiveRecoveryRequested)
+	if (!ArchiveRecoveryRequested) // 只有存在standby.signal或者recovery.signal文件是，才进入备份恢复模式，这个变量才为true
 		return;
 
 	/*
 	 * Check for compulsory parameters
 	 */
-	if (StandbyModeRequested)
+	if (StandbyModeRequested) // 如果是备库模式，就要检查primaryconninfo和restore_command这两个参数
 	{
 		if ((PrimaryConnInfo == NULL || strcmp(PrimaryConnInfo, "") == 0) &&
 			(recoveryRestoreCommand == NULL || strcmp(recoveryRestoreCommand, "") == 0))
@@ -1083,7 +1085,7 @@ validateRecoveryParameters(void)
 					(errmsg("specified neither primary_conninfo nor restore_command"),
 					 errhint("The database server will regularly poll the pg_wal subdirectory to check for files placed there.")));
 	}
-	else
+	else // 如果是备份恢复模式，就检查restore_command参数。如果这个参数没有设置，就报错
 	{
 		if (recoveryRestoreCommand == NULL ||
 			strcmp(recoveryRestoreCommand, "") == 0)
@@ -1165,7 +1167,7 @@ validateRecoveryParameters(void)
  * Also sets the global variables RedoStartLSN and RedoStartTLI with the LSN
  * and TLI read from the backup file.
  */
-static bool
+static bool // 读取backup_label文件的内容
 read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 				  bool *backupEndRequired, bool *backupFromStandby)
 {
@@ -1190,10 +1192,10 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 	/*
 	 * See if label file is present
 	 */
-	lfp = AllocateFile(BACKUP_LABEL_FILE, "r");
+	lfp = AllocateFile(BACKUP_LABEL_FILE, "r"); //直接读取这个文件的内容
 	if (!lfp)
 	{
-		if (errno != ENOENT)
+		if (errno != ENOENT) // 这个文件不存在，但是报错不是ENOENT，就不对了
 			ereport(FATAL,
 					(errcode_for_file_access(),
 					 errmsg("could not read file \"%s\": %m",
@@ -1201,6 +1203,7 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 		return false;			/* it's not there, all is fine */
 	}
 
+	// 开始读取backup_label里面的内容
 	/*
 	 * Read and parse the START WAL LOCATION and CHECKPOINT lines (this code
 	 * is pretty crude, but we are not expecting any variability in the file
@@ -1234,7 +1237,7 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 	if (fscanf(lfp, "BACKUP METHOD: %19s\n", backuptype) == 1)
 	{
 		if (strcmp(backuptype, "streamed") == 0)
-			*backupEndRequired = true;
+			*backupEndRequired = true;  // 如果备份类型是streamed，这个变量就设置为true，表示它是一个备份恢复
 	}
 
 	/*

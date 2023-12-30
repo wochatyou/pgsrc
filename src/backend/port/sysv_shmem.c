@@ -662,7 +662,7 @@ CreateAnonymousSegment(Size *size)
  * AnonymousShmemDetach --- detach from an anonymous mmap'd block
  * (called as an on_shmem_exit callback, hence funny argument list)
  */
-static void
+static void // 退出的时候把本进程从共享内存中断开
 AnonymousShmemDetach(int status, Datum arg)
 {
 	/* Release anonymous shared memory block, if any. */
@@ -716,14 +716,15 @@ PGSharedMemoryCreate(Size size,
 				 errmsg("huge pages not supported on this platform")));
 #endif
 
-	/* For now, we don't support huge pages in SysV memory */
+	/* For now, we don't support huge pages in SysV memory */  
+	// 如果你指定的共享内存类型不是MMAP，又指定了huge page，就报错。shared_memory_type参数控制共享内存的类型
 	if (huge_pages == HUGE_PAGES_ON && shared_memory_type != SHMEM_TYPE_MMAP)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("huge pages not supported with the current shared_memory_type setting")));
 
 	/* Room for a header? */
-	Assert(size > MAXALIGN(sizeof(PGShmemHeader)));
+	Assert(size > MAXALIGN(sizeof(PGShmemHeader))); // 确保总尺寸要大于头部结构的尺寸
 
 	if (shared_memory_type == SHMEM_TYPE_MMAP)
 	{
@@ -731,7 +732,7 @@ PGSharedMemoryCreate(Size size,
 		AnonymousShmemSize = size;
 
 		/* Register on-exit routine to unmap the anonymous segment */
-		on_shmem_exit(AnonymousShmemDetach, (Datum) 0);
+		on_shmem_exit(AnonymousShmemDetach, (Datum) 0); // 本进程退出是从共享内存中断开/deatch
 
 		/* Now we need only allocate a minimal-sized SysV shmem block. */
 		sysvsize = sizeof(PGShmemHeader);

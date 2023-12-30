@@ -582,7 +582,7 @@ HANDLE		PostmasterHandle;
 /*
  * Postmaster main entry point
  */
-void
+void // 主进程的入口函数
 PostmasterMain(int argc, char *argv[])
 {
 	int			opt;
