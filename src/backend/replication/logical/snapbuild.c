@@ -329,7 +329,7 @@ AllocateSnapshotBuilder(ReorderBuffer *reorder,
 	builder = palloc0(sizeof(SnapBuild)); //在新的内存池中分配一块内存，存放SnapBuild数据结构
 	//初始化这个数据结构
 	builder->state = SNAPBUILD_START;
-	builder->context = context;
+	builder->context = context;  // 把内存池的指针保存在这个变量中，方便获取
 	builder->reorder = reorder;
 	/* Other struct members initialized by zeroing via palloc0 above */
 
@@ -350,15 +350,15 @@ AllocateSnapshotBuilder(ReorderBuffer *reorder,
 	MemoryContextSwitchTo(oldcontext); // 把内存池切换回去
 
 	return builder;  // 返回指针
-}
+}  // 这个函数的整体逻辑还是比较容易理解的。
 
 /*
  * Free a snapshot builder.
  */
-void
+void  // 释放builder所占用的内存。它是在一个内存池中，只要把整个内存池都释放即可
 FreeSnapshotBuilder(SnapBuild *builder)
 {
-	MemoryContext context = builder->context;
+	MemoryContext context = builder->context; // 获得builder内存所在的内存池
 
 	/* free snapshot explicitly, that contains some error checking */
 	if (builder->snapshot != NULL)
@@ -368,13 +368,13 @@ FreeSnapshotBuilder(SnapBuild *builder)
 	}
 
 	/* other resources are deallocated via memory context reset */
-	MemoryContextDelete(context);
+	MemoryContextDelete(context); // 把整个内存池都释放掉，builder内存也自动释放了
 }
 
 /*
  * Free an unreferenced snapshot that has previously been built by us.
  */
-static void
+static void  // 这个函数通过pfree()直接释放内存块
 SnapBuildFreeSnapshot(Snapshot snap)
 {
 	/* make sure we don't get passed an external snapshot */
@@ -399,7 +399,7 @@ SnapBuildFreeSnapshot(Snapshot snap)
 /*
  * In which state of snapshot building are we?
  */
-SnapBuildState
+SnapBuildState  // 返回builder的状态
 SnapBuildCurrentState(SnapBuild *builder)
 {
 	return builder->state;
@@ -469,7 +469,7 @@ SnapBuildSnapDecRefcount(Snapshot snap)
 	if (snap->copied)
 		elog(ERROR, "cannot free a copied snapshot");
 
-	snap->active_count--;
+	snap->active_count--;  // 引用指针减一，如果为0，就释放整个内存
 	if (snap->active_count == 0)
 		SnapBuildFreeSnapshot(snap);
 }
