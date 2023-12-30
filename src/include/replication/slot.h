@@ -110,7 +110,7 @@ typedef struct ReplicationSlotPersistentData
 	bool		two_phase;
 
 	/* plugin name */
-	NameData	plugin;
+	NameData	plugin; // 插件的名字，就是最大64个字符的字符串
 } ReplicationSlotPersistentData;
 
 /*

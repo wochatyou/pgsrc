@@ -163,14 +163,14 @@ StartupDecodingContext(List *output_plugin_options,
 
 	/* shorter lines... */
 	slot = MyReplicationSlot;
-
+	// 首先创建一个内存池
 	context = AllocSetContextCreate(CurrentMemoryContext,
 									"Logical decoding context",
 									ALLOCSET_DEFAULT_SIZES);
 	old_context = MemoryContextSwitchTo(context);
-	ctx = palloc0(sizeof(LogicalDecodingContext));
+	ctx = palloc0(sizeof(LogicalDecodingContext)); // 在这个内存池中分配LogicalDecodingContext
 
-	ctx->context = context;
+	ctx->context = context; //指向内存池，方便后面的资源释放
 
 	/*
 	 * (re-)load output plugins, so we detect a bad (removed) output plugin
@@ -731,7 +731,7 @@ LoadOutputPlugin(OutputPluginCallbacks *callbacks, const char *plugin)
 {
 	LogicalOutputPluginInit plugin_init;
 
-	plugin_init = (LogicalOutputPluginInit)
+	plugin_init = (LogicalOutputPluginInit) // 加载解码器插件，它是一个动态库，里面必须包含_PG_output_plugin_init这个函数
 		load_external_function(plugin, "_PG_output_plugin_init", false, NULL);
 
 	if (plugin_init == NULL)
@@ -739,7 +739,7 @@ LoadOutputPlugin(OutputPluginCallbacks *callbacks, const char *plugin)
 
 	/* ask the output plugin to fill the callback struct */
 	plugin_init(callbacks);
-
+    // 这三个回调函数是必须的，别的回调函数是可选项
 	if (callbacks->begin_cb == NULL)
 		elog(ERROR, "output plugins have to register a begin callback");
 	if (callbacks->change_cb == NULL)

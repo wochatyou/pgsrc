@@ -408,7 +408,7 @@ SnapBuildCurrentState(SnapBuild *builder)
 /*
  * Return the LSN at which the two-phase decoding was first enabled.
  */
-XLogRecPtr
+XLogRecPtr  // 很简单的函数
 SnapBuildGetTwoPhaseAt(SnapBuild *builder)
 {
 	return builder->two_phase_at;
@@ -417,7 +417,7 @@ SnapBuildGetTwoPhaseAt(SnapBuild *builder)
 /*
  * Set the LSN at which two-phase decoding is enabled.
  */
-void
+void  //简单的函数
 SnapBuildSetTwoPhaseAt(SnapBuild *builder, XLogRecPtr ptr)
 {
 	builder->two_phase_at = ptr;
@@ -426,7 +426,7 @@ SnapBuildSetTwoPhaseAt(SnapBuild *builder, XLogRecPtr ptr)
 /*
  * Should the contents of transaction ending at 'ptr' be decoded?
  */
-bool
+bool  // 比大小
 SnapBuildXactNeedsSkip(SnapBuild *builder, XLogRecPtr ptr)
 {
 	return ptr < builder->start_decoding_at;
@@ -438,7 +438,7 @@ SnapBuildXactNeedsSkip(SnapBuild *builder, XLogRecPtr ptr)
  * This is used when handing out a snapshot to some external resource or when
  * adding a Snapshot as builder->snapshot.
  */
-static void
+static void // 引用计数器增加一
 SnapBuildSnapIncRefcount(Snapshot snap)
 {
 	snap->active_count++;
@@ -450,7 +450,7 @@ SnapBuildSnapIncRefcount(Snapshot snap)
  * Externally visible, so that external resources that have been handed an
  * IncRef'ed Snapshot can adjust its refcount easily.
  */
-void
+void // 引用计数器减一，如果为0，就释放这个对象
 SnapBuildSnapDecRefcount(Snapshot snap)
 {
 	/* make sure we don't get passed an external snapshot */

@@ -101,7 +101,7 @@ static const Pg_magic_struct magic_data = PG_MODULE_MAGIC_DATA;
  * lookup_external_function to lookup additional functions in the same file
  * at less cost than repeating load_external_function.
  */
-void *
+void *  // 在指定的动态库中查找指定的函数名称，两者均为字符串
 load_external_function(const char *filename, const char *funcname,
 					   bool signalNotFound, void **filehandle)
 {
@@ -120,7 +120,7 @@ load_external_function(const char *filename, const char *funcname,
 		*filehandle = lib_handle;
 
 	/* Look up the function within the library. */
-	retval = dlsym(lib_handle, funcname);
+	retval = dlsym(lib_handle, funcname); // dlsym是Linux的系统调用，在动态库中寻找指定的函数
 
 	if (retval == NULL && signalNotFound)
 		ereport(ERROR,
@@ -196,9 +196,9 @@ internal_load_library(const char *libname)
 		 file_scanner != NULL &&
 		 strcmp(libname, file_scanner->filename) != 0;
 		 file_scanner = file_scanner->next)
-		;
+		;  // 在已经加载的文件列表中，按照字符串搜索动态库的文件名
 
-	if (file_scanner == NULL)
+	if (file_scanner == NULL) // 如果没有找到，再次搜索symlink或者link
 	{
 		/*
 		 * Check for same files - different paths (ie, symlink or link)
@@ -216,7 +216,7 @@ internal_load_library(const char *libname)
 			;
 	}
 
-	if (file_scanner == NULL)
+	if (file_scanner == NULL) // 此时该动态库的的确确没有被加载，就加载之
 	{
 		/*
 		 * File not loaded yet.
@@ -538,7 +538,7 @@ find_in_dynamic_libpath(const char *basename)
 	Assert(first_dir_separator(basename) == NULL);
 	Assert(Dynamic_library_path != NULL);
 
-	p = Dynamic_library_path;
+	p = Dynamic_library_path; // 动态库的搜索路径
 	if (strlen(p) == 0)
 		return NULL;
 
