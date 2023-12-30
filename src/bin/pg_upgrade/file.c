@@ -34,7 +34,7 @@
  *
  * schemaName/relName are relation's SQL name (used for error messages only).
  */
-void
+void // 克隆文件
 cloneFile(const char *src, const char *dst,
 		  const char *schemaName, const char *relName)
 {
@@ -55,7 +55,7 @@ cloneFile(const char *src, const char *dst,
 		pg_fatal("error while cloning relation \"%s.%s\": could not create file \"%s\": %s",
 				 schemaName, relName, dst, strerror(errno));
 
-	if (ioctl(dest_fd, FICLONE, src_fd) < 0)
+	if (ioctl(dest_fd, FICLONE, src_fd) < 0) //这个是关键点，使用ioctl + FICLONE标志克隆文件
 	{
 		int			save_errno = errno;
 
@@ -77,7 +77,7 @@ cloneFile(const char *src, const char *dst,
  * Copies a relation file from src to dst.
  * schemaName/relName are relation's SQL name (used for error messages only).
  */
-void
+void // 拷贝文件
 copyFile(const char *src, const char *dst,
 		 const char *schemaName, const char *relName)
 {
@@ -98,22 +98,22 @@ copyFile(const char *src, const char *dst,
 	/* copy in fairly large chunks for best efficiency */
 #define COPY_BUF_SIZE (50 * BLCKSZ)
 
-	buffer = (char *) pg_malloc(COPY_BUF_SIZE);
+	buffer = (char *) pg_malloc(COPY_BUF_SIZE); // 分配一个50个数据块大小的内存
 
 	/* perform data copying i.e read src source, write to destination */
 	while (true)
 	{
-		ssize_t		nbytes = read(src_fd, buffer, COPY_BUF_SIZE);
+		ssize_t		nbytes = read(src_fd, buffer, COPY_BUF_SIZE); // 从源文件中读取50块
 
-		if (nbytes < 0)
+		if (nbytes < 0) // 如果读出错，就报错退出
 			pg_fatal("error while copying relation \"%s.%s\": could not read file \"%s\": %s",
 					 schemaName, relName, src, strerror(errno));
 
-		if (nbytes == 0)
+		if (nbytes == 0) // 读到文件尾部了
 			break;
 
 		errno = 0;
-		if (write(dest_fd, buffer, nbytes) != nbytes)
+		if (write(dest_fd, buffer, nbytes) != nbytes) // 写入到目标文件
 		{
 			/* if write didn't set errno, assume problem is no disk space */
 			if (errno == 0)
@@ -123,9 +123,9 @@ copyFile(const char *src, const char *dst,
 		}
 	}
 
-	pg_free(buffer);
-	close(src_fd);
-	close(dest_fd);
+	pg_free(buffer); // 释放内存
+	close(src_fd);   // 关闭文件
+	close(dest_fd);  // 关闭文件
 
 #else							/* WIN32 */
 
@@ -150,7 +150,7 @@ void
 linkFile(const char *src, const char *dst,
 		 const char *schemaName, const char *relName)
 {
-	if (link(src, dst) < 0)
+	if (link(src, dst) < 0) // 建立一个link
 		pg_fatal("error while creating link for relation \"%s.%s\" (\"%s\" to \"%s\"): %s",
 				 schemaName, relName, src, dst, strerror(errno));
 }
@@ -172,7 +172,7 @@ linkFile(const char *src, const char *dst,
  * remain set for the pages for which they were set previously.  The
  * all-frozen bits are never set by this conversion; we leave that to VACUUM.
  */
-void
+void  // vm文件的格式变了，原来只有1个比特，现在变成了两个，所以要把老格式升级到新格式
 rewriteVisibilityMap(const char *fromfile, const char *tofile,
 					 const char *schemaName, const char *relName)
 {
@@ -316,7 +316,7 @@ rewriteVisibilityMap(const char *fromfile, const char *tofile,
 	close(src_fd);
 }
 
-void
+void // 就是把老的PG_VERSION尝试克隆到新目录下的PG_VERSION.clonetest，如果失败了，就报错，表明这个文件系统不支持克隆，或者两个目录在不同的文件系统上
 check_file_clone(void)
 {
 	char		existing_file[MAXPGPATH];
@@ -358,8 +358,8 @@ check_file_clone(void)
 	unlink(new_link_file);
 }
 
-void
-check_hard_link(void)
+void  // 测试可否做link。
+check_hard_link(void) 
 {
 	char		existing_file[MAXPGPATH];
 	char		new_link_file[MAXPGPATH];
