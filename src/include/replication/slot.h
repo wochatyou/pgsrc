@@ -194,7 +194,7 @@ typedef struct ReplicationSlotCtlData
 	 * reason you can't do that in an otherwise-empty struct.
 	 */
 	ReplicationSlot replication_slots[1];
-} ReplicationSlotCtlData;
+} ReplicationSlotCtlData; // 复制槽在共享内存中就是一个简单的数组，大小由max_replication_slots决定
 
 /*
  * Pointers to shared memory

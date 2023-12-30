@@ -330,7 +330,7 @@ typedef struct XLogwrtRqst
 	XLogRecPtr	Write;			/* last byte + 1 to write out */
 	XLogRecPtr	Flush;			/* last byte + 1 to flush */
 } XLogwrtRqst;
-
+// 两个简单的指针
 typedef struct XLogwrtResult
 {
 	XLogRecPtr	Write;			/* last byte + 1 written out */
@@ -4176,7 +4176,7 @@ UpdateControlFile(void)
 /*
  * Returns the unique system identifier from control file.
  */
-uint64
+uint64 // 从控制文件中获取系统标识符
 GetSystemIdentifier(void)
 {
 	Assert(ControlFile != NULL);
@@ -5921,7 +5921,7 @@ PerformRecoveryXLogAction(void)
  * Unlike testing InRecovery, this works in any process that's connected to
  * shared memory.
  */
-bool
+bool // 判断数据库是否还处于恢复当中。备库肯定是属于恢复当中
 RecoveryInProgress(void)
 {
 	/*
@@ -5929,7 +5929,7 @@ RecoveryInProgress(void)
 	 * can't re-enter recovery, so there's no need to keep checking after the
 	 * shared variable has once been seen false.
 	 */
-	if (!LocalRecoveryInProgress)
+	if (!LocalRecoveryInProgress) // 它的初始值是true，所以一开始这个条件不成立
 		return false;
 	else
 	{
@@ -5938,7 +5938,7 @@ RecoveryInProgress(void)
 		 * shared variable.
 		 */
 		volatile XLogCtlData *xlogctl = XLogCtl;
-
+		// 把检测状态保存在这个变量中。这个变量只在此处改变
 		LocalRecoveryInProgress = (xlogctl->SharedRecoveryState != RECOVERY_STATE_DONE);
 
 		/*

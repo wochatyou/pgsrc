@@ -265,10 +265,10 @@ static void WalSndSegmentOpen(XLogReaderState *state, XLogSegNo nextSegNo,
 void
 InitWalSender(void)
 {
-	am_cascading_walsender = RecoveryInProgress();
+	am_cascading_walsender = RecoveryInProgress(); // 如果本数据库处于恢复当中，则是备库，就是级联的复制
 
 	/* Create a per-walsender data structure in shared memory */
-	InitWalSenderSlot();
+	InitWalSenderSlot(); // 每一个wal sender进程都会在共享内存中有一个槽，这个函数就是找一个空槽，初始化它
 
 	/*
 	 * We don't currently need any ResourceOwner in a walsender process, but
@@ -391,7 +391,7 @@ WalSndShutdown(void)
 /*
  * Handle the IDENTIFY_SYSTEM command.
  */
-static void
+static void  // 执行IDENTIFY_SYSTEM指令
 IdentifySystem(void)
 {
 	char		sysid[32];
@@ -412,17 +412,17 @@ IdentifySystem(void)
 	 */
 
 	snprintf(sysid, sizeof(sysid), UINT64_FORMAT,
-			 GetSystemIdentifier());
+			 GetSystemIdentifier()); // 系统标识符是从控制文件中获取的
 
 	am_cascading_walsender = RecoveryInProgress();
 	if (am_cascading_walsender)
 		logptr = GetStandbyFlushRecPtr(&currTLI);
 	else
-		logptr = GetFlushRecPtr(&currTLI);
+		logptr = GetFlushRecPtr(&currTLI); // 获取当前的LSN
 
 	snprintf(xloc, sizeof(xloc), "%X/%X", LSN_FORMAT_ARGS(logptr));
 
-	if (MyDatabaseId != InvalidOid)
+	if (MyDatabaseId != InvalidOid) // 物理复制没有数据库，逻辑复制有
 	{
 		MemoryContext cur = CurrentMemoryContext;
 
@@ -439,7 +439,7 @@ IdentifySystem(void)
 	dest = CreateDestReceiver(DestRemoteSimple);
 
 	/* need a tuple descriptor representing four columns */
-	tupdesc = CreateTemplateTupleDesc(4);
+	tupdesc = CreateTemplateTupleDesc(4);  // 返回的结果有4列
 	TupleDescInitBuiltinEntry(tupdesc, (AttrNumber) 1, "systemid",
 							  TEXTOID, -1, 0);
 	TupleDescInitBuiltinEntry(tupdesc, (AttrNumber) 2, "timeline",
@@ -2587,16 +2587,16 @@ InitWalSenderSlot(void)
 	 */
 	for (i = 0; i < max_wal_senders; i++)
 	{
-		WalSnd	   *walsnd = &WalSndCtl->walsnds[i];
+		WalSnd	   *walsnd = &WalSndCtl->walsnds[i]; // 这是一个数组
 
 		SpinLockAcquire(&walsnd->mutex);
 
-		if (walsnd->pid != 0)
+		if (walsnd->pid != 0) // 如果进程号非零，表示这个坑被占用了，继续找下一个
 		{
 			SpinLockRelease(&walsnd->mutex);
 			continue;
 		}
-		else
+		else // 找到了一个空槽，初始化之
 		{
 			/*
 			 * Found a free slot. Reserve it for us.
@@ -2626,7 +2626,7 @@ InitWalSenderSlot(void)
 			 * StartLogicalReplication() and CREATE_REPLICATION_SLOT but it
 			 * seems better to set it on one place.
 			 */
-			if (MyDatabaseId == InvalidOid)
+			if (MyDatabaseId == InvalidOid) // 这是区别物理复制和逻辑复制的关键点
 				walsnd->kind = REPLICATION_KIND_PHYSICAL;
 			else
 				walsnd->kind = REPLICATION_KIND_LOGICAL;

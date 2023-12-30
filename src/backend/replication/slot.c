@@ -114,7 +114,7 @@ static void SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel);
 /*
  * Report shared-memory space needed by ReplicationSlotsShmemInit.
  */
-Size
+Size // 计算复制槽的共享内存的大小
 ReplicationSlotsShmemSize(void)
 {
 	Size		size = 0;
@@ -123,7 +123,7 @@ ReplicationSlotsShmemSize(void)
 		return size;
 
 	size = offsetof(ReplicationSlotCtlData, replication_slots);
-	size = add_size(size,
+	size = add_size(size,  // 每个复制槽的内存结构都是固定大小的，共计max_replication_slots一个，组成一个数组
 					mul_size(max_replication_slots, sizeof(ReplicationSlot)));
 
 	return size;
@@ -140,18 +140,18 @@ ReplicationSlotsShmemInit(void)
 	if (max_replication_slots == 0)
 		return;
 
-	ReplicationSlotCtl = (ReplicationSlotCtlData *)
+	ReplicationSlotCtl = (ReplicationSlotCtlData *) // 在共享内存中分配复制槽的内存
 		ShmemInitStruct("ReplicationSlot Ctl", ReplicationSlotsShmemSize(),
 						&found);
 
-	if (!found)
+	if (!found) // 第一次，所以要进行初始化
 	{
 		int			i;
 
 		/* First time through, so initialize */
 		MemSet(ReplicationSlotCtl, 0, ReplicationSlotsShmemSize());
 
-		for (i = 0; i < max_replication_slots; i++)
+		for (i = 0; i < max_replication_slots; i++) // 这起始就是一个数组，大小由max_replication_slots决定，所以这个参数需要重启数据库才能生效
 		{
 			ReplicationSlot *slot = &ReplicationSlotCtl->replication_slots[i];
 
