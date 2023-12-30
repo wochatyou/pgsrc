@@ -300,7 +300,7 @@ output_completion_banner(char *deletion_script_file_name)
 }
 
 
-void
+void // 检查老库和新库的版本是否满足升级的要求
 check_cluster_versions(void)
 {
 	prep_status("Checking cluster versions");
@@ -314,11 +314,12 @@ check_cluster_versions(void)
 	 * upgrades
 	 */
 
-	if (GET_MAJOR_VERSION(old_cluster.major_version) < 902)
+	if (GET_MAJOR_VERSION(old_cluster.major_version) < 902) // 老库最低版本是9.0.2
 		pg_fatal("This utility can only upgrade from PostgreSQL version %s and later.",
 				 "9.2");
 
 	/* Only current PG version is supported as a target */
+	// 检查pg_upgrade的版本和新库的版本是否一致，确保pg_upgrade是新版本软件里面的
 	if (GET_MAJOR_VERSION(new_cluster.major_version) != GET_MAJOR_VERSION(PG_VERSION_NUM))
 		pg_fatal("This utility can only upgrade to PostgreSQL version %s.",
 				 PG_MAJORVERSION);
@@ -328,10 +329,11 @@ check_cluster_versions(void)
 	 * pg_dump cannot operate on newer database versions, only current and
 	 * older versions.
 	 */
-	if (old_cluster.major_version > new_cluster.major_version)
+	if (old_cluster.major_version > new_cluster.major_version) // 老库版本不能高于新库版本
 		pg_fatal("This utility cannot be used to downgrade to older major PostgreSQL versions.");
 
 	/* Ensure binaries match the designated data directories */
+	// 老库版本和软件版本是否一致
 	if (GET_MAJOR_VERSION(old_cluster.major_version) !=
 		GET_MAJOR_VERSION(old_cluster.bin_version))
 		pg_fatal("Old cluster data and binary directories are from different major versions.");

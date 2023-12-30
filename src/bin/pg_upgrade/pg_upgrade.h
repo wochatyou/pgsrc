@@ -24,7 +24,7 @@
 
 #define MESSAGE_WIDTH		62
 
-#define GET_MAJOR_VERSION(v)	((v) / 100)
+#define GET_MAJOR_VERSION(v)	((v) / 100) // 1600的版本就是16
 
 /* contains both global db information and CREATE DATABASE commands */
 #define GLOBALS_DUMP_FILE	"pg_upgrade_dump_globals.sql"

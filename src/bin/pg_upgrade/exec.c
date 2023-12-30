@@ -91,7 +91,7 @@ exec_prog(const char *log_filename, const char *opt_log_file,
 	char		log_file[MAXPGPATH];
 
 #define MAXCMDLEN (2 * MAXPGPATH)
-	char		cmd[MAXCMDLEN];
+	char		cmd[MAXCMDLEN];  // 这里面包含要执行的程序
 	FILE	   *log;
 	va_list		ap;
 
@@ -184,7 +184,7 @@ exec_prog(const char *log_filename, const char *opt_log_file,
 #endif
 	{
 		fflush(NULL);
-		result = system(cmd);
+		result = system(cmd); // 使用system()系统调用执行cmd的程序
 	}
 
 	if (result != 0 && report_error)

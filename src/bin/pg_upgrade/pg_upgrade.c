@@ -76,7 +76,7 @@ char	   *output_files[] = {
 };
 
 
-int
+int // pg_upgrade的入口函数
 main(int argc, char **argv)
 {
 	char	   *deletion_script_file_name = NULL;
@@ -92,12 +92,12 @@ main(int argc, char **argv)
 	/* Set default restrictive mask until new cluster permissions are read */
 	umask(PG_MODE_MASK_OWNER);
 
-	parseCommandLine(argc, argv);
+	parseCommandLine(argc, argv); // 解析传入的参数
 
 	get_restricted_token();
 
-	adjust_data_dir(&old_cluster);
-	adjust_data_dir(&new_cluster);
+	adjust_data_dir(&old_cluster); // 检查老库的目录
+	adjust_data_dir(&new_cluster); // 检查新库的目录
 
 	/*
 	 * Set mask based on PGDATA permissions, needed for the creation of the

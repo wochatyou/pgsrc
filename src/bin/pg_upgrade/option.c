@@ -382,7 +382,7 @@ check_required_directory(char **dirpath, const char *envVarName, bool useCwd,
  * but cluster->pgconfig isn't set.  We fill both variables with corrected
  * values.
  */
-void
+void // 使用postgres -D xxx -C data_directory检查真正的数据目录
 adjust_data_dir(ClusterInfo *cluster)
 {
 	char		filename[MAXPGPATH];
@@ -397,13 +397,13 @@ adjust_data_dir(ClusterInfo *cluster)
 
 	/* If there is no postgresql.conf, it can't be a config-only dir */
 	snprintf(filename, sizeof(filename), "%s/postgresql.conf", cluster->pgconfig);
-	if ((fp = fopen(filename, "r")) == NULL)
+	if ((fp = fopen(filename, "r")) == NULL) // 判断这个目录下是否有postgresql.conf文件，如果没有就返回
 		return;
 	fclose(fp);
 
 	/* If PG_VERSION exists, it can't be a config-only dir */
 	snprintf(filename, sizeof(filename), "%s/PG_VERSION", cluster->pgconfig);
-	if ((fp = fopen(filename, "r")) != NULL)
+	if ((fp = fopen(filename, "r")) != NULL) // 检查有没有PG_VERSION文件
 	{
 		fclose(fp);
 		return;
@@ -411,7 +411,7 @@ adjust_data_dir(ClusterInfo *cluster)
 
 	/* Must be a configuration directory, so find the real data directory. */
 
-	if (cluster == &old_cluster)
+	if (cluster == &old_cluster) // old_cluster是一个全局变量，指向了老库的目录
 		prep_status("Finding the real data directory for the source cluster");
 	else
 		prep_status("Finding the real data directory for the target cluster");
@@ -422,7 +422,7 @@ adjust_data_dir(ClusterInfo *cluster)
 	 * pg_upgrade will fail anyway because the data files will not be found.
 	 */
 	snprintf(cmd, sizeof(cmd), "\"%s/postgres\" -D \"%s\" -C data_directory",
-			 cluster->bindir, cluster->pgconfig);
+			 cluster->bindir, cluster->pgconfig); // 使用-C参数检查数据目录
 	fflush(NULL);
 
 	if ((output = popen(cmd, "r")) == NULL ||
@@ -440,7 +440,7 @@ adjust_data_dir(ClusterInfo *cluster)
 
 	cluster->pgdata = pg_strdup(cmd_output);
 
-	check_ok();
+	check_ok(); // 在屏幕上打印ok
 }
 
 
