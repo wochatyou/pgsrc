@@ -124,7 +124,7 @@ _PG_init(void)
 }
 
 /* specify output plugin callbacks */
-void
+void // 该函数是规定死的，必须有。参考LoadOutputPlugin函数。这个函数的任务就是把准备好的回调函数挂上去
 _PG_output_plugin_init(OutputPluginCallbacks *cb)
 {
 	cb->startup_cb = pg_decode_startup;

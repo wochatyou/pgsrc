@@ -374,7 +374,7 @@ static const char *TransStateAsString(TransState state);
  *	This returns true if we are inside a valid transaction; that is,
  *	it is safe to initiate database access, take heavyweight locks, etc.
  */
-bool
+bool // 判断我们是否处于一个事务中
 IsTransactionState(void)
 {
 	TransactionState s = CurrentTransactionState;

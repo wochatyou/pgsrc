@@ -104,27 +104,27 @@ static void LoadOutputPlugin(OutputPluginCallbacks *callbacks, const char *plugi
  * Make sure the current settings & environment are capable of doing logical
  * decoding.
  */
-void
+void // 检查服务器的配置是否满足逻辑解码的要求。如果不满足，就直接退出了。
 CheckLogicalDecodingRequirements(void)
 {
-	CheckSlotRequirements();
+	CheckSlotRequirements(); // 检查复制槽是否满足要求
 
 	/*
 	 * NB: Adding a new requirement likely means that RestoreSlotFromDisk()
 	 * needs the same check.
 	 */
 
-	if (wal_level < WAL_LEVEL_LOGICAL)
+	if (wal_level < WAL_LEVEL_LOGICAL) // 检查wal_level的设置
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("logical decoding requires wal_level >= logical")));
 
-	if (MyDatabaseId == InvalidOid)
+	if (MyDatabaseId == InvalidOid)  // 逻辑复制必须指定一个数据库
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("logical decoding requires a database connection")));
 
-	if (RecoveryInProgress())
+	if (RecoveryInProgress()) // 判断是否处于恢复状态
 	{
 		/*
 		 * This check may have race conditions, but whenever
@@ -176,8 +176,8 @@ StartupDecodingContext(List *output_plugin_options,
 	 * (re-)load output plugins, so we detect a bad (removed) output plugin
 	 * now.
 	 */
-	if (!fast_forward)
-		LoadOutputPlugin(&ctx->callbacks, NameStr(slot->data.plugin));
+	if (!fast_forward) // 根据复制槽里面的插件名称，找到对应的动态库，初始化回调函数
+		LoadOutputPlugin(&ctx->callbacks, NameStr(slot->data.plugin)); // 复制槽里面包含的插件的名称
 
 	/*
 	 * Now that the slot's xmin has been set, we can announce ourselves as a
@@ -222,7 +222,8 @@ StartupDecodingContext(List *output_plugin_options,
 	ctx->reorder->commit = commit_cb_wrapper;
 	ctx->reorder->message = message_cb_wrapper;
 
-	/*
+	// 对流复制的支持？必须要有的回调函数
+	/* 
 	 * To support streaming, we require start/stop/abort/commit/change
 	 * callbacks. The message and truncate callbacks are optional, similar to
 	 * regular output plugins. We however enable streaming when at least one
@@ -344,7 +345,7 @@ CreateInitDecodingContext(const char *plugin,
 	 * On a standby, this check is also required while creating the slot.
 	 * Check the comments in the function.
 	 */
-	CheckLogicalDecodingRequirements();
+	CheckLogicalDecodingRequirements(); // 检查逻辑复制的配置是否正常
 
 	/* shorter lines... */
 	slot = MyReplicationSlot;
@@ -357,19 +358,19 @@ CreateInitDecodingContext(const char *plugin,
 		elog(ERROR, "cannot initialize logical decoding without a specified plugin");
 
 	/* Make sure the passed slot is suitable. These are user facing errors. */
-	if (SlotIsPhysical(slot))
+	if (SlotIsPhysical(slot)) // 如果是物理复制槽
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("cannot use physical replication slot for logical decoding")));
 
-	if (slot->data.database != MyDatabaseId)
+	if (slot->data.database != MyDatabaseId) // 检查数据库是否匹配
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("replication slot \"%s\" was not created in this database",
 						NameStr(slot->data.name))));
 
 	if (IsTransactionState() &&
-		GetTopTransactionIdIfAny() != InvalidTransactionId)
+		GetTopTransactionIdIfAny() != InvalidTransactionId) // 我们正处于一个事务里面
 		ereport(ERROR,
 				(errcode(ERRCODE_ACTIVE_SQL_TRANSACTION),
 				 errmsg("cannot create logical replication slot in transaction that has performed writes")));
@@ -738,7 +739,8 @@ LoadOutputPlugin(OutputPluginCallbacks *callbacks, const char *plugin)
 		elog(ERROR, "output plugins have to declare the _PG_output_plugin_init symbol");
 
 	/* ask the output plugin to fill the callback struct */
-	plugin_init(callbacks);
+	plugin_init(callbacks); // 往回调函数结构上挂回调函数
+
     // 这三个回调函数是必须的，别的回调函数是可选项
 	if (callbacks->begin_cb == NULL)
 		elog(ERROR, "output plugins have to register a begin callback");

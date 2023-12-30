@@ -180,6 +180,7 @@ typedef struct ReplicationSlot
 	XLogRecPtr	candidate_restart_lsn;
 } ReplicationSlot;
 
+// 物理复制槽和逻辑复制槽的区别在于是否包含数据库的信息
 #define SlotIsPhysical(slot) ((slot)->data.database == InvalidOid)
 #define SlotIsLogical(slot) ((slot)->data.database != InvalidOid)
 
