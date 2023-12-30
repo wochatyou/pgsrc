@@ -319,14 +319,15 @@ AllocateSnapshotBuilder(ReorderBuffer *reorder,
 	MemoryContext oldcontext;
 	SnapBuild  *builder;
 
+	// 首先创建一个内存池
 	/* allocate memory in own context, to have better accountability */
 	context = AllocSetContextCreate(CurrentMemoryContext,
 									"snapshot builder context",
 									ALLOCSET_DEFAULT_SIZES);
-	oldcontext = MemoryContextSwitchTo(context);
+	oldcontext = MemoryContextSwitchTo(context); // 切换内存池
 
-	builder = palloc0(sizeof(SnapBuild));
-
+	builder = palloc0(sizeof(SnapBuild)); //在新的内存池中分配一块内存，存放SnapBuild数据结构
+	//初始化这个数据结构
 	builder->state = SNAPBUILD_START;
 	builder->context = context;
 	builder->reorder = reorder;
@@ -346,9 +347,9 @@ AllocateSnapshotBuilder(ReorderBuffer *reorder,
 	builder->building_full_snapshot = need_full_snapshot;
 	builder->two_phase_at = two_phase_at;
 
-	MemoryContextSwitchTo(oldcontext);
+	MemoryContextSwitchTo(oldcontext); // 把内存池切换回去
 
-	return builder;
+	return builder;  // 返回指针
 }
 
 /*

@@ -42,7 +42,7 @@
 /*
  * Write logical decoding message into XLog.
  */
-XLogRecPtr
+XLogRecPtr // 貌似往WAL里面写一个WAL记录
 LogLogicalMessage(const char *prefix, const char *message, size_t size,
 				  bool transactional)
 {
@@ -77,7 +77,7 @@ LogLogicalMessage(const char *prefix, const char *message, size_t size,
 /*
  * Redo is basically just noop for logical decoding messages.
  */
-void
+void  // 这个函数没有做什么实质性的动作
 logicalmsg_redo(XLogReaderState *record)
 {
 	uint8		info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
