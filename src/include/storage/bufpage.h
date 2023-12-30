@@ -228,7 +228,7 @@ PageIsEmpty(Page page)
  *		returns true iff page has not been initialized (by PageInit)
  */
 static inline bool
-PageIsNew(Page page)
+PageIsNew(Page page) // 根据页头的pd_upper指针是否为0来判断这个页是否被初始化过了。
 {
 	return ((PageHeader) page)->pd_upper == 0;
 }
@@ -237,7 +237,7 @@ PageIsNew(Page page)
  * PageGetItemId
  *		Returns an item identifier of a page.
  */
-static inline ItemId
+static inline ItemId // 获得这个页面上的第n条记录的指针，从1开始编号
 PageGetItemId(Page page, OffsetNumber offsetNumber)
 {
 	return &((PageHeader) page)->pd_linp[offsetNumber - 1];
@@ -251,7 +251,7 @@ PageGetItemId(Page page, OffsetNumber offsetNumber)
  * Now it is.  Beware of old code that might think the offset to the contents
  * is just SizeOfPageHeaderData rather than MAXALIGN(SizeOfPageHeaderData).
  */
-static inline char *
+static inline char * // 获得页面的内容，就是跳过页头之后的那块内容
 PageGetContents(Page page)
 {
 	return (char *) page + MAXALIGN(SizeOfPageHeaderData);
@@ -270,7 +270,7 @@ PageGetContents(Page page)
  * BufferGetPageSize, which can be called on an unformatted page).
  * however, it can be called on a page that is not stored in a buffer.
  */
-static inline Size
+static inline Size // 从页头获得这个页面的大小，这个页面必须是被初始化过以后的
 PageGetPageSize(Page page)
 {
 	return (Size) (((PageHeader) page)->pd_pagesize_version & (uint16) 0xFF00);
@@ -280,7 +280,7 @@ PageGetPageSize(Page page)
  * PageGetPageLayoutVersion
  *		Returns the page layout version of a page.
  */
-static inline uint8
+static inline uint8  // 获得这个页面的版本号，就是从页头中读取
 PageGetPageLayoutVersion(Page page)
 {
 	return (((PageHeader) page)->pd_pagesize_version & 0x00FF);
@@ -293,7 +293,7 @@ PageGetPageLayoutVersion(Page page)
  * We could support setting these two values separately, but there's
  * no real need for it at the moment.
  */
-static inline void
+static inline void // 设置一个数据页的版本和大小，就是修改数据页的页头
 PageSetPageSizeAndVersion(Page page, Size size, uint8 version)
 {
 	Assert((size & 0xFF00) == size);
@@ -310,7 +310,7 @@ PageSetPageSizeAndVersion(Page page, Size size, uint8 version)
  * PageGetSpecialSize
  *		Returns size of special space on a page.
  */
-static inline uint16
+static inline uint16  // 获得一个页面special区域的大小
 PageGetSpecialSize(Page page)
 {
 	return (PageGetPageSize(page) - ((PageHeader) page)->pd_special);
@@ -380,7 +380,7 @@ PageGetMaxOffsetNumber(Page page)
 /*
  * Additional functions for access to page headers.
  */
-static inline XLogRecPtr
+static inline XLogRecPtr // 获得这个页面的LSN，就是头8个字节
 PageGetLSN(Page page)
 {
 	return PageXLogRecPtrGet(((PageHeader) page)->pd_lsn);

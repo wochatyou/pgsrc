@@ -299,13 +299,13 @@ extern void FreeAccessStrategy(BufferAccessStrategy strategy);
  * even in non-assert-enabled builds can be significant.  Thus, we've
  * now demoted the range checks to assertions within the macro itself.
  */
-static inline bool
+static inline bool // 给定一个编号，判断它是否是有效的编号
 BufferIsValid(Buffer bufnum)
 {
 	Assert(bufnum <= NBuffers);
 	Assert(bufnum >= -NLocBuffer);
 
-	return bufnum != InvalidBuffer;
+	return bufnum != InvalidBuffer; // InvalidBuffer的值是0，合法的Buffer编号是 -NLocBuffer .. -1, 1, .. NBuffers
 }
 
 /*
@@ -315,15 +315,15 @@ BufferIsValid(Buffer bufnum)
  * Note:
  *		Assumes buffer is valid.
  */
-static inline Block
+static inline Block  // 根据数据页的编号获得数据页的指针，适用共享数据页和本地数据页
 BufferGetBlock(Buffer buffer)
 {
 	Assert(BufferIsValid(buffer));
 
-	if (BufferIsLocal(buffer))
-		return LocalBufferBlockPointers[-buffer - 1];
+	if (BufferIsLocal(buffer)) // 编号小于0就是在本地内存的
+		return LocalBufferBlockPointers[-buffer - 1];  // 本地的数据页的指针组成了一个数组，数据页本身不一定
 	else
-		return (Block) (BufferBlocks + ((Size) (buffer - 1)) * BLCKSZ);
+		return (Block) (BufferBlocks + ((Size) (buffer - 1)) * BLCKSZ); // 直接在共享内存中按照数据页的编号获得偏移量
 }
 
 /*
@@ -337,7 +337,7 @@ BufferGetBlock(Buffer buffer)
  *		(formatted) disk page.
  */
 /* XXX should dig out of buffer descriptor */
-static inline Size
+static inline Size // 直接返回BLCKSZ！
 BufferGetPageSize(Buffer buffer)
 {
 	AssertMacro(BufferIsValid(buffer));
@@ -351,7 +351,7 @@ BufferGetPageSize(Buffer buffer)
  * When this is called as part of a scan, there may be a need for a nearby
  * call to TestForOldSnapshot().  See the definition of that for details.
  */
-static inline Page
+static inline Page // 就是BufferGetBlock！
 BufferGetPage(Buffer buffer)
 {
 	return (Page) BufferGetBlock(buffer);

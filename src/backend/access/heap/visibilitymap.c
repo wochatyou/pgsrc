@@ -105,18 +105,18 @@
  * extra headers, so the whole page minus the standard page header is
  * used for the bitmap.
  */
-#define MAPSIZE (BLCKSZ - MAXALIGN(SizeOfPageHeaderData))
+#define MAPSIZE (BLCKSZ - MAXALIGN(SizeOfPageHeaderData)) // 一个页面扣除页头，其余的部分都用来存储bitmap
 
 /* Number of heap blocks we can represent in one byte */
-#define HEAPBLOCKS_PER_BYTE (BITS_PER_BYTE / BITS_PER_HEAPBLOCK)
+#define HEAPBLOCKS_PER_BYTE (BITS_PER_BYTE / BITS_PER_HEAPBLOCK) // 这个值是4，表示每个字节存储4个2-bit
 
 /* Number of heap blocks we can represent in one visibility map page. */
-#define HEAPBLOCKS_PER_PAGE (MAPSIZE * HEAPBLOCKS_PER_BYTE)
+#define HEAPBLOCKS_PER_PAGE (MAPSIZE * HEAPBLOCKS_PER_BYTE) // 每个vm的页可以存储多少个数据文件的页，这个值是固定的
 
 /* Mapping from heap block number to the right bit in the visibility map */
-#define HEAPBLK_TO_MAPBLOCK(x) ((x) / HEAPBLOCKS_PER_PAGE)
-#define HEAPBLK_TO_MAPBYTE(x) (((x) % HEAPBLOCKS_PER_PAGE) / HEAPBLOCKS_PER_BYTE)
-#define HEAPBLK_TO_OFFSET(x) (((x) % HEAPBLOCKS_PER_BYTE) * BITS_PER_HEAPBLOCK)
+#define HEAPBLK_TO_MAPBLOCK(x) ((x) / HEAPBLOCKS_PER_PAGE) // 从数据文件的数据页得到相应的vm文件的数据页
+#define HEAPBLK_TO_MAPBYTE(x) (((x) % HEAPBLOCKS_PER_PAGE) / HEAPBLOCKS_PER_BYTE) // 在这个数据页的哪个字节上？
+#define HEAPBLK_TO_OFFSET(x) (((x) % HEAPBLOCKS_PER_BYTE) * BITS_PER_HEAPBLOCK)  // 在这个字节的哪个偏移量上?
 
 /* Masks for counting subsets of bits in the visibility map. */
 #define VISIBLE_MASK64	UINT64CONST(0x5555555555555555) /* The lower bit of each
@@ -192,7 +192,7 @@ visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags
 void
 visibilitymap_pin(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 {
-	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
+	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk); // 从数据文件的数据页计算对应的vm文件的数据页
 
 	/* Reuse the old pinned buffer if possible */
 	if (BufferIsValid(*vmbuf))
@@ -202,7 +202,7 @@ visibilitymap_pin(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 
 		ReleaseBuffer(*vmbuf);
 	}
-	*vmbuf = vm_readbuf(rel, mapBlock, true);
+	*vmbuf = vm_readbuf(rel, mapBlock, true); // 把这个vm的数据块读入到内存中
 }
 
 /*
@@ -609,7 +609,7 @@ vm_readbuf(Relation rel, BlockNumber blkno, bool extend)
 	 * long as it doesn't depend on the page header having correct contents.
 	 * Current usage is safe because PageGetContents() does not require that.
 	 */
-	if (PageIsNew(BufferGetPage(buf)))
+	if (PageIsNew(BufferGetPage(buf))) // 这个数据页还没有被初始化
 	{
 		LockBuffer(buf, BUFFER_LOCK_EXCLUSIVE);
 		if (PageIsNew(BufferGetPage(buf)))

@@ -386,7 +386,7 @@ IsTransactionState(void)
 	 * transition states to do anything interesting.  Hence, the only "valid"
 	 * state is TRANS_INPROGRESS.
 	 */
-	return (s->state == TRANS_INPROGRESS);
+	return (s->state == TRANS_INPROGRESS); 
 }
 
 /*
