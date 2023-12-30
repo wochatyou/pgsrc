@@ -86,14 +86,14 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
 
 /* wal_segment_size can range from 1MB to 1GB */
 #define WalSegMinSize 1024 * 1024
-#define WalSegMaxSize 1024 * 1024 * 1024
+#define WalSegMaxSize 1024 * 1024 * 1024   // WAL文件的大小最小是1MB，最大是1GB
 /* default number of min and max wal segments */
 #define DEFAULT_MIN_WAL_SEGS 5
 #define DEFAULT_MAX_WAL_SEGS 64
 
 /* check that the given size is a valid wal_segment_size */
-#define IsPowerOf2(x) (x > 0 && ((x) & ((x)-1)) == 0)
-#define IsValidWalSegSize(size) \
+#define IsPowerOf2(x) (x > 0 && ((x) & ((x)-1)) == 0)  // 10000 & FFFF = 0是判断法则
+#define IsValidWalSegSize(size) \   // 判断WAL文件大小是否合法的逻辑是：1.它是2的指数倍，2,介于1M和1G之间
 	 (IsPowerOf2(size) && \
 	 ((size) >= WalSegMinSize && (size) <= WalSegMaxSize))
 
@@ -176,7 +176,7 @@ XLogFileNameById(char *fname, TimeLineID tli, uint32 log, uint32 seg)
 	snprintf(fname, MAXFNAMELEN, "%08X%08X%08X", tli, log, seg);
 }
 
-static inline bool
+static inline bool  // 判断一个文件名是不是WAL文件，它的长度必须是24,而且只能包含0-9和ABCDEF这几个字符
 IsXLogFileName(const char *fname)
 {
 	return (strlen(fname) == XLOG_FNAME_LEN && \
@@ -188,7 +188,7 @@ IsXLogFileName(const char *fname)
  * archive recovery, when we want to archive a WAL segment but it might not
  * be complete yet.
  */
-static inline bool
+static inline bool // WAL文件的名字后面加上.partial，共计24 + 8 个字符
 IsPartialXLogFileName(const char *fname)
 {
 	return (strlen(fname) == XLOG_FNAME_LEN + strlen(".partial") &&

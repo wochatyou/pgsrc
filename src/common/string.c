@@ -151,7 +151,7 @@ pg_is_ascii(const char *str)
  * The passed in string must be zero-terminated.  This function returns
  * the new length of the string.
  */
-int
+int  // 把一个字符串从后往前扫描，遇到\n或者\r就变成0，最终的字符串肯定不包含回车或者换行
 pg_strip_crlf(char *str)
 {
 	int			len = strlen(str);

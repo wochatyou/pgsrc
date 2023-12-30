@@ -142,7 +142,7 @@ main(int argc, char *argv[])
 		switch (c)
 		{
 			case 'D':
-				DataDir = optarg;
+				DataDir = optarg; // 数据库目录，这个是必须有的参数
 				break;
 
 			case 'f':
@@ -317,7 +317,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (DataDir == NULL)
+	if (DataDir == NULL) // 必须要制定数据库的目录
 	{
 		pg_log_error("no data directory specified");
 		pg_log_error_hint("Try \"%s --help\" for more information.", progname);
@@ -331,7 +331,7 @@ main(int argc, char *argv[])
 	 * the data directory.
 	 */
 #ifndef WIN32
-	if (geteuid() == 0)
+	if (geteuid() == 0) // 如果运行的用户是root，就退出
 	{
 		pg_log_error("cannot be executed by \"root\"");
 		pg_log_error_hint("You must run %s as the PostgreSQL superuser.",
@@ -349,18 +349,18 @@ main(int argc, char *argv[])
 
 	umask(pg_mode_mask);
 
-	if (chdir(DataDir) < 0)
+	if (chdir(DataDir) < 0) // 把本进程的当前目录切换到DataDir
 		pg_fatal("could not change directory to \"%s\": %m",
 				 DataDir);
 
 	/* Check that data directory matches our server version */
-	CheckDataVersion();
+	CheckDataVersion(); // 检查PG_VERSION，如果版本不对，就直接退出本程序了
 
 	/*
 	 * Check for a postmaster lock file --- if there is one, refuse to
 	 * proceed, on grounds we might be interfering with a live installation.
 	 */
-	if ((fd = open("postmaster.pid", O_RDONLY, 0)) < 0)
+	if ((fd = open("postmaster.pid", O_RDONLY, 0)) < 0) // 检查是否有postmaster.pid这个文件，如果有，说明数据库正在运行，退出本程序
 	{
 		if (errno != ENOENT)
 			pg_fatal("could not open file \"%s\" for reading: %m",
@@ -376,16 +376,16 @@ main(int argc, char *argv[])
 	/*
 	 * Attempt to read the existing pg_control file
 	 */
-	if (!read_controlfile())
-		GuessControlValues();
+	if (!read_controlfile()) // 返回结果为true，表示正确读取了控制文件，否则为false
+		GuessControlValues(); // 猜测控制文件的内容
 
 	/*
 	 * If no new WAL segment size was specified, use the control file value.
 	 */
-	if (set_wal_segsize != 0)
+	if (set_wal_segsize != 0) // 这个值是用户通过参数传入进来的
 		WalSegSz = set_wal_segsize;
 	else
-		WalSegSz = ControlFile.xlog_seg_size;
+		WalSegSz = ControlFile.xlog_seg_size; // 如果重置了控制文件，缺省值是16MB
 
 	if (log_fname != NULL)
 		XLogFromFileName(log_fname, &minXlogTli, &minXlogSegNo, WalSegSz);
@@ -400,13 +400,13 @@ main(int argc, char *argv[])
 	 * file parameters.
 	 */
 	if ((guessed && !force) || noupdate)
-		PrintControlValues(guessed);
+		PrintControlValues(guessed); // 打印控制文件中的值
 
 	/*
 	 * Adjust fields if required by switches.  (Do this now so that printout,
 	 * if any, includes these values.)
 	 */
-	if (set_xid_epoch != -1)
+	if (set_xid_epoch != -1) // 这个参数是用户传入的
 		ControlFile.checkPointCopy.nextXid =
 			FullTransactionIdFromEpochAndXid(set_xid_epoch,
 											 XidFromFullTransactionId(ControlFile.checkPointCopy.nextXid));
@@ -459,7 +459,7 @@ main(int argc, char *argv[])
 	 * If we had to guess anything, and -f was not given, just print the
 	 * guessed values and exit.  Also print if -n is given.
 	 */
-	if ((guessed && !force) || noupdate)
+	if ((guessed && !force) || noupdate) // -f参数表示强制执行， noupdate对应--dry-run参数
 	{
 		PrintNewControlValues();
 		if (!noupdate)
@@ -485,9 +485,9 @@ main(int argc, char *argv[])
 	/*
 	 * Else, do the dirty deed.
 	 */
-	RewriteControlFile();
-	KillExistingXLOG();
-	KillExistingArchiveStatus();
+	RewriteControlFile(); // 写入控制文件
+	KillExistingXLOG();  // 删除pg_wal里面的WAL文件
+	KillExistingArchiveStatus();  // 删除pg_wal/archive_status里面的文件
 	WriteEmptyXLOG();
 
 	printf(_("Write-ahead log reset\n"));
@@ -514,12 +514,12 @@ CheckDataVersion(void)
 	FILE	   *ver_fd;
 	char		rawline[64];
 
-	if ((ver_fd = fopen(ver_file, "r")) == NULL)
+	if ((ver_fd = fopen(ver_file, "r")) == NULL) // 打开PG_VERSION这个文件
 		pg_fatal("could not open file \"%s\" for reading: %m",
 				 ver_file);
 
 	/* version number has to be the first line read */
-	if (!fgets(rawline, sizeof(rawline), ver_fd))
+	if (!fgets(rawline, sizeof(rawline), ver_fd)) // 读取第一行的信息
 	{
 		if (!ferror(ver_fd))
 			pg_fatal("unexpected empty file \"%s\"", ver_file);
@@ -528,9 +528,9 @@ CheckDataVersion(void)
 	}
 
 	/* strip trailing newline and carriage return */
-	(void) pg_strip_crlf(rawline);
+	(void) pg_strip_crlf(rawline); // 把回车和换行去掉
 
-	if (strcmp(rawline, PG_MAJORVERSION) != 0)
+	if (strcmp(rawline, PG_MAJORVERSION) != 0) // 如果数据库的版本和本工具软件的版本不同，就报错退出，拒绝执行
 	{
 		pg_log_error("data directory is of wrong version");
 		pg_log_error_detail("File \"%s\" contains \"%s\", which is not compatible with this program's version \"%s\".",
@@ -556,7 +556,7 @@ read_controlfile(void)
 	char	   *buffer;
 	pg_crc32c	crc;
 
-	if ((fd = open(XLOG_CONTROL_FILE, O_RDONLY | PG_BINARY, 0)) < 0)
+	if ((fd = open(XLOG_CONTROL_FILE, O_RDONLY | PG_BINARY, 0)) < 0) // 以二进制方式直接打开控制文件
 	{
 		/*
 		 * If pg_control is not there at all, or we can't read it, the odds
@@ -565,7 +565,7 @@ read_controlfile(void)
 		 */
 		pg_log_error("could not open file \"%s\" for reading: %m",
 					 XLOG_CONTROL_FILE);
-		if (errno == ENOENT)
+		if (errno == ENOENT) // 如果控制文件不存在，就touch手工生成一个空的控制文件，然后重新执行本程序
 			pg_log_error_hint("If you are sure the data directory path is correct, execute\n"
 							  "  touch %s\n"
 							  "and try again.",
@@ -574,34 +574,34 @@ read_controlfile(void)
 	}
 
 	/* Use malloc to ensure we have a maxaligned buffer */
-	buffer = (char *) pg_malloc(PG_CONTROL_FILE_SIZE);
+	buffer = (char *) pg_malloc(PG_CONTROL_FILE_SIZE); // 分配8192字节的内存区
 
-	len = read(fd, buffer, PG_CONTROL_FILE_SIZE);
+	len = read(fd, buffer, PG_CONTROL_FILE_SIZE); // 试图读入控制文件的内容，可能读入的长度为0，因为上面touch生成了一个空的控制文件
 	if (len < 0)
 		pg_fatal("could not read file \"%s\": %m", XLOG_CONTROL_FILE);
 	close(fd);
 
 	if (len >= sizeof(ControlFileData) &&
-		((ControlFileData *) buffer)->pg_control_version == PG_CONTROL_VERSION)
+		((ControlFileData *) buffer)->pg_control_version == PG_CONTROL_VERSION) // 如果读的数据正常，版本也匹配
 	{
 		/* Check the CRC. */
 		INIT_CRC32C(crc);
 		COMP_CRC32C(crc,
 					buffer,
 					offsetof(ControlFileData, crc));
-		FIN_CRC32C(crc);
+		FIN_CRC32C(crc); // 计算CRC值
 
-		if (!EQ_CRC32C(crc, ((ControlFileData *) buffer)->crc))
+		if (!EQ_CRC32C(crc, ((ControlFileData *) buffer)->crc)) 判断CRC值是否相等，如果不等，说明控制文件可能损坏了
 		{
 			/* We will use the data but treat it as guessed. */
 			pg_log_warning("pg_control exists but has invalid CRC; proceed with caution");
 			guessed = true;
 		}
 
-		memcpy(&ControlFile, buffer, sizeof(ControlFile));
+		memcpy(&ControlFile, buffer, sizeof(ControlFile)); // 把数据拷贝到ControlFile
 
 		/* return false if WAL segment size is not valid */
-		if (!IsValidWalSegSize(ControlFile.xlog_seg_size))
+		if (!IsValidWalSegSize(ControlFile.xlog_seg_size)) // 如果WAL文件的大小不合法，就返回false
 		{
 			pg_log_warning(ngettext("pg_control specifies invalid WAL segment size (%d byte); proceed with caution",
 									"pg_control specifies invalid WAL segment size (%d bytes); proceed with caution",
@@ -610,19 +610,19 @@ read_controlfile(void)
 			return false;
 		}
 
-		return true;
+		return true; // 如果成功读取控制文件就返回true。变量guessed表示是否要猜测控制文件中的内容
 	}
 
 	/* Looks like it's a mess. */
 	pg_log_warning("pg_control exists but is broken or wrong version; ignoring it");
-	return false;
+	return false;  // 你touch一个文件，长度为0，就返回false
 }
 
 
 /*
  * Guess at pg_control values when we can't read the old ones.
  */
-static void
+static void  // 就是往控制文件里写入一些固定的值。这些值的规律需要研究一下
 GuessControlValues(void)
 {
 	uint64		sysidentifier;
@@ -635,23 +635,23 @@ GuessControlValues(void)
 	memset(&ControlFile, 0, sizeof(ControlFile));
 
 	ControlFile.pg_control_version = PG_CONTROL_VERSION;
-	ControlFile.catalog_version_no = CATALOG_VERSION_NO;
+	ControlFile.catalog_version_no = CATALOG_VERSION_NO;  // 把控制文件的版本升级到和本工具是一个版本
 
 	/*
 	 * Create a new unique installation identifier, since we can no longer use
 	 * any old XLOG records.  See notes in xlog.c about the algorithm.
 	 */
-	gettimeofday(&tv, NULL);
+	gettimeofday(&tv, NULL);  // 产生一个新的系统标识符
 	sysidentifier = ((uint64) tv.tv_sec) << 32;
 	sysidentifier |= ((uint64) tv.tv_usec) << 12;
 	sysidentifier |= getpid() & 0xFFF;
 
 	ControlFile.system_identifier = sysidentifier;
 
-	ControlFile.checkPointCopy.redo = SizeOfXLogLongPHD;
-	ControlFile.checkPointCopy.ThisTimeLineID = 1;
+	ControlFile.checkPointCopy.redo = SizeOfXLogLongPHD; // redo很小啊
+	ControlFile.checkPointCopy.ThisTimeLineID = 1;  // 时间线设置为1
 	ControlFile.checkPointCopy.PrevTimeLineID = 1;
-	ControlFile.checkPointCopy.fullPageWrites = false;
+	ControlFile.checkPointCopy.fullPageWrites = false; // 全页写为false
 	ControlFile.checkPointCopy.nextXid =
 		FullTransactionIdFromEpochAndXid(0, FirstNormalTransactionId);
 	ControlFile.checkPointCopy.nextOid = FirstGenbkiObjectId;
@@ -664,7 +664,7 @@ GuessControlValues(void)
 	ControlFile.checkPointCopy.time = (pg_time_t) time(NULL);
 	ControlFile.checkPointCopy.oldestActiveXid = InvalidTransactionId;
 
-	ControlFile.state = DB_SHUTDOWNED;
+	ControlFile.state = DB_SHUTDOWNED;  // 表示干净地关闭
 	ControlFile.time = (pg_time_t) time(NULL);
 	ControlFile.checkPoint = ControlFile.checkPointCopy.redo;
 	ControlFile.unloggedLSN = FirstNormalUnloggedLSN;
@@ -685,7 +685,7 @@ GuessControlValues(void)
 	ControlFile.blcksz = BLCKSZ;
 	ControlFile.relseg_size = RELSEG_SIZE;
 	ControlFile.xlog_blcksz = XLOG_BLCKSZ;
-	ControlFile.xlog_seg_size = DEFAULT_XLOG_SEG_SIZE;
+	ControlFile.xlog_seg_size = DEFAULT_XLOG_SEG_SIZE;  // 缺省16MB
 	ControlFile.nameDataLen = NAMEDATALEN;
 	ControlFile.indexMaxKeys = INDEX_MAX_KEYS;
 	ControlFile.toast_max_chunk_size = TOAST_MAX_CHUNK_SIZE;
@@ -705,11 +705,11 @@ GuessControlValues(void)
  * NB: this display should be just those fields that will not be
  * reset by RewriteControlFile().
  */
-static void
+static void // 显示控制文件里面的值
 PrintControlValues(bool guessed)
 {
 	if (guessed)
-		printf(_("Guessed pg_control values:\n\n"));
+		printf(_("Guessed pg_control values:\n\n")); // 注意Guessed和Current的区别
 	else
 		printf(_("Current pg_control values:\n\n"));
 
@@ -884,7 +884,7 @@ RewriteControlFile(void)
 	ControlFile.max_locks_per_xact = 64;
 
 	/* The control file gets flushed here. */
-	update_controlfile(".", &ControlFile, true);
+	update_controlfile(".", &ControlFile, true); // 把控制文件中的内容写入磁盘，并且fsync
 }
 
 
@@ -897,7 +897,7 @@ RewriteControlFile(void)
  * value for the beginning of replacement WAL (in our seg size).
  */
 static void
-FindEndOfXLOG(void)
+FindEndOfXLOG(void) // 扫描pg_wal拿到最大的WAL文件的编号
 {
 	DIR		   *xldir;
 	struct dirent *xlde;
@@ -916,14 +916,14 @@ FindEndOfXLOG(void)
 	 * any present have been used; in most scenarios this should be
 	 * conservative, because of xlog.c's attempts to pre-create files.
 	 */
-	xldir = opendir(XLOGDIR);
+	xldir = opendir(XLOGDIR); // 扫描pg_wal目录
 	if (xldir == NULL)
 		pg_fatal("could not open directory \"%s\": %m", XLOGDIR);
 
-	while (errno = 0, (xlde = readdir(xldir)) != NULL)
+	while (errno = 0, (xlde = readdir(xldir)) != NULL) // 读目录里面的文件是排序的？
 	{
 		if (IsXLogFileName(xlde->d_name) ||
-			IsPartialXLogFileName(xlde->d_name))
+			IsPartialXLogFileName(xlde->d_name)) // 如果是WAL文件，包括partial的WAL文件
 		{
 			TimeLineID	tli;
 			XLogSegNo	segno;
@@ -939,7 +939,7 @@ FindEndOfXLOG(void)
 			 * Better too large a result than too small...
 			 */
 			if (segno > newXlogSegNo)
-				newXlogSegNo = segno;
+				newXlogSegNo = segno; // 找到最大的WAL文件
 		}
 	}
 
@@ -955,14 +955,14 @@ FindEndOfXLOG(void)
 	 */
 	xlogbytepos = newXlogSegNo * ControlFile.xlog_seg_size;
 	newXlogSegNo = (xlogbytepos + ControlFile.xlog_seg_size - 1) / WalSegSz;
-	newXlogSegNo++;
+	newXlogSegNo++; // 跳到下一个WAL文件编号
 }
 
 
 /*
  * Remove existing XLOG files
  */
-static void
+static void // 把pg_wal目录下所有的WAL文件都删除掉
 KillExistingXLOG(void)
 {
 	DIR		   *xldir;
@@ -995,7 +995,7 @@ KillExistingXLOG(void)
 /*
  * Remove existing archive status files
  */
-static void
+static void  // 把pg_wal/archive_status目录下的所有*.ready/*.done/*.partial.ready/*.partial.done文件都删除掉
 KillExistingArchiveStatus(void)
 {
 #define ARCHSTATDIR XLOGDIR "/archive_status"
@@ -1034,7 +1034,7 @@ KillExistingArchiveStatus(void)
  * Write an empty XLOG file, containing only the checkpoint record
  * already set up in ControlFile.
  */
-static void
+static void // 写一个空的XLOG文件，里面只包含了检查点WAL记录
 WriteEmptyXLOG(void)
 {
 	PGAlignedXLogBlock buffer;
@@ -1102,7 +1102,7 @@ WriteEmptyXLOG(void)
 	}
 
 	/* Fill the rest of the file with zeroes */
-	memset(buffer.data, 0, XLOG_BLCKSZ);
+	memset(buffer.data, 0, XLOG_BLCKSZ);  // 只写第一个page，后面的都清零
 	for (nbytes = XLOG_BLCKSZ; nbytes < WalSegSz; nbytes += XLOG_BLCKSZ)
 	{
 		errno = 0;

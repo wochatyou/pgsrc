@@ -171,7 +171,7 @@ retry:
  * to the caller to properly lock ControlFileLock when calling this
  * routine in the backend.
  */
-void
+void // 往控制文件里面写入信息
 update_controlfile(const char *DataDir,
 				   ControlFileData *ControlFile, bool do_sync)
 {
@@ -183,11 +183,11 @@ update_controlfile(const char *DataDir,
 	ControlFile->time = (pg_time_t) time(NULL);
 
 	/* Recalculate CRC of control file */
-	INIT_CRC32C(ControlFile->crc);
+	INIT_CRC32C(ControlFile->crc); 
 	COMP_CRC32C(ControlFile->crc,
 				(char *) ControlFile,
 				offsetof(ControlFileData, crc));
-	FIN_CRC32C(ControlFile->crc);
+	FIN_CRC32C(ControlFile->crc); // 计算CRC值
 
 	/*
 	 * Write out PG_CONTROL_FILE_SIZE bytes into pg_control by zero-padding
@@ -195,7 +195,7 @@ update_controlfile(const char *DataDir,
 	 * errors when reading it.
 	 */
 	memset(buffer, 0, PG_CONTROL_FILE_SIZE);
-	memcpy(buffer, ControlFile, sizeof(ControlFileData));
+	memcpy(buffer, ControlFile, sizeof(ControlFileData)); //写入的是8192个字节
 
 	snprintf(ControlFilePath, sizeof(ControlFilePath), "%s/%s", DataDir, XLOG_CONTROL_FILE);
 
@@ -239,7 +239,7 @@ update_controlfile(const char *DataDir,
 	pgstat_report_wait_end();
 #endif
 
-	if (do_sync)
+	if (do_sync) // 调用fsync确保数据写入到了磁盘上
 	{
 #ifndef FRONTEND
 		pgstat_report_wait_start(WAIT_EVENT_CONTROL_FILE_SYNC_UPDATE);

@@ -421,7 +421,7 @@ pg_fsync_no_writethrough(int fd)
 		return 0;
 
 retry:
-	rc = fsync(fd);
+	rc = fsync(fd); // 掉fsync()系统调用刷盘
 
 	if (rc == -1 && errno == EINTR)
 		goto retry;
