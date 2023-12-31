@@ -567,7 +567,7 @@ static WALInsertLockPadded *WALInsertLocks = NULL;
 /*
  * We maintain an image of pg_control in shared memory.
  */
-static ControlFileData *ControlFile = NULL;
+static ControlFileData *ControlFile = NULL; // 这个指针指向了共享内存
 
 /*
  * Calculate the amount of space left on the page after 'endptr'. Beware
@@ -3850,7 +3850,7 @@ CleanupBackupHistory(void)
  * I/O and compatibility-check functions, but there seems no need currently.
  */
 
-static void
+static void // ControlFile是一个指针，指向了共享内存
 InitControlFile(uint64 sysidentifier)
 {
 	char		mock_auth_nonce[MOCK_AUTH_NONCE_LEN];
@@ -4167,7 +4167,7 @@ ReadControlFile(void)
  * Utility wrapper to update the control file.  Note that the control
  * file gets flushed.
  */
-static void
+static void // 
 UpdateControlFile(void)
 {
 	update_controlfile(DataDir, ControlFile, true);
@@ -4564,7 +4564,7 @@ XLOGShmemInit(void)
 
 	localControlFile = ControlFile;
 	ControlFile = (ControlFileData *)
-		ShmemInitStruct("Control File", sizeof(ControlFileData), &foundCFile);
+		ShmemInitStruct("Control File", sizeof(ControlFileData), &foundCFile);  // 在共享内存中分配一块给ControlFile
 
 	if (foundCFile || foundXLog)
 	{
@@ -5847,7 +5847,7 @@ ReachedEndOfBackup(XLogRecPtr EndRecPtr, TimeLineID tli)
 	 */
 	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
 
-	if (ControlFile->minRecoveryPoint < EndRecPtr)
+	if (ControlFile->minRecoveryPoint < EndRecPtr) // 把minRecoveryPoint往后移动
 	{
 		ControlFile->minRecoveryPoint = EndRecPtr;
 		ControlFile->minRecoveryPointTLI = tli;

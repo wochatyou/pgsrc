@@ -365,7 +365,7 @@ ShutdownLatchSupport(void)
 /*
  * Initialize a process-local latch.
  */
-void
+void // 初始化latch，把本进程的进程号放进去
 InitLatch(Latch *latch)
 {
 	latch->is_set = false;
@@ -422,7 +422,7 @@ InitSharedLatch(Latch *latch)
 	latch->is_set = false;
 	latch->maybe_sleeping = false;
 	latch->owner_pid = 0;
-	latch->is_shared = true;
+	latch->is_shared = true; // 这个表示共享
 }
 
 /*
@@ -434,7 +434,7 @@ InitSharedLatch(Latch *latch)
  * if two processes try to own the same latch at about the same time.  If
  * there is any risk of that, caller must provide an interlock to prevent it.
  */
-void
+void // 把本进程的进程号放在Latch当中
 OwnLatch(Latch *latch)
 {
 	int			owner_pid;
@@ -460,7 +460,7 @@ OwnLatch(Latch *latch)
 /*
  * Disown a shared latch currently owned by the current process.
  */
-void
+void // 这个Latch中的进程号一定是本进程号，把进程号清零，表示没有进程使用这个Latch
 DisownLatch(Latch *latch)
 {
 	Assert(latch->is_shared);
@@ -654,9 +654,9 @@ SetLatch(Latch *latch)
 	 * that happen before they enter the loop.
 	 */
 	owner_pid = latch->owner_pid;
-	if (owner_pid == 0)
+	if (owner_pid == 0) // 没有进程绑定这个latch
 		return;
-	else if (owner_pid == MyProcPid)
+	else if (owner_pid == MyProcPid) // 如果是本进程
 	{
 #if defined(WAIT_USE_SELF_PIPE)
 		if (waiting)
@@ -667,7 +667,7 @@ SetLatch(Latch *latch)
 #endif
 	}
 	else
-		kill(owner_pid, SIGURG);
+		kill(owner_pid, SIGURG); // 给那个进程发送SIGURG信号
 
 #else
 
@@ -702,7 +702,7 @@ ResetLatch(Latch *latch)
 	Assert(latch->owner_pid == MyProcPid);
 	Assert(latch->maybe_sleeping == false);
 
-	latch->is_set = false;
+	latch->is_set = false; // 置位
 
 	/*
 	 * Ensure that the write to is_set gets flushed to main memory before we

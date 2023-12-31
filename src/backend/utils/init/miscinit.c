@@ -91,9 +91,10 @@ bool		IgnoreSystemIndexes = false;
  * Should be called as early as possible after the child's startup. However,
  * on EXEC_BACKEND builds it does need to be after read_backend_variables().
  */
-void
+void // 初始化子进程的一些环境。这个函数在子进程诞生之后要尽快执行
 InitPostmasterChild(void)
 {
+	// 这是唯一设置该全局变量为true的地方，这个函数是由子进程执行的
 	IsUnderPostmaster = true;	/* we are a postmaster subprocess now */
 
 	/*

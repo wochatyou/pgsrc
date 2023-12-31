@@ -171,7 +171,7 @@ retry:
  * to the caller to properly lock ControlFileLock when calling this
  * routine in the backend.
  */
-void // 往控制文件里面写入信息
+void // 往控制文件里面写入信息，就是调用write()系统调用
 update_controlfile(const char *DataDir,
 				   ControlFileData *ControlFile, bool do_sync)
 {

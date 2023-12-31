@@ -110,7 +110,7 @@ pid_t		PostmasterPid = 0;
  * These are initialized for the bootstrap/standalone case.
  */
 bool		IsPostmasterEnvironment = false;
-bool		IsUnderPostmaster = false;
+bool		IsUnderPostmaster = false;  // 表示是否处于Postmaster之中
 bool		IsBinaryUpgrade = false;
 bool		IsBackgroundWorker = false;
 

@@ -1624,7 +1624,7 @@ PerformWalRecovery(void)
 	 * archiver if necessary.
 	 */
 	if (IsUnderPostmaster)
-		SendPostmasterSignal(PMSIGNAL_RECOVERY_STARTED);
+		SendPostmasterSignal(PMSIGNAL_RECOVERY_STARTED); // 本进程是startup，通知主进程本进程的状态，表示恢复开始了
 
 	/*
 	 * Allow read-only connections immediately if we're consistent already.
@@ -2108,10 +2108,10 @@ CheckRecoveryConsistency(void)
 	 * During crash recovery, we don't reach a consistent state until we've
 	 * replayed all the WAL.
 	 */
-	if (XLogRecPtrIsInvalid(minRecoveryPoint))
+	if (XLogRecPtrIsInvalid(minRecoveryPoint)) // 如果minRecoveryPoint是非法的LSN，就啥也不做，可能崩溃恢复模式下minRecoveryPoint = 0
 		return;
 
-	Assert(InArchiveRecovery);
+	Assert(InArchiveRecovery); // 走到这里一定是备份恢复或者备库恢复
 
 	/*
 	 * assume that we are called in the startup process, and hence don't need
@@ -2124,7 +2124,7 @@ CheckRecoveryConsistency(void)
 	 * Have we reached the point where our base backup was completed?
 	 */
 	if (!XLogRecPtrIsInvalid(backupEndPoint) &&
-		backupEndPoint <= lastReplayedEndRecPtr)
+		backupEndPoint <= lastReplayedEndRecPtr)  // backupEndPoint是合法的LSN，这个值的改变是遇到了BACKUP_END的WAL记录后改变的，而且最后replay的WAL记录已经超过了这个点位
 	{
 		elog(DEBUG1, "end of backup reached");
 
@@ -2132,10 +2132,10 @@ CheckRecoveryConsistency(void)
 		 * We have reached the end of base backup, as indicated by pg_control.
 		 * Update the control file accordingly.
 		 */
-		ReachedEndOfBackup(lastReplayedEndRecPtr, lastReplayedTLI);
+		ReachedEndOfBackup(lastReplayedEndRecPtr, lastReplayedTLI); // 更新控制文件，把内存中控制文件的信息写入到磁盘上
 		backupStartPoint = InvalidXLogRecPtr;
 		backupEndPoint = InvalidXLogRecPtr;
-		backupEndRequired = false;
+		backupEndRequired = false; // 这是一个标志变量
 	}
 
 	/*
@@ -2145,7 +2145,7 @@ CheckRecoveryConsistency(void)
 	 * All we know prior to that is that we're not consistent yet.
 	 */
 	if (!reachedConsistency && !backupEndRequired &&
-		minRecoveryPoint <= lastReplayedEndRecPtr)
+		minRecoveryPoint <= lastReplayedEndRecPtr) // 这三个条件是达到一致性状态的标准
 	{
 		/*
 		 * Check to see if the XLOG sequence contained any unresolved
@@ -2183,7 +2183,7 @@ CheckRecoveryConsistency(void)
 
 		LocalHotStandbyActive = true;
 
-		SendPostmasterSignal(PMSIGNAL_BEGIN_HOT_STANDBY);
+		SendPostmasterSignal(PMSIGNAL_BEGIN_HOT_STANDBY); // 往主进程发送PMSIGNAL_BEGIN_HOT_STANDBY信号
 	}
 }
 

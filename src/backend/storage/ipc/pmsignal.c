@@ -184,7 +184,7 @@ SendPostmasterSignal(PMSignalReason reason)
 	if (!IsUnderPostmaster) // 如果是单用户模式，啥也不做
 		return;
 	/* Atomically set the proper flag */
-	PMSignalState->PMSignalFlags[reason] = true;
+	PMSignalState->PMSignalFlags[reason] = true; // 是不是每个子进程发给主进程的都是独一无二的信号，所以不需要加锁？
 	/* Send signal to postmaster */
 	kill(PostmasterPid, SIGUSR1);
 }
@@ -194,7 +194,7 @@ SendPostmasterSignal(PMSignalReason reason)
  * signaled, and clear the signal flag.  Should be called by postmaster
  * after receiving SIGUSR1.
  */
-bool
+bool // 这个函数由主进程调用，检查某个原因是否被置位，如果置位了，就返回true，否则返回false
 CheckPostmasterSignal(PMSignalReason reason)
 {
 	/* Careful here --- don't clear flag if we haven't seen it set */
@@ -214,7 +214,7 @@ CheckPostmasterSignal(PMSignalReason reason)
  * as a part of rebuilding shared memory; the postmaster need not do it
  * explicitly.
  */
-void
+void // 系统即将关闭，把关闭的原因写在这里，然后给子进程发送SIGQUIT信号
 SetQuitSignalReason(QuitSignalReason reason)
 {
 	PMSignalState->sigquit_reason = reason;

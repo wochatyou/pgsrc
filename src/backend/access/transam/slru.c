@@ -196,7 +196,7 @@ SimpleLruInit(SlruCtl ctl, const char *name, int nslots, int nlsns,
 										  SimpleLruShmemSize(nslots, nlsns),
 										  &found);
 
-	if (!IsUnderPostmaster)
+	if (!IsUnderPostmaster) // 这个时候还处于主进程初始化阶段，没有任何其他子进程
 	{
 		/* Initialize locks and shared memory area */
 		char	   *ptr;

@@ -1769,7 +1769,7 @@ ServerLoop(void)
 				process_pm_reload_request();
 			if (pending_pm_child_exit)
 				process_pm_child_exit();
-			if (pending_pm_pmsignal)
+			if (pending_pm_pmsignal) // 如果有来自子进程的请求，就处理它们的请求
 				process_pm_pmsignal();
 
 			if (events[i].events & WL_SOCKET_ACCEPT)
@@ -2692,7 +2692,7 @@ handle_pm_pmsignal_signal(SIGNAL_ARGS)
 {
 	int			save_errno = errno;
 
-	pending_pm_pmsignal = true;
+	pending_pm_pmsignal = true; // 这是一个信号量，表示有来自子进程的请求了
 	SetLatch(MyLatch);
 
 	errno = save_errno;
@@ -2812,7 +2812,7 @@ handle_pm_shutdown_request_signal(SIGNAL_ARGS)
 /*
  * Process shutdown request.
  */
-static void
+static void // 处理关闭请求
 process_pm_shutdown_request(void)
 {
 	int			mode;
@@ -2947,8 +2947,8 @@ process_pm_shutdown_request(void)
 
 			/* tell children to shut down ASAP */
 			/* (note we don't apply send_abort_for_crash here) */
-			SetQuitSignalReason(PMQUIT_FOR_STOP);
-			TerminateChildren(SIGQUIT);
+			SetQuitSignalReason(PMQUIT_FOR_STOP); // 把关闭的原因写下来
+			TerminateChildren(SIGQUIT);  // 给子进程发送SIGQUIT信号
 			pmState = PM_WAIT_BACKENDS;
 
 			/* set stopwatch for them to die */
@@ -3488,7 +3488,7 @@ HandleChildCrash(int pid, int exitstatus, const char *procname)
 		LogChildExit(LOG, procname, pid, exitstatus);
 		ereport(LOG,
 				(errmsg("terminating any other active server processes")));
-		SetQuitSignalReason(PMQUIT_FOR_CRASH);
+		SetQuitSignalReason(PMQUIT_FOR_CRASH); // 设置CRASH状态
 	}
 
 	/* Process background workers. */
@@ -3993,7 +3993,7 @@ PostmasterStateMachine(void)
  * to spawn any grandchild processes.  We also assume that signaling the
  * child twice will not cause any problems.
  */
-static void
+static void // 给子进程发送指定的信号，就是通过kill()系统调用
 signal_child(pid_t pid, int signal)
 {
 	if (kill(pid, signal) < 0)
@@ -4006,7 +4006,7 @@ signal_child(pid_t pid, int signal)
 		case SIGQUIT:
 		case SIGKILL:
 		case SIGABRT:
-			if (kill(-pid, signal) < 0)
+			if (kill(-pid, signal) < 0) // 为什么要给-pid发送信号呢？
 				elog(DEBUG3, "kill(%ld,%d) failed: %m", (long) (-pid), signal);
 			break;
 		default:
@@ -5076,10 +5076,10 @@ ExitPostmaster(int status)
  * Handle pmsignal conditions representing requests from backends,
  * and check for promote and logrotate requests from pg_ctl.
  */
-static void
+static void // 处理从子进程发来的信号
 process_pm_pmsignal(void)
 {
-	pending_pm_pmsignal = false;
+	pending_pm_pmsignal = false; //把标志位复位，表示本函数已经处理过了
 
 	ereport(DEBUG2,
 			(errmsg_internal("postmaster received pmsignal signal")));
