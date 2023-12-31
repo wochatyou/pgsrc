@@ -114,6 +114,7 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
  * for deciding which segment to write given a pointer to a record end,
  * for example.
  */
+// 根据LSN计算它所在的WAL文件的编号，就是直接处于WAL文件的大小
 #define XLByteToSeg(xlrp, logSegNo, wal_segsz_bytes) \
 	logSegNo = (xlrp) / (wal_segsz_bytes)
 

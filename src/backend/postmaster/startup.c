@@ -257,7 +257,7 @@ StartupProcessMain(void)
 	InitializeTimeouts();		/* establishes SIGALRM handler */
 	pqsignal(SIGPIPE, SIG_IGN);
 	pqsignal(SIGUSR1, procsignal_sigusr1_handler);
-	pqsignal(SIGUSR2, StartupProcTriggerHandler);
+	pqsignal(SIGUSR2, StartupProcTriggerHandler);  // SIGUSR2触发StartupProcTriggerHandler，表示要promote备库了
 
 	/*
 	 * Reset some signals that are accepted by postmaster but not here
@@ -314,7 +314,7 @@ IsPromoteSignaled(void)
 	return promote_signaled;
 }
 
-void
+void // 把信号量归零
 ResetPromoteSignaled(void)
 {
 	promote_signaled = false;

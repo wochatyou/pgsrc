@@ -2665,7 +2665,7 @@ WalSndKill(int code, Datum arg)
 }
 
 /* XLogReaderRoutine->segment_open callback */
-static void
+static void // 打开WAL文件的回调函数
 WalSndSegmentOpen(XLogReaderState *state, XLogSegNo nextSegNo,
 				  TimeLineID *tli_p)
 {

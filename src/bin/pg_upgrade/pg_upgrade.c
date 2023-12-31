@@ -597,7 +597,7 @@ create_new_objects(void)
 /*
  * Delete the given subdirectory contents from the new cluster
  */
-static void
+static void // 删除一个目录， rmtree就是通过unlink来删除每一个文件的
 remove_new_subdir(const char *subdir, bool rmtopdir)
 {
 	char		new_path[MAXPGPATH];
@@ -614,19 +614,19 @@ remove_new_subdir(const char *subdir, bool rmtopdir)
 /*
  * Copy the files from the old cluster into it
  */
-static void
+static void  // 实际上就是调用cp -Rf这个命令把老库子目录a拷贝到新库子目录b
 copy_subdir_files(const char *old_subdir, const char *new_subdir)
 {
 	char		old_path[MAXPGPATH];
 	char		new_path[MAXPGPATH];
 
-	remove_new_subdir(new_subdir, true);
+	remove_new_subdir(new_subdir, true); // 拷贝之前先把新库的子目录删除掉
 
 	snprintf(old_path, sizeof(old_path), "%s/%s", old_cluster.pgdata, old_subdir);
 	snprintf(new_path, sizeof(new_path), "%s/%s", new_cluster.pgdata, new_subdir);
 
 	prep_status("Copying old %s to new server", old_subdir);
-
+	
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
 #ifndef WIN32
 			  "cp -Rf \"%s\" \"%s\"",
@@ -646,6 +646,7 @@ copy_xact_xlog_xid(void)
 	 * Copy old commit logs to new data dir. pg_clog has been renamed to
 	 * pg_xact in post-10 clusters.
 	 */
+	// 把老库的pg_xact拷贝到新库的pg_xact
 	copy_subdir_files(GET_MAJOR_VERSION(old_cluster.major_version) <= 906 ?
 					  "pg_clog" : "pg_xact",
 					  GET_MAJOR_VERSION(new_cluster.major_version) <= 906 ?

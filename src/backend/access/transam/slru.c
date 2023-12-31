@@ -1031,7 +1031,7 @@ SlruSelectLRUPage(SlruCtl ctl, int pageno)
 		int			best_invalid_page_number = 0;	/* keep compiler quiet */
 
 		/* See if page already has a buffer assigned */
-		for (slotno = 0; slotno < shared->num_slots; slotno++)
+		for (slotno = 0; slotno < shared->num_slots; slotno++) // 就是在两个数组中扫描查找
 		{
 			if (shared->page_number[slotno] == pageno &&
 				shared->page_status[slotno] != SLRU_PAGE_EMPTY)

@@ -3129,7 +3129,7 @@ ReadRecord(XLogPrefetcher *xlogprefetcher, int emode,
 			record = NULL;
 		}
 
-		if (record)
+		if (record) // 如果拿到了一个record，就返回它
 		{
 			/* Great, got a record */
 			return record;
@@ -3177,7 +3177,7 @@ ReadRecord(XLogPrefetcher *xlogprefetcher, int emode,
 			}
 
 			/* In standby mode, loop back to retry. Otherwise, give up. */
-			if (StandbyMode && !CheckForStandbyTrigger())
+			if (StandbyMode && !CheckForStandbyTrigger()) // 如果是出于备库模式，而且现在也没有promote请求，就无限循环，继续读
 				continue;
 			else
 				return NULL;
@@ -3232,7 +3232,7 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 	 * is not in the currently open one.
 	 */
 	if (readFile >= 0 &&
-		!XLByteInSeg(targetPagePtr, readSegNo, wal_segment_size))
+		!XLByteInSeg(targetPagePtr, readSegNo, wal_segment_size)) 
 	{
 		/*
 		 * Request a restartpoint if we've replayed too much xlog since the
@@ -3253,13 +3253,13 @@ XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr, int reqLen,
 		readSource = XLOG_FROM_ANY;
 	}
 
-	XLByteToSeg(targetPagePtr, readSegNo, wal_segment_size);
+	XLByteToSeg(targetPagePtr, readSegNo, wal_segment_size); // 算法：readSegNo = LSN / 16M
 
 retry:
 	/* See if we need to retrieve more data */
 	if (readFile < 0 ||
 		(readSource == XLOG_FROM_STREAM &&
-		 flushedUpto < targetPagePtr + reqLen))
+		 flushedUpto < targetPagePtr + reqLen)) // 没有WAL文件打开，或者是从stream中获取
 	{
 		if (readFile >= 0 &&
 			xlogreader->nonblocking &&
@@ -3417,7 +3417,7 @@ next_record_is_invalid:
 	readSource = XLOG_FROM_ANY;
 
 	/* In standby-mode, keep trying */
-	if (StandbyMode)
+	if (StandbyMode) // 如果是备库模式，就反复读取
 		goto retry;
 	else
 		return XLREAD_FAIL;
@@ -3492,10 +3492,10 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 	 * the end of recovery.
 	 *-------
 	 */
-	if (!InArchiveRecovery)
+	if (!InArchiveRecovery) // 这个条件表明是在崩溃恢复模式
 		currentSource = XLOG_FROM_PG_WAL;
 	else if (currentSource == XLOG_FROM_ANY ||
-			 (!StandbyMode && currentSource == XLOG_FROM_STREAM))
+			 (!StandbyMode && currentSource == XLOG_FROM_STREAM)) 
 	{
 		lastSourceFailed = false;
 		currentSource = XLOG_FROM_ARCHIVE;
@@ -3512,7 +3512,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 		 * happened outside this function, e.g when a CRC check fails on a
 		 * record, or within this loop.
 		 */
-		if (lastSourceFailed)
+		if (lastSourceFailed) // 从上一个来源获取WAL记录失败了
 		{
 			/*
 			 * Don't allow any retry loops to occur during nonblocking
@@ -4331,7 +4331,7 @@ static void
 SetPromoteIsTriggered(void)
 {
 	SpinLockAcquire(&XLogRecoveryCtl->info_lck);
-	XLogRecoveryCtl->SharedPromoteIsTriggered = true;
+	XLogRecoveryCtl->SharedPromoteIsTriggered = true; // 共享内存中的状态置位，表示要promote
 	SpinLockRelease(&XLogRecoveryCtl->info_lck);
 
 	/*
@@ -4342,23 +4342,23 @@ SetPromoteIsTriggered(void)
 	 */
 	SetRecoveryPause(false);
 
-	LocalPromoteIsTriggered = true;
+	LocalPromoteIsTriggered = true; // 这个本地变量也置位
 }
 
 /*
  * Check whether a promote request has arrived.
  */
-static bool
+static bool // 检查是否promote请求到来了，如果到来了，就返回true，否则返回false
 CheckForStandbyTrigger(void)
 {
 	if (LocalPromoteIsTriggered)
 		return true;
 
-	if (IsPromoteSignaled() && CheckPromoteSignal())
+	if (IsPromoteSignaled() && CheckPromoteSignal()) // 主进程向startup进程(本进程)发送了SIGUSR2信号，而且promote文件存在
 	{
 		ereport(LOG, (errmsg("received promote request")));
-		RemovePromoteSignalFiles();
-		ResetPromoteSignaled();
+		RemovePromoteSignalFiles(); // 删除promote这个文件
+		ResetPromoteSignaled(); // 把信号量归零
 		SetPromoteIsTriggered();
 		return true;
 	}
@@ -4372,7 +4372,7 @@ CheckForStandbyTrigger(void)
 void
 RemovePromoteSignalFiles(void)
 {
-	unlink(PROMOTE_SIGNAL_FILE);
+	unlink(PROMOTE_SIGNAL_FILE); // 删除promote这个文件
 }
 
 /*
@@ -4383,7 +4383,7 @@ CheckPromoteSignal(void)
 {
 	struct stat stat_buf;
 
-	if (stat(PROMOTE_SIGNAL_FILE, &stat_buf) == 0)
+	if (stat(PROMOTE_SIGNAL_FILE, &stat_buf) == 0) // 如果发现了promote这个文件，就返回true
 		return true;
 
 	return false;
@@ -4591,7 +4591,7 @@ RecoveryRequiresIntParameter(const char *param_name, int currValue, int minValue
 							   currValue,
 							   minValue)));
 
-			SetRecoveryPause(true);
+			SetRecoveryPause(true);  // 实际上就是XLogRecoveryCtl->recoveryPauseState = RECOVERY_PAUSE_REQUESTED
 
 			ereport(LOG,
 					(errmsg("recovery has paused"),

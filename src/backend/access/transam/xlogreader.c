@@ -88,7 +88,7 @@ report_invalid_record(XLogReaderState *state, const char *fmt,...)
  * region may also be passed in, in which case non-oversized records will be
  * decoded there.
  */
-void
+void // 设置decode buffer
 XLogReaderSetDecodeBuffer(XLogReaderState *state, void *buffer, size_t size)
 {
 	Assert(state->decode_buffer == NULL);
