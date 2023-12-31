@@ -164,7 +164,7 @@ sendFeedback(PGconn *conn, TimestampTz now, bool force, bool replyRequested)
 	return true;
 }
 
-static void
+static void // 整个程序退出之前，把网络连接断掉
 disconnect_atexit(void)
 {
 	if (conn != NULL)
@@ -190,7 +190,7 @@ OutputFsync(TimestampTz now)
 	if (!output_isfile)
 		return true;
 
-	if (fsync(outfd) != 0)
+	if (fsync(outfd) != 0) // 刷盘
 		pg_fatal("could not fsync file \"%s\": %m", outfile);
 
 	return true;
@@ -214,7 +214,7 @@ StreamLogicalLog(void)
 	/*
 	 * Connect in replication mode to the server
 	 */
-	if (!conn)
+	if (!conn) // 如果此时还没有链接，就和服务器建立连接
 		conn = GetConnection();
 	if (!conn)
 		/* Error message already written in GetConnection() */

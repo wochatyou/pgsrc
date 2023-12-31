@@ -696,7 +696,7 @@ copy_read_data(void *outbuf, int minread, int maxread)
 	{
 		if (avail > maxread)
 			avail = maxread;
-		memcpy(outbuf, &copybuf->data[copybuf->cursor], avail);
+		memcpy(outbuf, &copybuf->data[copybuf->cursor], avail); // cursor是已经处理数据的最后位置？
 		copybuf->cursor += avail;
 		maxread -= avail;
 		bytesread += avail;
