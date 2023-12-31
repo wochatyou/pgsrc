@@ -195,12 +195,12 @@ ReplicationSlotShmemExit(int code, Datum arg)
  *
  * Returns whether the directory name is valid or not if elevel < ERROR.
  */
-bool
+bool // 检查复制槽的名称，合格就返回true，否则返回false
 ReplicationSlotValidateName(const char *name, int elevel)
 {
 	const char *cp;
 
-	if (strlen(name) == 0)
+	if (strlen(name) == 0) // 如果是空字符串
 	{
 		ereport(elevel,
 				(errcode(ERRCODE_INVALID_NAME),
@@ -209,7 +209,7 @@ ReplicationSlotValidateName(const char *name, int elevel)
 		return false;
 	}
 
-	if (strlen(name) >= NAMEDATALEN)
+	if (strlen(name) >= NAMEDATALEN) // 字符串长度超过了63个字符
 	{
 		ereport(elevel,
 				(errcode(ERRCODE_NAME_TOO_LONG),
@@ -218,7 +218,7 @@ ReplicationSlotValidateName(const char *name, int elevel)
 		return false;
 	}
 
-	for (cp = name; *cp; cp++)
+	for (cp = name; *cp; cp++) // 从头开始扫描字符串，排查非法字符，必须是小写字母，数字和下划线才合格
 	{
 		if (!((*cp >= 'a' && *cp <= 'z')
 			  || (*cp >= '0' && *cp <= '9')
@@ -249,7 +249,7 @@ ReplicationSlotValidateName(const char *name, int elevel)
  *     prepare because by that time start decoding point has been moved. So the
  *     user will only get commit prepared.
  */
-void
+void  // persistency是复制槽的持久类型：永久？临时？ db_specific区分物理复制和逻辑复制
 ReplicationSlotCreate(const char *name, bool db_specific,
 					  ReplicationSlotPersistency persistency, bool two_phase)
 {
@@ -258,7 +258,7 @@ ReplicationSlotCreate(const char *name, bool db_specific,
 
 	Assert(MyReplicationSlot == NULL);
 
-	ReplicationSlotValidateName(name, ERROR);
+	ReplicationSlotValidateName(name, ERROR); // 检查复制槽的名字，如果不合格，就直接报错退出了
 
 	/*
 	 * If some other backend ran this code concurrently with us, we'd likely
@@ -275,21 +275,21 @@ ReplicationSlotCreate(const char *name, bool db_specific,
 	 * else can change the in_use flags while we're looking at them.
 	 */
 	LWLockAcquire(ReplicationSlotControlLock, LW_SHARED);
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) // 依次扫描复制槽数组
 	{
 		ReplicationSlot *s = &ReplicationSlotCtl->replication_slots[i];
 
-		if (s->in_use && strcmp(name, NameStr(s->data.name)) == 0)
+		if (s->in_use && strcmp(name, NameStr(s->data.name)) == 0) // 如果发现重名的
 			ereport(ERROR,
 					(errcode(ERRCODE_DUPLICATE_OBJECT),
 					 errmsg("replication slot \"%s\" already exists", name)));
-		if (!s->in_use && slot == NULL)
+		if (!s->in_use && slot == NULL) // 找到第一个空闲的。这段代码还可以优化，为什么不直接break退出呢？
 			slot = s;
 	}
 	LWLockRelease(ReplicationSlotControlLock);
 
 	/* If all slots are in use, we're out of luck. */
-	if (slot == NULL)
+	if (slot == NULL) // 都满了，要考虑增大max_replication_slots参数的设置
 		ereport(ERROR,
 				(errcode(ERRCODE_CONFIGURATION_LIMIT_EXCEEDED),
 				 errmsg("all replication slots are in use"),
@@ -304,7 +304,7 @@ ReplicationSlotCreate(const char *name, bool db_specific,
 	Assert(!slot->in_use);
 	Assert(slot->active_pid == 0);
 
-	/* first initialize persistent data */
+	/* first initialize persistent data */  // 这些数据是要写入到磁盘的，确保崩溃后重启还可以恢复状态
 	memset(&slot->data, 0, sizeof(ReplicationSlotPersistentData));
 	namestrcpy(&slot->data.name, name);
 	slot->data.database = db_specific ? MyDatabaseId : InvalidOid;
@@ -312,7 +312,7 @@ ReplicationSlotCreate(const char *name, bool db_specific,
 	slot->data.two_phase = two_phase;
 	slot->data.two_phase_at = InvalidXLogRecPtr;
 
-	/* and then data only present in shared memory */
+	/* and then data only present in shared memory */ // 这些数据只存在内存中
 	slot->just_dirtied = false;
 	slot->dirty = false;
 	slot->effective_xmin = InvalidTransactionId;
@@ -326,7 +326,7 @@ ReplicationSlotCreate(const char *name, bool db_specific,
 	 * Create the slot on disk.  We haven't actually marked the slot allocated
 	 * yet, so no special cleanup is required if this errors out.
 	 */
-	CreateSlotOnDisk(slot);
+	CreateSlotOnDisk(slot); //把复制槽的信息写入到磁盘上
 
 	/*
 	 * We need to briefly prevent any other backend from iterating over the
@@ -341,7 +341,7 @@ ReplicationSlotCreate(const char *name, bool db_specific,
 	/* We can now mark the slot active, and that makes it our slot. */
 	SpinLockAcquire(&slot->mutex);
 	Assert(slot->active_pid == 0);
-	slot->active_pid = MyProcPid;
+	slot->active_pid = MyProcPid;  // MyProcPid记录了本进程的pid
 	SpinLockRelease(&slot->mutex);
 	MyReplicationSlot = slot;
 
@@ -371,20 +371,20 @@ ReplicationSlotCreate(const char *name, bool db_specific,
  *
  * Return the replication slot if found, otherwise NULL.
  */
-ReplicationSlot *
+ReplicationSlot *  // 根据复制槽的名字找复制槽，没有找到就返回NULL
 SearchNamedReplicationSlot(const char *name, bool need_lock)
 {
 	int			i;
 	ReplicationSlot *slot = NULL;
 
-	if (need_lock)
+	if (need_lock) // 如果需要上锁，就加锁
 		LWLockAcquire(ReplicationSlotControlLock, LW_SHARED);
 
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) // 在一个数组中按照顺序搜索
 	{
 		ReplicationSlot *s = &ReplicationSlotCtl->replication_slots[i];
 
-		if (s->in_use && strcmp(name, NameStr(s->data.name)) == 0)
+		if (s->in_use && strcmp(name, NameStr(s->data.name)) == 0) // 比较名字，匹配上了就退出循环
 		{
 			slot = s;
 			break;
@@ -1671,7 +1671,7 @@ StartupReplicationSlots(void)
  * current one or not, that's all handled a layer above.
  * ----
  */
-static void
+static void // 在磁盘上创建复制槽文件
 CreateSlotOnDisk(ReplicationSlot *slot)
 {
 	char		tmppath[MAXPGPATH];
@@ -1684,7 +1684,7 @@ CreateSlotOnDisk(ReplicationSlot *slot)
 	 * takes out the lock, if we'd take the lock here, we'd deadlock.
 	 */
 
-	sprintf(path, "pg_replslot/%s", NameStr(slot->data.name));
+	sprintf(path, "pg_replslot/%s", NameStr(slot->data.name)); // 在磁盘上创建一个目录，就是复制槽的名称
 	sprintf(tmppath, "pg_replslot/%s.tmp", NameStr(slot->data.name));
 
 	/*
@@ -1709,7 +1709,7 @@ CreateSlotOnDisk(ReplicationSlot *slot)
 	slot->dirty = true;			/* signal that we really need to write */
 	SaveSlotToPath(slot, tmppath, ERROR);
 
-	/* Rename the directory into place. */
+	/* Rename the directory into place. */ // 先写到一个临时目录中，再改名字
 	if (rename(tmppath, path) != 0)
 		ereport(ERROR,
 				(errcode_for_file_access(),

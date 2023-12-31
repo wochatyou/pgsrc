@@ -48,7 +48,7 @@ open_target_file(const char *path, bool trunc)
 {
 	int			mode;
 
-	if (dry_run)
+	if (dry_run) // 如果仅仅是dry_run，就啥也不做，直接返回
 		return;
 
 	if (dstfd != -1 && !trunc &&
@@ -60,7 +60,7 @@ open_target_file(const char *path, bool trunc)
 	snprintf(dstpath, sizeof(dstpath), "%s/%s", datadir_target, path);
 
 	mode = O_WRONLY | O_CREAT | PG_BINARY;
-	if (trunc)
+	if (trunc) // 如果指定要truncate这个文件，就加上O_TRUNC标志
 		mode |= O_TRUNC;
 	dstfd = open(dstpath, mode, pg_file_create_mode);
 	if (dstfd < 0)
@@ -74,17 +74,17 @@ open_target_file(const char *path, bool trunc)
 void
 close_target_file(void)
 {
-	if (dstfd == -1)
+	if (dstfd == -1) // 如果这个文件没有打开，啥也不做
 		return;
 
 	if (close(dstfd) != 0)
 		pg_fatal("could not close target file \"%s\": %m",
 				 dstpath);
 
-	dstfd = -1;
+	dstfd = -1; // 关闭这个文件后，设置文件句柄为-1
 }
 
-void
+void // 把buf里面的内容写入到文件begin的位置，写入size个字节
 write_target_range(char *buf, off_t begin, size_t size)
 {
 	size_t		writeleft;
@@ -94,7 +94,7 @@ write_target_range(char *buf, off_t begin, size_t size)
 	fetch_done += size;
 	progress_report(false);
 
-	if (dry_run)
+	if (dry_run) // 只是演戏
 		return;
 
 	if (lseek(dstfd, begin, SEEK_SET) == -1)

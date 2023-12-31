@@ -129,7 +129,7 @@ typedef struct ReplicationSlotPersistentData
  * own fields, while concurrent backends not owning this slot should take the
  * lock when reading this slot's data.
  */
-typedef struct ReplicationSlot
+typedef struct ReplicationSlot // 一个复制槽在内存中的数据结构
 {
 	/* lock, on same cacheline as effective_xmin */
 	slock_t		mutex;
@@ -159,7 +159,7 @@ typedef struct ReplicationSlot
 	TransactionId effective_catalog_xmin;
 
 	/* data surviving shutdowns and crashes */
-	ReplicationSlotPersistentData data;
+	ReplicationSlotPersistentData data;  // 这些数据必须被保存在磁盘上
 
 	/* is somebody performing io on this slot? */
 	LWLock		io_in_progress_lock;

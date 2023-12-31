@@ -38,7 +38,7 @@
  *		transaction ID manipulation macros
  * ----------------
  */
-#define TransactionIdIsValid(xid)		((xid) != InvalidTransactionId)
+#define TransactionIdIsValid(xid)		((xid) != InvalidTransactionId) // 一个事务号非零即为有效
 #define TransactionIdIsNormal(xid)		((xid) >= FirstNormalTransactionId)
 #define TransactionIdEquals(id1, id2)	((id1) == (id2))
 #define TransactionIdStore(xid, dest)	(*(dest) = (xid))

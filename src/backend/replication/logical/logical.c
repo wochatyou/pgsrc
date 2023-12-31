@@ -325,7 +325,7 @@ StartupDecodingContext(List *output_plugin_options,
  * Returns an initialized decoding context after calling the output plugin's
  * startup function.
  */
-LogicalDecodingContext *
+LogicalDecodingContext *  // 为逻辑复制槽创建一个上下文context
 CreateInitDecodingContext(const char *plugin,
 						  List *output_plugin_options,
 						  bool need_full_snapshot,
@@ -354,7 +354,7 @@ CreateInitDecodingContext(const char *plugin,
 	if (slot == NULL)
 		elog(ERROR, "cannot perform logical decoding without an acquired slot");
 
-	if (plugin == NULL)
+	if (plugin == NULL) // 在创建逻辑复制槽时，这个参数必须指定
 		elog(ERROR, "cannot initialize logical decoding without a specified plugin");
 
 	/* Make sure the passed slot is suitable. These are user facing errors. */
@@ -436,7 +436,7 @@ CreateInitDecodingContext(const char *plugin,
 
 	ReplicationSlotMarkDirty();
 	ReplicationSlotSave();
-
+	// ctx指向的内存单独存放在一个内存池中，在这个函数中创建
 	ctx = StartupDecodingContext(NIL, restart_lsn, xmin_horizon,
 								 need_full_snapshot, false,
 								 xl_routine, prepare_write, do_write,
@@ -791,7 +791,7 @@ startup_cb_wrapper(LogicalDecodingContext *ctx, OutputPluginOptions *opt, bool i
 	ctx->end_xact = false;
 
 	/* do the actual work: call callback */
-	ctx->callbacks.startup_cb(ctx, opt, is_init);
+	ctx->callbacks.startup_cb(ctx, opt, is_init); // 调用ctx的startup回调函数做真正的事情
 
 	/* Pop the error context stack */
 	error_context_stack = errcallback.previous;

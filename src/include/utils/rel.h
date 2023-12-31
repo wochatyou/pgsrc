@@ -54,7 +54,7 @@ typedef LockInfoData *LockInfo;
 
 typedef struct RelationData
 {
-	RelFileLocator rd_locator;	/* relation physical identifier */
+	RelFileLocator rd_locator;	/* relation physical identifier */ // 三元组
 	SMgrRelation rd_smgr;		/* cached file handle, or NULL */
 	int			rd_refcnt;		/* reference count */
 	BackendId	rd_backend;		/* owning backend id, if temporary relation */
@@ -110,7 +110,7 @@ typedef struct RelationData
 
 	Form_pg_class rd_rel;		/* RELATION tuple */
 	TupleDesc	rd_att;			/* tuple descriptor */
-	Oid			rd_id;			/* relation's object id */
+	Oid			rd_id;			/* relation's object id */  // 这张表的Oid
 	LockInfoData rd_lockInfo;	/* lock mgr's info for locking relation */
 	RuleLock   *rd_rules;		/* rewrite rules */
 	MemoryContext rd_rulescxt;	/* private memory cxt for rd_rules, if any */
@@ -501,7 +501,7 @@ typedef struct ViewOptions
  * RelationGetRelid
  *		Returns the OID of the relation
  */
-#define RelationGetRelid(relation) ((relation)->rd_id)
+#define RelationGetRelid(relation) ((relation)->rd_id) // 获得一个relation的Oid
 
 /*
  * RelationGetNumberOfAttributes

@@ -661,7 +661,7 @@ SnapBuildInitialSnapshot(SnapBuild *builder)
  * importing side checks whether the source transaction is still open to make
  * sure the xmin horizon hasn't advanced since then.
  */
-const char *
+const char * // 创建一个事务快照
 SnapBuildExportSnapshot(SnapBuild *builder)
 {
 	Snapshot	snap;

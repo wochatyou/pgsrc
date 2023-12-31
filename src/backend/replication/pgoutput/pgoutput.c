@@ -245,7 +245,7 @@ static void pgoutput_column_list_init(PGOutputData *data,
 /*
  * Specify output plugin callbacks
  */
-void
+void // 这个函数是必须要有的，在这个函数中，把回调函数安装到cb中
 _PG_output_plugin_init(OutputPluginCallbacks *cb)
 {
 	cb->startup_cb = pgoutput_startup;
@@ -402,11 +402,11 @@ parse_output_parameters(List *options, PGOutputData *data)
 /*
  * Initialize this plugin
  */
-static void
+static void // 初始化插件, ctx已经分配好了，直接就可以使用
 pgoutput_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 				 bool is_init)
 {
-	PGOutputData *data = palloc0(sizeof(PGOutputData));
+	PGOutputData *data = palloc0(sizeof(PGOutputData)); // 这个内存在ctx的内存池中分配
 	static bool publication_callback_registered = false;
 
 	/* Create our memory context for private allocations. */
@@ -418,7 +418,7 @@ pgoutput_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 										   "logical replication cache context",
 										   ALLOCSET_DEFAULT_SIZES);
 
-	ctx->output_plugin_private = data;
+	ctx->output_plugin_private = data; // output_plugin_private由插件自己解释，框架不操心
 
 	/* This plugin uses binary protocol. */
 	opt->output_type = OUTPUT_PLUGIN_BINARY_OUTPUT;

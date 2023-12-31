@@ -126,7 +126,7 @@ static bool table_states_valid = false;
 static List *table_states_not_ready = NIL;
 static bool FetchTableStates(bool *started_tx);
 
-static StringInfo copybuf = NULL;
+static StringInfo copybuf = NULL; // 使用StringInfo数据结构来表示拷贝的数据？
 
 /*
  * Exit routine for synchronization worker.

@@ -145,9 +145,9 @@ do { \
 	QueryCancelHoldoffCount--; \
 } while(0)
 
-#define START_CRIT_SECTION()  (CritSectionCount++)
+#define START_CRIT_SECTION()  (CritSectionCount++) // 进入临界区，就是把临界区计数器加一
 
-#define END_CRIT_SECTION() \
+#define END_CRIT_SECTION() \   // 离开临界区，就是把临界区计数器减一
 do { \
 	Assert(CritSectionCount > 0); \
 	CritSectionCount--; \

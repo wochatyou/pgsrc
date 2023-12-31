@@ -756,7 +756,7 @@ typedef NameData *Name;
 #define OffsetToPointer(base, offset) \
 		((void *)((char *) base + offset))
 
-#define OidIsValid(objectId)  ((bool) ((objectId) != InvalidOid))
+#define OidIsValid(objectId)  ((bool) ((objectId) != InvalidOid)) // 非零即为有效
 
 #define RegProcedureIsValid(p)	OidIsValid(p)
 

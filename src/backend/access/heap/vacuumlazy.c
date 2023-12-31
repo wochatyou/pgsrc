@@ -336,7 +336,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 			startwritetime = pgStatBlockWriteTime;
 		}
 	}
-
+	// 更新本进程的状态，表明本进程正在执行VACUUM，以及表的Oid
 	pgstat_progress_start_command(PROGRESS_COMMAND_VACUUM,
 								  RelationGetRelid(rel));
 

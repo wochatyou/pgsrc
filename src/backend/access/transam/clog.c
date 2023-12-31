@@ -57,13 +57,13 @@
  */
 
 /* We need two bits per xact, so four xacts fit in a byte */
-#define CLOG_BITS_PER_XACT	2
+#define CLOG_BITS_PER_XACT	2     // 每个事务2个比特，所以一个字节可以保存4个事务的状态
 #define CLOG_XACTS_PER_BYTE 4
-#define CLOG_XACTS_PER_PAGE (BLCKSZ * CLOG_XACTS_PER_BYTE)
-#define CLOG_XACT_BITMASK	((1 << CLOG_BITS_PER_XACT) - 1)
+#define CLOG_XACTS_PER_PAGE (BLCKSZ * CLOG_XACTS_PER_BYTE) // 一个数据页可以保存8192*4 = 32KB个事务的状态
+#define CLOG_XACT_BITMASK	((1 << CLOG_BITS_PER_XACT) - 1) // 就是3， 二进制的11
 
-#define TransactionIdToPage(xid)	((xid) / (TransactionId) CLOG_XACTS_PER_PAGE)
-#define TransactionIdToPgIndex(xid) ((xid) % (TransactionId) CLOG_XACTS_PER_PAGE)
+#define TransactionIdToPage(xid)	((xid) / (TransactionId) CLOG_XACTS_PER_PAGE) // 根据事务号获得它对应的CLOG的Page号
+#define TransactionIdToPgIndex(xid) ((xid) % (TransactionId) CLOG_XACTS_PER_PAGE) // 这个事务在这个页面中的字节偏移量
 #define TransactionIdToByte(xid)	(TransactionIdToPgIndex(xid) / CLOG_XACTS_PER_BYTE)
 #define TransactionIdToBIndex(xid)	((xid) % (TransactionId) CLOG_XACTS_PER_BYTE)
 

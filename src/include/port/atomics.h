@@ -150,6 +150,9 @@
  * barrier.  In practice, on machines with strong memory ordering, read and
  * write barriers may require nothing more than a compiler barrier.
  */
+// 编译器屏障（Compiler Barrier）是一种编译器优化技术，可以提高多线程程序的运行效率，
+// 同时保证了程序的正确性和可靠性。 编译器屏障的作用就是告诉编译器，在程序中插入一条指令，
+// 让编译器在编译时对代码进行优化时不要穿过这条指令。
 #define pg_read_barrier()	pg_read_barrier_impl()
 #define pg_write_barrier()	pg_write_barrier_impl()
 

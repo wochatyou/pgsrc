@@ -94,6 +94,7 @@ typedef struct PgBackendGSSStatus
  * memory.
  * ----------
  */
+// 每一个后台进程会在共享内存中维系这样一个数据结构来显示它的当前活动
 typedef struct PgBackendStatus
 {
 	/*

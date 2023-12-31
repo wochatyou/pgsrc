@@ -477,7 +477,7 @@ IdentifySystem(void)
 static void
 ReadReplicationSlot(ReadReplicationSlotCmd *cmd)
 {
-#define READ_REPLICATION_SLOT_COLS 3
+#define READ_REPLICATION_SLOT_COLS 3   // 这条命令返回3列
 	ReplicationSlot *slot;
 	DestReceiver *dest;
 	TupOutputState *tstate;
@@ -497,8 +497,8 @@ ReadReplicationSlot(ReadReplicationSlotCmd *cmd)
 	memset(nulls, true, READ_REPLICATION_SLOT_COLS * sizeof(bool));
 
 	LWLockAcquire(ReplicationSlotControlLock, LW_SHARED);
-	slot = SearchNamedReplicationSlot(cmd->slotname, false);
-	if (slot == NULL || !slot->in_use)
+	slot = SearchNamedReplicationSlot(cmd->slotname, false);  // false表示不加锁进行查找
+	if (slot == NULL || !slot->in_use) // 如果没有找到
 	{
 		LWLockRelease(ReplicationSlotControlLock);
 	}
@@ -509,11 +509,11 @@ ReadReplicationSlot(ReadReplicationSlotCmd *cmd)
 
 		/* Copy slot contents while holding spinlock */
 		SpinLockAcquire(&slot->mutex);
-		slot_contents = *slot;
+		slot_contents = *slot; // 把复制槽里面的内容拷贝到本地缓存起来，降低竞争几率
 		SpinLockRelease(&slot->mutex);
 		LWLockRelease(ReplicationSlotControlLock);
 
-		if (OidIsValid(slot_contents.data.database))
+		if (OidIsValid(slot_contents.data.database)) // 如果数据库的id有效，说明是逻辑复制槽
 			ereport(ERROR,
 					errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					errmsg("cannot use %s with a logical replication slot",
@@ -666,7 +666,7 @@ SendTimeLineHistory(TimeLineHistoryCmd *cmd)
  * At the moment, this never returns, but an ereport(ERROR) will take us back
  * to the main loop.
  */
-static void
+static void // 这条命令是核心指令，开始进行复制了
 StartReplication(StartReplicationCmd *cmd)
 {
 	StringInfoData buf;
@@ -1037,7 +1037,7 @@ parseCreateReplSlotOptions(CreateReplicationSlotCmd *cmd,
 /*
  * Create a new replication slot.
  */
-static void
+static void // 创建一个复制槽
 CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 {
 	const char *snapshot_name = NULL;
@@ -1056,15 +1056,15 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 
 	parseCreateReplSlotOptions(cmd, &reserve_wal, &snapshot_action, &two_phase);
 
-	if (cmd->kind == REPLICATION_KIND_PHYSICAL)
+	if (cmd->kind == REPLICATION_KIND_PHYSICAL) // 创建物理复制槽
 	{
 		ReplicationSlotCreate(cmd->slotname, false,
 							  cmd->temporary ? RS_TEMPORARY : RS_PERSISTENT,
 							  false);
 	}
-	else
+	else // 创建逻辑复制槽
 	{
-		CheckLogicalDecodingRequirements();
+		CheckLogicalDecodingRequirements(); // // 检查服务器的配置是否满足逻辑解码的要求。如果不满足，就直接退出了。
 
 		/*
 		 * Initially create persistent slot as ephemeral - that allows us to
@@ -1131,6 +1131,7 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 			need_full_snapshot = true;
 		}
 
+		// 如果创建逻辑复制槽，output_plugin是必须要提供的参数
 		ctx = CreateInitDecodingContext(cmd->plugin, NIL, need_full_snapshot,
 										InvalidXLogRecPtr,
 										XL_ROUTINE(.page_read = logical_read_xlog_page,
@@ -1258,7 +1259,7 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 	QueryCompletion qc;
 
 	/* make sure that our requirements are still fulfilled */
-	CheckLogicalDecodingRequirements();
+	CheckLogicalDecodingRequirements(); // 检查逻辑复制的配置是否满足要求
 
 	Assert(!MyReplicationSlot);
 
@@ -1321,7 +1322,7 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 	SyncRepInitConfig();
 
 	/* Main loop of walsender */
-	WalSndLoop(XLogSendLogical);
+	WalSndLoop(XLogSendLogical); // 主要的循环在这里
 
 	FreeDecodingContext(logical_decoding_ctx);
 	ReplicationSlotRelease();
@@ -1829,9 +1830,9 @@ exec_replication_command(const char *cmd_string)
 				PreventInTransactionBlock(true, cmdtag);
 
 				if (cmd->kind == REPLICATION_KIND_PHYSICAL)
-					StartReplication(cmd);
-				else
-					StartLogicalReplication(cmd);
+					StartReplication(cmd); // 物理复制
+				else  
+					StartLogicalReplication(cmd);  // 如果是逻辑复制，就启动逻辑复制
 
 				/* dupe, but necessary per libpqrcv_endstreaming */
 				EndReplicationCommand(cmdtag);
@@ -2500,7 +2501,7 @@ WalSndLoop(WalSndSendDataCallback send_data)
 			WalSndShutdown();
 
 		/* If nothing remains to be sent right now ... */
-		if (WalSndCaughtUp && !pq_is_send_pending())
+		if (WalSndCaughtUp && !pq_is_send_pending()) 
 		{
 			/*
 			 * If we're in catchup state, move to streaming.  This is an
@@ -2510,7 +2511,7 @@ WalSndLoop(WalSndSendDataCallback send_data)
 			 * important for synchronous replication, since commits that
 			 * started to wait at that point might wait for some time.
 			 */
-			if (MyWalSnd->state == WALSNDSTATE_CATCHUP)
+			if (MyWalSnd->state == WALSNDSTATE_CATCHUP) // 把sender的状态从WALSNDSTATE_CATCHUP改成WALSNDSTATE_STREAMING
 			{
 				ereport(DEBUG1,
 						(errmsg_internal("\"%s\" has now caught up with upstream server",
@@ -3467,18 +3468,18 @@ WalSndWaitStopping(void)
 }
 
 /* Set state for current walsender (only called in walsender) */
-void
+void // 设置sender的状态
 WalSndSetState(WalSndState state)
 {
 	WalSnd	   *walsnd = MyWalSnd;
 
 	Assert(am_walsender);
 
-	if (walsnd->state == state)
+	if (walsnd->state == state) // 如果状态没有改变，就用不着加锁解锁了
 		return;
 
 	SpinLockAcquire(&walsnd->mutex);
-	walsnd->state = state;
+	walsnd->state = state; // 更新一下状态
 	SpinLockRelease(&walsnd->mutex);
 }
 
