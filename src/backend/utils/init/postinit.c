@@ -625,10 +625,10 @@ check_max_wal_senders(int *newval, void **extra, GucSource source)
  * processes, such as the background writer process, which may not call
  * InitPostgres at all.
  */
-void
+void //基本初始化，为什么要分为BaseInit()和InitPostgres()两部分初始化，上面的注释给出了理由
 BaseInit(void)
 {
-	Assert(MyProc != NULL);
+	Assert(MyProc != NULL); // 这是在子进程中执行的，此时MyProd已经保存了子进程的pid
 
 	/*
 	 * Initialize our input/output/debugging file descriptors.

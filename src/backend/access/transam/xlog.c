@@ -2395,7 +2395,7 @@ XLogSetAsyncXactLSN(XLogRecPtr asyncXactLSN)
  * Record the LSN up to which we can remove WAL because it's not required by
  * any replication slot.
  */
-void
+void //最小LSN，低于这个LSN的WAL记录可以被删除掉
 XLogSetReplicationSlotMinimumLSN(XLogRecPtr lsn)
 {
 	SpinLockAcquire(&XLogCtl->info_lck);

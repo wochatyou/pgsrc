@@ -167,7 +167,7 @@ ReplicationSlotsShmemInit(void)
 /*
  * Register the callback for replication slot cleanup and releasing.
  */
-void
+void //注册复制槽清除和释放的回调函数
 ReplicationSlotInitialize(void)
 {
 	before_shmem_exit(ReplicationSlotShmemExit, 0);
@@ -176,7 +176,7 @@ ReplicationSlotInitialize(void)
 /*
  * Release and cleanup replication slots.
  */
-static void
+static void // 清除和释放复制槽资源的回调函数
 ReplicationSlotShmemExit(int code, Datum arg)
 {
 	/* Make sure active replication slots are released */
@@ -549,9 +549,9 @@ ReplicationSlotRelease(void)
 {
 	ReplicationSlot *slot = MyReplicationSlot;
 
-	Assert(slot != NULL && slot->active_pid != 0);
+	Assert(slot != NULL && slot->active_pid != 0); // 这个复制槽必须是活跃的
 
-	if (slot->data.persistency == RS_EPHEMERAL)
+	if (slot->data.persistency == RS_EPHEMERAL) //这个复制槽不是持久性的
 	{
 		/*
 		 * Delete the slot. There is no !PANIC case where this is allowed to
@@ -659,7 +659,7 @@ ReplicationSlotDropAcquired(void)
 	Assert(MyReplicationSlot != NULL);
 
 	/* slot isn't acquired anymore */
-	MyReplicationSlot = NULL;
+	MyReplicationSlot = NULL; // MyReplicationSlot变量设为NULL
 
 	ReplicationSlotDropPtr(slot);
 }
@@ -668,7 +668,7 @@ ReplicationSlotDropAcquired(void)
  * Permanently drop the replication slot which will be released by the point
  * this function returns.
  */
-static void
+static void // 把磁盘上的复制槽目录x改成x.tmp
 ReplicationSlotDropPtr(ReplicationSlot *slot)
 {
 	char		path[MAXPGPATH];
@@ -683,7 +683,7 @@ ReplicationSlotDropPtr(ReplicationSlot *slot)
 
 	/* Generate pathnames. */
 	sprintf(path, "pg_replslot/%s", NameStr(slot->data.name));
-	sprintf(tmppath, "pg_replslot/%s.tmp", NameStr(slot->data.name));
+	sprintf(tmppath, "pg_replslot/%s.tmp", NameStr(slot->data.name)); // 生成复制槽的路径
 
 	/*
 	 * Rename the slot directory on disk, so that we'll no longer recognize
@@ -692,7 +692,7 @@ ReplicationSlotDropPtr(ReplicationSlot *slot)
 	 * temporary slot, we better never fail hard as the caller won't expect
 	 * the slot to survive and this might get called during error handling.
 	 */
-	if (rename(path, tmppath) == 0)
+	if (rename(path, tmppath) == 0) // 把path改名为tmppath，前者是老名，后者是新名
 	{
 		/*
 		 * We need to fsync() the directory we just renamed and its parent to
@@ -712,7 +712,7 @@ ReplicationSlotDropPtr(ReplicationSlot *slot)
 		bool		fail_softly = slot->data.persistency != RS_PERSISTENT;
 
 		SpinLockAcquire(&slot->mutex);
-		slot->active_pid = 0;
+		slot->active_pid = 0; // 把进程号改为0，表示这个复制槽不是活跃复制槽了，可以被重用
 		SpinLockRelease(&slot->mutex);
 
 		/* wake up anyone waiting on this slot */
@@ -751,7 +751,7 @@ ReplicationSlotDropPtr(ReplicationSlot *slot)
 	 * that the user won't be able to create a new slot with the same name
 	 * until the next server restart.  We warn about it, but that's all.
 	 */
-	if (!rmtree(tmppath, true))
+	if (!rmtree(tmppath, true)) // 删除临时的复制槽文件 xxxxx.tmp
 		ereport(WARNING,
 				(errmsg("could not remove directory \"%s\"", tmppath)));
 
@@ -897,13 +897,13 @@ ReplicationSlotsComputeRequiredLSN(void)
 	Assert(ReplicationSlotCtl != NULL);
 
 	LWLockAcquire(ReplicationSlotControlLock, LW_SHARED);
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) //扫描复制槽数组，寻找最小的需要保留的LSN，包含这个LSN的WAL文件不能够被删除掉
 	{
 		ReplicationSlot *s = &ReplicationSlotCtl->replication_slots[i];
 		XLogRecPtr	restart_lsn;
 		bool		invalidated;
 
-		if (!s->in_use)
+		if (!s->in_use) // 如果不是活跃的复制槽，就跳到下一个
 			continue;
 
 		SpinLockAcquire(&s->mutex);
@@ -922,7 +922,7 @@ ReplicationSlotsComputeRequiredLSN(void)
 	}
 	LWLockRelease(ReplicationSlotControlLock);
 
-	XLogSetReplicationSlotMinimumLSN(min_required);
+	XLogSetReplicationSlotMinimumLSN(min_required); // 更新一下XLogCtl->replicationSlotMinLSN
 }
 
 /*
