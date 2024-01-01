@@ -398,14 +398,14 @@ pq_putemptymessage(char msgtype)
  *		pq_getmsgbyte	- get a raw byte from a message buffer
  * --------------------------------
  */
-int
+int // 只读取一个字节
 pq_getmsgbyte(StringInfo msg)
 {
 	if (msg->cursor >= msg->len)
 		ereport(ERROR,
 				(errcode(ERRCODE_PROTOCOL_VIOLATION),
 				 errmsg("no data left in message")));
-	return (unsigned char) msg->data[msg->cursor++];
+	return (unsigned char) msg->data[msg->cursor++]; // cursor不断往后移动
 }
 
 /* --------------------------------
@@ -414,7 +414,7 @@ pq_getmsgbyte(StringInfo msg)
  *		Values are treated as unsigned.
  * --------------------------------
  */
-unsigned int
+unsigned int  // 只能读1个，2个或者4个字节
 pq_getmsgint(StringInfo msg, int b)
 {
 	unsigned int result;
@@ -527,7 +527,7 @@ pq_getmsgbytes(StringInfo msg, int datalen)
  *		Same as above, except data is copied to caller's buffer.
  * --------------------------------
  */
-void
+void // 读取指定长度的数据，1,2,4字节
 pq_copymsgbytes(StringInfo msg, char *buf, int datalen)
 {
 	if (datalen < 0 || datalen > (msg->len - msg->cursor))

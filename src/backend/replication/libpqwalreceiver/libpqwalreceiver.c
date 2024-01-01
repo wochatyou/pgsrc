@@ -109,7 +109,7 @@ static char *stringlist_to_identifierstr(PGconn *conn, List *strings);
 /*
  * Module initialization function
  */
-void
+void  // 这个函数会在加载时自动执行
 _PG_init(void)
 {
 	if (WalReceiverFunctions != NULL)
@@ -775,7 +775,7 @@ libpqrcv_disconnect(WalReceiverConn *conn)
  *
  * ereports on error.
  */
-static int
+static int // 从主库接收数据的主要函数
 libpqrcv_receive(WalReceiverConn *conn, char **buffer,
 				 pgsocket *wait_fd)
 {

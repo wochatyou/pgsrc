@@ -246,17 +246,17 @@ WalReceiverMain(void)
 
 	/* Fetch information required to start streaming */
 	walrcv->ready_to_display = false;
-	strlcpy(conninfo, (char *) walrcv->conninfo, MAXCONNINFO);
+	strlcpy(conninfo, (char *) walrcv->conninfo, MAXCONNINFO); // 这些连接信息是startup进程在请求主进程启动walreceiver进程之前就填好了
 	strlcpy(slotname, (char *) walrcv->slotname, NAMEDATALEN);
 	is_temp_slot = walrcv->is_temp_slot;
-	startpoint = walrcv->receiveStart;
-	startpointTLI = walrcv->receiveStartTLI;
+	startpoint = walrcv->receiveStart;  // 向主库索取WAL记录的起点
+	startpointTLI = walrcv->receiveStartTLI; // 向主库索取WAL记录的时间线
 
 	/*
 	 * At most one of is_temp_slot and slotname can be set; otherwise,
 	 * RequestXLogStreaming messed up.
 	 */
-	Assert(!is_temp_slot || (slotname[0] == '\0'));
+	Assert(!is_temp_slot || (slotname[0] == '\0')); // 两个条件只能设置一个，如果两个都设置了，说明出错了
 
 	/* Initialise to a sanish value */
 	now = GetCurrentTimestamp();
@@ -288,7 +288,9 @@ WalReceiverMain(void)
 	pqsignal(SIGCHLD, SIG_DFL);
 
 	/* Load the libpq-specific functions */
-	load_file("libpqwalreceiver", false);
+	load_file("libpqwalreceiver", false); // 为了避免客户端的链接库代码连接到postgres主程序中，这里采用了动态加载的方法，因为只有walreceiver进程需要使用它
+	// load_file会自动执行动态库中的_PG_init()函数
+	// 如果加载成功，动态库在初始化函数中会设置WalReceiverFunctions，一大堆的回调函数会被正确的挂载上
 	if (WalReceiverFunctions == NULL)
 		elog(ERROR, "libpqwalreceiver didn't initialize correctly");
 
@@ -309,7 +311,7 @@ WalReceiverMain(void)
 	 * conninfo, for security. Also save host and port of the sender server
 	 * this walreceiver is connected to.
 	 */
-	tmp_conninfo = walrcv_get_conninfo(wrconn);
+	tmp_conninfo = walrcv_get_conninfo(wrconn); // 这些信息可以通过pg_stat_wal_receiver这个系统视图查询到
 	walrcv_get_senderinfo(wrconn, &sender_host, &sender_port);
 	SpinLockAcquire(&walrcv->mutex);
 	memset(walrcv->conninfo, 0, MAXCONNINFO);
@@ -330,8 +332,8 @@ WalReceiverMain(void)
 	if (sender_host)
 		pfree(sender_host);
 
-	first_stream = true;
-	for (;;)
+	first_stream = true;  // 第一次进行stream
+	for (;;)  // 无限循环
 	{
 		char	   *primary_sysid;
 		char		standby_sysid[32];
@@ -341,11 +343,11 @@ WalReceiverMain(void)
 		 * Check that we're connected to a valid server using the
 		 * IDENTIFY_SYSTEM replication command.
 		 */
-		primary_sysid = walrcv_identify_system(wrconn, &primaryTLI);
+		primary_sysid = walrcv_identify_system(wrconn, &primaryTLI);  // 向主库索要系统标识符
 
 		snprintf(standby_sysid, sizeof(standby_sysid), UINT64_FORMAT,
 				 GetSystemIdentifier());
-		if (strcmp(primary_sysid, standby_sysid) != 0)
+		if (strcmp(primary_sysid, standby_sysid) != 0) // 如果主库的系统标识符和本库控制文件中的系统标识符不一致，则报错退出
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),

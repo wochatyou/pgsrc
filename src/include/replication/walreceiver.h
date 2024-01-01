@@ -386,6 +386,7 @@ typedef WalRcvExecResult *(*walrcv_exec_fn) (WalReceiverConn *conn,
  */
 typedef void (*walrcv_disconnect_fn) (WalReceiverConn *conn);
 
+// 这个数据结构就是一大堆回调函数的集合体
 typedef struct WalReceiverFunctionsType
 {
 	walrcv_connect_fn walrcv_connect;

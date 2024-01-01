@@ -432,21 +432,21 @@ logicalrep_write_insert(StringInfo out, TransactionId xid, Relation rel,
  *
  * Fills the new tuple.
  */
-LogicalRepRelId
+LogicalRepRelId // 从消息包中读取INSERT的信息，返回表的Oid
 logicalrep_read_insert(StringInfo in, LogicalRepTupleData *newtup)
 {
 	char		action;
 	LogicalRepRelId relid;
 
 	/* read the relation id */
-	relid = pq_getmsgint(in, 4);
+	relid = pq_getmsgint(in, 4); // 读取4个字节的表的Oid
 
-	action = pq_getmsgbyte(in);
+	action = pq_getmsgbyte(in); // 动作，一个字节，必须是N
 	if (action != 'N')
 		elog(ERROR, "expected new tuple but got %d",
 			 action);
 
-	logicalrep_read_tuple(in, newtup);
+	logicalrep_read_tuple(in, newtup); // 读入每一列的信息
 
 	return relid;
 }
@@ -862,18 +862,18 @@ logicalrep_write_tuple(StringInfo out, Relation rel, TupleTableSlot *slot,
 /*
  * Read tuple in logical replication format from stream.
  */
-static void
+static void // 读取记录的信息，方便后面的解析工作
 logicalrep_read_tuple(StringInfo in, LogicalRepTupleData *tuple)
 {
 	int			i;
 	int			natts;
 
 	/* Get number of attributes */
-	natts = pq_getmsgint(in, 2);
+	natts = pq_getmsgint(in, 2); // 读取2个字节，列的个数
 
 	/* Allocate space for per-column values; zero out unused StringInfoDatas */
-	tuple->colvalues = (StringInfoData *) palloc0(natts * sizeof(StringInfoData));
-	tuple->colstatus = (char *) palloc(natts * sizeof(char));
+	tuple->colvalues = (StringInfoData *) palloc0(natts * sizeof(StringInfoData)); // 根据列数，为每一个列分配一个单独的管理数据结构
+	tuple->colstatus = (char *) palloc(natts * sizeof(char)); // 每列有一个字节的状态信息
 	tuple->ncols = natts;
 
 	/* Read the data */
@@ -883,7 +883,7 @@ logicalrep_read_tuple(StringInfo in, LogicalRepTupleData *tuple)
 		int			len;
 		StringInfo	value = &tuple->colvalues[i];
 
-		kind = pq_getmsgbyte(in);
+		kind = pq_getmsgbyte(in); // 读一个字节
 		tuple->colstatus[i] = kind;
 
 		switch (kind)
@@ -896,11 +896,11 @@ logicalrep_read_tuple(StringInfo in, LogicalRepTupleData *tuple)
 				break;
 			case LOGICALREP_COLUMN_TEXT:
 			case LOGICALREP_COLUMN_BINARY:
-				len = pq_getmsgint(in, 4);	/* read length */
+				len = pq_getmsgint(in, 4);	/* read length */ // 四个字节的长度信息
 
 				/* and data */
 				value->data = palloc(len + 1);
-				pq_copymsgbytes(in, value->data, len);
+				pq_copymsgbytes(in, value->data, len); // 后面就是数据了
 
 				/*
 				 * Not strictly necessary for LOGICALREP_COLUMN_BINARY, but

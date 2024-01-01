@@ -2380,7 +2380,7 @@ TargetPrivilegesCheck(Relation rel, AclMode mode)
  * Handle INSERT message.
  */
 
-static void
+static void // 处理INSERT的函数
 apply_handle_insert(StringInfo s)
 {
 	LogicalRepRelMapEntry *rel;
@@ -2403,7 +2403,7 @@ apply_handle_insert(StringInfo s)
 
 	begin_replication_step();
 
-	relid = logicalrep_read_insert(s, &newtup);
+	relid = logicalrep_read_insert(s, &newtup); // relid就是表的Oid，我们知道这条记录要插入哪张表
 	rel = logicalrep_rel_open(relid, RowExclusiveLock);
 	if (!should_apply_changes_for_rel(rel))
 	{
@@ -3284,7 +3284,7 @@ apply_handle_truncate(StringInfo s)
 void
 apply_dispatch(StringInfo s)
 {
-	LogicalRepMsgType action = pq_getmsgbyte(s);
+	LogicalRepMsgType action = pq_getmsgbyte(s); // 读取第二个字节
 	LogicalRepMsgType saved_command;
 
 	/*
@@ -3487,7 +3487,7 @@ UpdateWorkerStats(XLogRecPtr last_lsn, TimestampTz send_time, bool reply)
 /*
  * Apply main loop.
  */
-static void
+static void // apply worker开始向主库索取WAL信息， 主要循环
 LogicalRepApplyLoop(XLogRecPtr last_received)
 {
 	TimestampTz last_recv_timestamp = GetCurrentTimestamp();
@@ -3539,18 +3539,18 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 
 		len = walrcv_receive(LogRepWorkerWalRcvConn, &buf, &fd);
 
-		if (len != 0)
+		if (len != 0) // 收到数据了
 		{
 			/* Loop to process all available data (without blocking). */
 			for (;;)
 			{
 				CHECK_FOR_INTERRUPTS();
 
-				if (len == 0)
+				if (len == 0) // 已经读完数据了
 				{
 					break;
 				}
-				else if (len < 0)
+				else if (len < 0) // 网络断开的情况
 				{
 					ereport(LOG,
 							(errmsg("data stream from publisher has ended")));
@@ -3560,7 +3560,7 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 				else
 				{
 					int			c;
-					StringInfoData s;
+					StringInfoData s; // 使用这个数据结构来保存数据
 
 					if (ConfigReloadPending)
 					{
@@ -3580,9 +3580,9 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 					s.cursor = 0;
 					s.maxlen = -1;
 
-					c = pq_getmsgbyte(&s);
+					c = pq_getmsgbyte(&s); // 实际上就是获得buf里面的第一个字节
 
-					if (c == 'w')
+					if (c == 'w') // 消息类型
 					{
 						XLogRecPtr	start_lsn;
 						XLogRecPtr	end_lsn;
@@ -3602,7 +3602,7 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 
 						apply_dispatch(&s);
 					}
-					else if (c == 'k')
+					else if (c == 'k') // w和k有什么区别？
 					{
 						XLogRecPtr	end_lsn;
 						TimestampTz timestamp;
@@ -3623,7 +3623,7 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 					MemoryContextReset(ApplyMessageContext);
 				}
 
-				len = walrcv_receive(LogRepWorkerWalRcvConn, &buf, &fd);
+				len = walrcv_receive(LogRepWorkerWalRcvConn, &buf, &fd); // 继续读下一个数据包
 			}
 		}
 
@@ -4549,7 +4549,7 @@ ApplyWorkerMain(Datum main_arg)
 		MyLogicalRepWorker->reply_time = GetCurrentTimestamp();
 
 	/* Load the libpq-specific functions */
-	load_file("libpqwalreceiver", false);
+	load_file("libpqwalreceiver", false); // 加载网络链接库，会设置好各种回调函数
 
 	InitializeApplyWorker();
 
@@ -4559,7 +4559,7 @@ ApplyWorkerMain(Datum main_arg)
 	elog(DEBUG1, "connecting to publisher using connection string \"%s\"",
 		 MySubscription->conninfo);
 
-	if (am_tablesync_worker())
+	if (am_tablesync_worker()) // 是表同步进程，每张表一个同步进程
 	{
 		start_table_sync(&origin_startpos, &myslotname);
 
@@ -4569,7 +4569,7 @@ ApplyWorkerMain(Datum main_arg)
 										   sizeof(originname));
 		set_apply_error_context_origin(originname);
 	}
-	else
+	else // 是apply worker进程
 	{
 		/* This is the leader apply worker */
 		RepOriginId originid;

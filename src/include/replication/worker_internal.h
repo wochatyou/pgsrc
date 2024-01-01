@@ -308,7 +308,7 @@ extern void pa_xact_finish(ParallelApplyWorkerInfo *winfo,
 #define isParallelApplyWorker(worker) ((worker)->leader_pid != InvalidPid)
 
 static inline bool
-am_tablesync_worker(void)
+am_tablesync_worker(void) // 表同步进程对应一张表，根本这个来判断是表同步进程，还是apply worker进程
 {
 	return OidIsValid(MyLogicalRepWorker->relid);
 }

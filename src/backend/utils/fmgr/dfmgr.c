@@ -140,7 +140,7 @@ load_external_function(const char *filename, const char *funcname,
  * When 'restricted' is true, only libraries in the presumed-secure
  * directory $libdir/plugins may be referenced.
  */
-void
+void // 加载动态库
 load_file(const char *filename, bool restricted)
 {
 	char	   *fullname;
@@ -284,7 +284,7 @@ internal_load_library(const char *libname)
 		/*
 		 * If the library has a _PG_init() function, call it.
 		 */
-		PG_init = (PG_init_t) dlsym(file_scanner->handle, "_PG_init");
+		PG_init = (PG_init_t) dlsym(file_scanner->handle, "_PG_init"); // 如果这个动态库中有_PG_init函数，就自动执行这个函数
 		if (PG_init)
 			(*PG_init) ();
 
