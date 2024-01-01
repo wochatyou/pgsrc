@@ -452,7 +452,7 @@ pq_getmsgint(StringInfo msg, int b)
  * hit on machines where int64 isn't efficient.
  * --------------------------------
  */
-int64
+int64 // 读8个字节
 pq_getmsgint64(StringInfo msg)
 {
 	uint64		n64;
@@ -527,7 +527,7 @@ pq_getmsgbytes(StringInfo msg, int datalen)
  *		Same as above, except data is copied to caller's buffer.
  * --------------------------------
  */
-void // 读取指定长度的数据，1,2,4字节
+void // 读取指定长度的数据
 pq_copymsgbytes(StringInfo msg, char *buf, int datalen)
 {
 	if (datalen < 0 || datalen > (msg->len - msg->cursor))

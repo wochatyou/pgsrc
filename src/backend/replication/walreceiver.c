@@ -453,7 +453,7 @@ WalReceiverMain(void)
 				 * Exit walreceiver if we're not in recovery. This should not
 				 * happen, but cross-check the status here.
 				 */
-				if (!RecoveryInProgress())
+				if (!RecoveryInProgress()) // 判断数据库是否还处于恢复状态。只有处于恢复状态，walreceiver的工作才有意义
 					ereport(FATAL,
 							(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 							 errmsg("cannot continue WAL streaming, recovery has already ended")));
@@ -473,8 +473,8 @@ WalReceiverMain(void)
 				}
 
 				/* See if we can read data immediately */
-				len = walrcv_receive(wrconn, &buf, &wait_fd);
-				if (len != 0)
+				len = walrcv_receive(wrconn, &buf, &wait_fd); // 物理复制和逻辑复制都使用这个函数从主库获得数据
+				if (len != 0) // 拿到了数据了
 				{
 					/*
 					 * Process the received data, and any subsequent data we
@@ -518,7 +518,7 @@ WalReceiverMain(void)
 					 * let the startup process and primary server know about
 					 * them.
 					 */
-					XLogWalRcvFlush(false, startpointTLI);
+					XLogWalRcvFlush(false, startpointTLI); // walreceiver进程把WAL记录写入磁盘。它和startup之间的通讯是通过磁盘进行的。
 				}
 
 				/* Check if we need to exit the streaming loop. */
@@ -849,7 +849,7 @@ XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 
 	switch (type)
 	{
-		case 'w':				/* WAL records */
+		case 'w':				/* WAL records */ // w是真正的数据包
 			{
 				/* copy message to StringInfo */
 				hdrlen = sizeof(int64) + sizeof(int64) + sizeof(int64);
@@ -870,7 +870,7 @@ XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 				XLogWalRcvWrite(buf, len, dataStart, tli);
 				break;
 			}
-		case 'k':				/* Keepalive */
+		case 'k':				/* Keepalive */   // k表示keepalive，心跳功能
 			{
 				/* copy message to StringInfo */
 				hdrlen = sizeof(int64) + sizeof(int64) + sizeof(char);

@@ -2404,7 +2404,7 @@ apply_handle_insert(StringInfo s)
 	begin_replication_step();
 
 	relid = logicalrep_read_insert(s, &newtup); // relid就是表的Oid，我们知道这条记录要插入哪张表
-	rel = logicalrep_rel_open(relid, RowExclusiveLock);
+	rel = logicalrep_rel_open(relid, RowExclusiveLock); // 以独占的方式打开表？
 	if (!should_apply_changes_for_rel(rel))
 	{
 		/*
@@ -3582,7 +3582,7 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 
 					c = pq_getmsgbyte(&s); // 实际上就是获得buf里面的第一个字节
 
-					if (c == 'w') // 消息类型
+					if (c == 'w') // 消息类型，这是真正包含数据的消息包
 					{
 						XLogRecPtr	start_lsn;
 						XLogRecPtr	end_lsn;
@@ -3602,17 +3602,17 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 
 						apply_dispatch(&s);
 					}
-					else if (c == 'k') // w和k有什么区别？
+					else if (c == 'k') // k表示keepalive，心跳协议
 					{
 						XLogRecPtr	end_lsn;
 						TimestampTz timestamp;
 						bool		reply_requested;
 
-						end_lsn = pq_getmsgint64(&s);
-						timestamp = pq_getmsgint64(&s);
-						reply_requested = pq_getmsgbyte(&s);
+						end_lsn = pq_getmsgint64(&s); // 读8个字节的LSN，
+						timestamp = pq_getmsgint64(&s); // 读8个字节的时间戳
+						reply_requested = pq_getmsgbyte(&s); // 读一个字节
 
-						if (last_received < end_lsn)
+						if (last_received < end_lsn) // 如果我本次收到的LSN大于我目前已经收到的LSN，就往后推进
 							last_received = end_lsn;
 
 						send_feedback(last_received, reply_requested, false);
@@ -3754,7 +3754,7 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
  * 'recvpos' is the latest LSN we've received data to, force is set if we need
  * to send a response to avoid timeouts.
  */
-static void
+static void // 给对方发送一个确认消息
 send_feedback(XLogRecPtr recvpos, bool force, bool requestReply)
 {
 	static StringInfo reply_message = NULL;
@@ -3816,7 +3816,7 @@ send_feedback(XLogRecPtr recvpos, bool force, bool requestReply)
 	else
 		resetStringInfo(reply_message);
 
-	pq_sendbyte(reply_message, 'r');
+	pq_sendbyte(reply_message, 'r'); // 回复消息的第一个字节是r
 	pq_sendint64(reply_message, recvpos);	/* write */
 	pq_sendint64(reply_message, flushpos);	/* flush */
 	pq_sendint64(reply_message, writepos);	/* apply */
@@ -3830,7 +3830,7 @@ send_feedback(XLogRecPtr recvpos, bool force, bool requestReply)
 		 LSN_FORMAT_ARGS(flushpos));
 
 	walrcv_send(LogRepWorkerWalRcvConn,
-				reply_message->data, reply_message->len);
+				reply_message->data, reply_message->len); // 给主库发送消息
 
 	if (recvpos > last_recvpos)
 		last_recvpos = recvpos;

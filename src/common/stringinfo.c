@@ -37,7 +37,7 @@
  *
  * Create an empty 'StringInfoData' & return a pointer to it.
  */
-StringInfo
+StringInfo // 在当前内存池中分配一个StringInfo的数据结构
 makeStringInfo(void)
 {
 	StringInfo	res;
@@ -60,7 +60,7 @@ initStringInfo(StringInfo str)
 {
 	int			size = 1024;	/* initial default buffer size */
 
-	str->data = (char *) palloc(size);
+	str->data = (char *) palloc(size); // 初始化是先分配1KB的缓冲区
 	str->maxlen = size;
 	resetStringInfo(str);
 }
@@ -71,7 +71,7 @@ initStringInfo(StringInfo str)
  * Reset the StringInfo: the data buffer remains valid, but its
  * previous content, if any, is cleared.
  */
-void
+void // 把两个位置信息变成0
 resetStringInfo(StringInfo str)
 {
 	str->data[0] = '\0';
