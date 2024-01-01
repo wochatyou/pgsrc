@@ -48,7 +48,7 @@ static XidStatus TransactionLogFetch(TransactionId transactionId);
 /*
  * TransactionLogFetch --- fetch commit status of specified transaction id
  */
-static XidStatus
+static XidStatus // 获取指定事务的提交状态， XidStatus就是int
 TransactionLogFetch(TransactionId transactionId)
 {
 	XidStatus	xidstatus;
@@ -58,13 +58,13 @@ TransactionLogFetch(TransactionId transactionId)
 	 * Before going to the commit log manager, check our single item cache to
 	 * see if we didn't just check the transaction status a moment ago.
 	 */
-	if (TransactionIdEquals(transactionId, cachedFetchXid))
+	if (TransactionIdEquals(transactionId, cachedFetchXid)) // 缓存cachedFetchXid/cachedFetchXidStatus，加速查找的方法
 		return cachedFetchXidStatus;
 
 	/*
 	 * Also, check to see if the transaction ID is a permanent one.
 	 */
-	if (!TransactionIdIsNormal(transactionId))
+	if (!TransactionIdIsNormal(transactionId)) // 如果不是正常事务号，就是1和2两个
 	{
 		if (TransactionIdEquals(transactionId, BootstrapTransactionId))
 			return TRANSACTION_STATUS_COMMITTED;
@@ -85,7 +85,7 @@ TransactionLogFetch(TransactionId transactionId)
 	if (xidstatus != TRANSACTION_STATUS_IN_PROGRESS &&
 		xidstatus != TRANSACTION_STATUS_SUB_COMMITTED)
 	{
-		cachedFetchXid = transactionId;
+		cachedFetchXid = transactionId; //缓存一下，有3个变量保存状态
 		cachedFetchXidStatus = xidstatus;
 		cachedCommitLSN = xidlsn;
 	}

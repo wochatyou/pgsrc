@@ -492,7 +492,7 @@ SimpleLruReadPage(SlruCtl ctl, int pageno, bool write_ok,
  * Control lock must NOT be held at entry, but will be held at exit.
  * It is unspecified whether the lock will be shared or exclusive.
  */
-int
+int // 根据事务号，页面编号查找
 SimpleLruReadPage_ReadOnly(SlruCtl ctl, int pageno, TransactionId xid)
 {
 	SlruShared	shared = ctl->shared;

@@ -39,7 +39,7 @@
  * ----------------
  */
 #define TransactionIdIsValid(xid)		((xid) != InvalidTransactionId) // 一个事务号非零即为有效
-#define TransactionIdIsNormal(xid)		((xid) >= FirstNormalTransactionId)
+#define TransactionIdIsNormal(xid)		((xid) >= FirstNormalTransactionId) // 大于等于3的事务号是正常事务号
 #define TransactionIdEquals(id1, id2)	((id1) == (id2))
 #define TransactionIdStore(xid, dest)	(*(dest) = (xid))
 #define StoreInvalidTransactionId(dest) (*(dest) = InvalidTransactionId)

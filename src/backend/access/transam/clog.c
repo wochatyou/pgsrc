@@ -639,7 +639,7 @@ TransactionIdGetStatus(TransactionId xid, XLogRecPtr *lsn)
 {
 	int			pageno = TransactionIdToPage(xid);
 	int			byteno = TransactionIdToByte(xid);
-	int			bshift = TransactionIdToBIndex(xid) * CLOG_BITS_PER_XACT;
+	int			bshift = TransactionIdToBIndex(xid) * CLOG_BITS_PER_XACT; //这三个变量定位这个事务在CLOG页面上的位置，哪个页面？哪个字节？字节内的偏移量
 	int			slotno;
 	int			lsnindex;
 	char	   *byteptr;
@@ -647,7 +647,7 @@ TransactionIdGetStatus(TransactionId xid, XLogRecPtr *lsn)
 
 	/* lock is acquired by SimpleLruReadPage_ReadOnly */
 
-	slotno = SimpleLruReadPage_ReadOnly(XactCtl, pageno, xid);
+	slotno = SimpleLruReadPage_ReadOnly(XactCtl, pageno, xid); //就是在页面中进行查找
 	byteptr = XactCtl->shared->page_buffer[slotno] + byteno;
 
 	status = (*byteptr >> bshift) & CLOG_XACT_BITMASK;
