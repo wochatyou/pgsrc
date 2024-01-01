@@ -58,9 +58,9 @@
 
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
 
-ProcessingMode Mode = InitProcessing;
+ProcessingMode Mode = InitProcessing; // 子进程的模式
 
-BackendType MyBackendType;
+BackendType MyBackendType; // 我这个子进程的类型
 
 /* List of lock files to be removed at proc exit */
 static List *lock_files = NIL;

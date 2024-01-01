@@ -319,7 +319,7 @@ IsPostmasterChildWalSender(int slot)
  * MarkPostmasterChildActive - mark a postmaster child as about to begin
  * actively using shared memory.  This is called in the child process.
  */
-void
+void // 子进程在共享内存PMSignalState标记自己处于活动状态
 MarkPostmasterChildActive(void)
 {
 	int			slot = MyPMChildSlot;

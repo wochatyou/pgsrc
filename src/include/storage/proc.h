@@ -164,6 +164,7 @@ typedef enum
  *
  * See PROC_HDR for details.
  */
+// 每一个后台进程在共享内存中都有一个PGPROC数据结构
 struct PGPROC
 {
 	/* proc->links MUST BE FIRST IN STRUCT (see ProcSleep,ProcWakeup,etc) */
@@ -365,10 +366,10 @@ extern PGDLLIMPORT PGPROC *MyProc;
 typedef struct PROC_HDR
 {
 	/* Array of PGPROC structures (not including dummies for prepared txns) */
-	PGPROC	   *allProcs;
+	PGPROC	   *allProcs; // 这是一个数组
 
 	/* Array mirroring PGPROC.xid for each PGPROC currently in the procarray */
-	TransactionId *xids;
+	TransactionId *xids;  // 这也是一个数组， 和上面的数组一一对应
 
 	/*
 	 * Array mirroring PGPROC.subxidStatus for each PGPROC currently in the

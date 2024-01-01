@@ -323,7 +323,7 @@ extern void InitProcessLocalLatch(void);
 extern void SwitchToSharedLatch(void);
 extern void SwitchBackToLocalLatch(void);
 
-typedef enum BackendType
+typedef enum BackendType // 后台进程的类型
 {
 	B_INVALID = 0,
 	B_ARCHIVER,

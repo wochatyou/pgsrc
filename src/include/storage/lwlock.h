@@ -48,6 +48,7 @@ typedef struct LWLock
 #endif
 } LWLock;
 
+
 /*
  * In most cases, it's desirable to force each tranche of LWLocks to be aligned
  * on a cache line boundary and make the array stride a power of 2.  This saves

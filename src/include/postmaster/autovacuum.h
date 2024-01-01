@@ -51,7 +51,7 @@ extern PGDLLIMPORT int Log_autovacuum_min_duration;
 extern bool AutoVacuumingActive(void);
 extern bool IsAutoVacuumLauncherProcess(void);
 extern bool IsAutoVacuumWorkerProcess(void);
-
+// AutoVacuum进程分配启动进程和工作进程两种类型
 #define IsAnyAutoVacuumProcess() \
 	(IsAutoVacuumLauncherProcess() || IsAutoVacuumWorkerProcess())
 

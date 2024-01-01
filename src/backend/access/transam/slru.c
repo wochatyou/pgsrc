@@ -502,11 +502,11 @@ SimpleLruReadPage_ReadOnly(SlruCtl ctl, int pageno, TransactionId xid)
 	LWLockAcquire(shared->ControlLock, LW_SHARED);
 
 	/* See if page is already in a buffer */
-	for (slotno = 0; slotno < shared->num_slots; slotno++)
+	for (slotno = 0; slotno < shared->num_slots; slotno++) // 扫描这个数组，判断这个页面是否已经在内存中了
 	{
-		if (shared->page_number[slotno] == pageno &&
+		if (shared->page_number[slotno] == pageno && // 页号对上了
 			shared->page_status[slotno] != SLRU_PAGE_EMPTY &&
-			shared->page_status[slotno] != SLRU_PAGE_READ_IN_PROGRESS)
+			shared->page_status[slotno] != SLRU_PAGE_READ_IN_PROGRESS) // 三个逻辑判断条件
 		{
 			/* See comments for SlruRecentlyUsed macro */
 			SlruRecentlyUsed(shared, slotno);

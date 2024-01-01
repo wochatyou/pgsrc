@@ -310,7 +310,7 @@ extern void slist_check(const slist_head *head);
  * Initialize a doubly linked list.
  * Previous state will be thrown away without any cleanup.
  */
-static inline void
+static inline void // 初始化双向链表，指向它自己
 dlist_init(dlist_head *head)
 {
 	head->head.next = head->head.prev = &head->head;

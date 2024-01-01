@@ -153,7 +153,7 @@ ProcGlobalSemas(void)
  * not even in the EXEC_BACKEND case.  The ProcGlobal and AuxiliaryProcs
  * pointers must be propagated specially for EXEC_BACKEND operation.
  */
-void
+void // 在共享内存中申请了很多结构，并且初始化它们
 InitProcGlobal(void)
 {
 	PGPROC	   *procs;
@@ -164,12 +164,13 @@ InitProcGlobal(void)
 
 	/* Create the ProcGlobal shared structure */
 	ProcGlobal = (PROC_HDR *)
-		ShmemInitStruct("Proc Header", sizeof(PROC_HDR), &found);
+		ShmemInitStruct("Proc Header", sizeof(PROC_HDR), &found); // 在共享内存中分配一个PROC_HDR的数据结构
 	Assert(!found);
 
 	/*
 	 * Initialize the data structures.
 	 */
+	// 初始化的工作
 	ProcGlobal->spins_per_delay = DEFAULT_SPINS_PER_DELAY;
 	dlist_init(&ProcGlobal->freeProcs);
 	dlist_init(&ProcGlobal->autovacFreeProcs);
@@ -189,7 +190,7 @@ InitProcGlobal(void)
 	 * dedicated to exactly one of these purposes, and they do not move
 	 * between groups.
 	 */
-	procs = (PGPROC *) ShmemAlloc(TotalProcs * sizeof(PGPROC));
+	procs = (PGPROC *) ShmemAlloc(TotalProcs * sizeof(PGPROC)); // 分配一个PGPROC数组，个数由TotalProcs决定
 	MemSet(procs, 0, TotalProcs * sizeof(PGPROC));
 	ProcGlobal->allProcs = procs;
 	/* XXX allProcCount isn't really all of them; it excludes prepared xacts */
@@ -202,15 +203,16 @@ InitProcGlobal(void)
 	 * XXX: It might make sense to increase padding for these arrays, given
 	 * how hotly they are accessed.
 	 */
+	// 共计四个数组，一一对应
 	ProcGlobal->xids =
-		(TransactionId *) ShmemAlloc(TotalProcs * sizeof(*ProcGlobal->xids));
+		(TransactionId *) ShmemAlloc(TotalProcs * sizeof(*ProcGlobal->xids)); // 也是一个数组，和上面一一对应
 	MemSet(ProcGlobal->xids, 0, TotalProcs * sizeof(*ProcGlobal->xids));
 	ProcGlobal->subxidStates = (XidCacheStatus *) ShmemAlloc(TotalProcs * sizeof(*ProcGlobal->subxidStates));
 	MemSet(ProcGlobal->subxidStates, 0, TotalProcs * sizeof(*ProcGlobal->subxidStates));
 	ProcGlobal->statusFlags = (uint8 *) ShmemAlloc(TotalProcs * sizeof(*ProcGlobal->statusFlags));
 	MemSet(ProcGlobal->statusFlags, 0, TotalProcs * sizeof(*ProcGlobal->statusFlags));
 
-	for (i = 0; i < TotalProcs; i++)
+	for (i = 0; i < TotalProcs; i++) // 扫描数组
 	{
 		PGPROC	   *proc = &procs[i];
 
@@ -293,7 +295,7 @@ InitProcGlobal(void)
 /*
  * InitProcess -- initialize a per-process data structure for this backend
  */
-void
+void // 这个函数应该在子进程中调用，不应该是在主进程中调用，是在子进程启动开始调用
 InitProcess(void)
 {
 	dlist_head *procgloballist;
@@ -309,7 +311,7 @@ InitProcess(void)
 		elog(ERROR, "you already exist");
 
 	/* Decide which list should supply our PGPROC. */
-	if (IsAnyAutoVacuumProcess())
+	if (IsAnyAutoVacuumProcess()) // 如果是AutoVacuum进程，分两种类型
 		procgloballist = &ProcGlobal->autovacFreeProcs;
 	else if (IsBackgroundWorker)
 		procgloballist = &ProcGlobal->bgworkerFreeProcs;
@@ -366,7 +368,7 @@ InitProcess(void)
 	 * this; it probably should.)
 	 */
 	if (IsUnderPostmaster && !IsAutoVacuumLauncherProcess())
-		MarkPostmasterChildActive();
+		MarkPostmasterChildActive(); 
 
 	/*
 	 * Initialize all fields of MyProc, except for those previously

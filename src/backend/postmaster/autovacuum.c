@@ -444,9 +444,9 @@ AutoVacLauncherMain(int argc, char *argv[])
 {
 	sigjmp_buf	local_sigjmp_buf;
 
-	am_autovacuum_launcher = true;
+	am_autovacuum_launcher = true; // 记住我是AVL进程
 
-	MyBackendType = B_AUTOVAC_LAUNCHER;
+	MyBackendType = B_AUTOVAC_LAUNCHER; // 记住我的进程类型
 	init_ps_display(NULL);
 
 	ereport(DEBUG1,
@@ -3387,13 +3387,13 @@ autovac_init(void)
  *		Return whether this is either a launcher autovacuum process or a worker
  *		process.
  */
-bool
+bool // 由变量am_autovacuum_launcher记录自己是否是AVL进程
 IsAutoVacuumLauncherProcess(void)
 {
 	return am_autovacuum_launcher;
 }
 
-bool
+bool // 由变量记录am_autovacuum_worker是否是AVW进程
 IsAutoVacuumWorkerProcess(void)
 {
 	return am_autovacuum_worker;
