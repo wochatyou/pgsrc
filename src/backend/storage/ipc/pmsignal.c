@@ -140,13 +140,13 @@ PMSignalShmemSize(void)
 /*
  * PMSignalShmemInit - initialize during shared-memory creation
  */
-void
+void // 这个函数由主进程在CreateSharedMemoryAndSemaphores()调用，此时还没有任何子进程被创建。子进程自动获得PMSignalState的值，以后各个子进程就可以通过PMSignalState访问同一块共享内存
 PMSignalShmemInit(void)
 {
 	bool		found;
 
 	PMSignalState = (PMSignalData *)
-		ShmemInitStruct("PMSignalState", PMSignalShmemSize(), &found);
+		ShmemInitStruct("PMSignalState", PMSignalShmemSize(), &found); // 在共享内存中创建主进程接收信号的数据结构
 
 	if (!found)
 	{

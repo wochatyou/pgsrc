@@ -278,7 +278,7 @@ ConditionVariableSignal(ConditionVariable *cv)
  * at time of call, but processes that add themselves to the list mid-call
  * will typically not get awakened.
  */
-void
+void // 欢迎所有沉睡在某一个条件变量cv中的所有进程
 ConditionVariableBroadcast(ConditionVariable *cv)
 {
 	int			pgprocno = MyProc->pgprocno;

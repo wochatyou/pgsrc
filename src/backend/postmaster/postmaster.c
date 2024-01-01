@@ -2644,11 +2644,11 @@ ClosePostmasterPorts(bool am_syslogger)
  *
  * Called early in the postmaster and every backend.
  */
-void
+void // 记录本进程的进程号，启动时间，生成不同的随机数，逻辑比较简单
 InitProcessGlobals(void)
 {
-	MyProcPid = getpid();
-	MyStartTimestamp = GetCurrentTimestamp();
+	MyProcPid = getpid(); // 把本进程的进程号放在MyProcPid中
+	MyStartTimestamp = GetCurrentTimestamp(); // 记录本进程的启动时间
 	MyStartTime = timestamptz_to_time_t(MyStartTimestamp);
 
 	/*
@@ -2656,7 +2656,7 @@ InitProcessGlobals(void)
 	 * unpredictable, so if possible, use high-quality random bits for the
 	 * seed.  Otherwise, fall back to a seed based on timestamp and PID.
 	 */
-	if (unlikely(!pg_prng_strong_seed(&pg_global_prng_state)))
+	if (unlikely(!pg_prng_strong_seed(&pg_global_prng_state))) // 为每个进程生成不同的随机数
 	{
 		uint64		rseed;
 

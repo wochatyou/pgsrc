@@ -238,7 +238,7 @@ CreateSharedMemoryAndSemaphores(void)
 	/*
 	 * Set up xlog, clog, and buffers
 	 */
-	XLOGShmemInit();
+	XLOGShmemInit();  // 里面包括控制文件的信息
 	XLogPrefetchShmemInit();
 	XLogRecoveryShmemInit();
 	CLOGShmemInit();
@@ -275,14 +275,14 @@ CreateSharedMemoryAndSemaphores(void)
 	/*
 	 * Set up interprocess signaling mechanisms
 	 */
-	PMSignalShmemInit();
+	PMSignalShmemInit(); // 初始化主进程接收信号的数据结构
 	ProcSignalShmemInit();
 	CheckpointerShmemInit();
 	AutoVacuumShmemInit();
 	ReplicationSlotsShmemInit();
 	ReplicationOriginShmemInit();
 	WalSndShmemInit();
-	WalRcvShmemInit();
+	WalRcvShmemInit(); // 初始化walreceiver进程的共享内存
 	PgArchShmemInit();
 	ApplyLauncherShmemInit();
 

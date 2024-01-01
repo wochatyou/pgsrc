@@ -53,7 +53,7 @@ AuxProcType MyAuxProcType = NotAnAuxProcess;	/* declared in miscadmin.h */
  *
  *	 This code is here just because of historical reasons.
  */
-void
+void // 这个函数是主进程成功创建子进程后，在子进程内部执行的
 AuxiliaryProcessMain(AuxProcType auxtype)
 {
 	Assert(IsUnderPostmaster);

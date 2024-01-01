@@ -194,7 +194,7 @@ WalReceiverMain(void)
 	TimeLineID	startpointTLI;
 	TimeLineID	primaryTLI;
 	bool		first_stream;
-	WalRcvData *walrcv = WalRcv;
+	WalRcvData *walrcv = WalRcv; // 共享内存中的主要数据结构
 	TimestampTz now;
 	char	   *err;
 	char	   *sender_host = NULL;
@@ -214,7 +214,7 @@ WalReceiverMain(void)
 	 * waiting for us to start up, until it times out.
 	 */
 	SpinLockAcquire(&walrcv->mutex);
-	Assert(walrcv->pid == 0);
+	Assert(walrcv->pid == 0); // 现在是walreceiver启动阶段，共享内存中的pid肯定是0
 	switch (walrcv->walRcvState)
 	{
 		case WALRCV_STOPPING:

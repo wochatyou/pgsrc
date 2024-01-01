@@ -40,7 +40,7 @@ WalRcvData *WalRcv = NULL;
 #define WALRCV_STARTUP_TIMEOUT 10
 
 /* Report shared memory space needed by WalRcvShmemInit */
-Size
+Size // 就是WalRcvData结构的体积
 WalRcvShmemSize(void)
 {
 	Size		size = 0;
@@ -51,15 +51,15 @@ WalRcvShmemSize(void)
 }
 
 /* Allocate and initialize walreceiver-related shared memory */
-void
+void // 在共享内存中分配WalRcvData结构，并初始化它。这个函数是主进程在执行CreateSharedMemoryAndSemaphores()创建共享内存后调用的
 WalRcvShmemInit(void)
 {
 	bool		found;
 
-	WalRcv = (WalRcvData *)
+	WalRcv = (WalRcvData *) // 从共享内存中分配一块指定大小的内存，found为true表示已经存在了
 		ShmemInitStruct("Wal Receiver Ctl", WalRcvShmemSize(), &found);
 
-	if (!found)
+	if (!found) // 没有找到，所以第一次创建了共享内存。开始做一些初始化的工作
 	{
 		/* First time through, so initialize */
 		MemSet(WalRcv, 0, WalRcvShmemSize());
@@ -72,15 +72,15 @@ WalRcvShmemInit(void)
 }
 
 /* Is walreceiver running (or starting up)? */
-bool
+bool // 如果状态不是WALRCV_STOPPED，就返回true，否则返回false
 WalRcvRunning(void)
 {
 	WalRcvData *walrcv = WalRcv;
 	WalRcvState state;
 	pg_time_t	startTime;
 
-	SpinLockAcquire(&walrcv->mutex);
-
+	SpinLockAcquire(&walrcv->mutex); 
+	// 获取共享内存中的这两个变量的值
 	state = walrcv->walRcvState;
 	startTime = walrcv->startTime;
 
@@ -92,16 +92,16 @@ WalRcvRunning(void)
 	 * after all, it will see that it's not supposed to be running and die
 	 * without doing anything.
 	 */
-	if (state == WALRCV_STARTING)
+	if (state == WALRCV_STARTING) // 如果还是正在启动状态，就检查启动时间
 	{
-		pg_time_t	now = (pg_time_t) time(NULL);
+		pg_time_t	now = (pg_time_t) time(NULL); // 获取现在的时间
 
-		if ((now - startTime) > WALRCV_STARTUP_TIMEOUT)
+		if ((now - startTime) > WALRCV_STARTUP_TIMEOUT) // 和启动时间相减，如果超过了10秒，说明超时了
 		{
 			bool		stopped = false;
 
 			SpinLockAcquire(&walrcv->mutex);
-			if (walrcv->walRcvState == WALRCV_STARTING)
+			if (walrcv->walRcvState == WALRCV_STARTING) // 再次查询状态信息，如果还是WALRCV_STARTING，就设置为WALRCV_STOPPED
 			{
 				state = walrcv->walRcvState = WALRCV_STOPPED;
 				stopped = true;
@@ -123,7 +123,7 @@ WalRcvRunning(void)
  * Is walreceiver running and streaming (or at least attempting to connect,
  * or starting up)?
  */
-bool
+bool // 也会检测是否超时10秒
 WalRcvStreaming(void)
 {
 	WalRcvData *walrcv = WalRcv;
@@ -175,7 +175,7 @@ WalRcvStreaming(void)
  * Stop walreceiver (if running) and wait for it to die.
  * Executed by the Startup process.
  */
-void
+void // 这个函数由Startup进程执行，用来关闭walreceiver进程
 ShutdownWalRcv(void)
 {
 	WalRcvData *walrcv = WalRcv;
@@ -216,7 +216,7 @@ ShutdownWalRcv(void)
 	 * Signal walreceiver process if it was still running.
 	 */
 	if (walrcvpid != 0)
-		kill(walrcvpid, SIGTERM);
+		kill(walrcvpid, SIGTERM); // 向walreceiver进程发送SIGTERM信号
 
 	/*
 	 * Wait for walreceiver to acknowledge its death by setting state to
@@ -242,7 +242,7 @@ ShutdownWalRcv(void)
  * routine instead.  Hence, the addition of any new parameters should happen
  * through this code path.
  */
-void
+void // 这个函数是startup进程在进行恢复的时候调用的，它请求主进程派生walreceiver子进程
 RequestXLogStreaming(TimeLineID tli, XLogRecPtr recptr, const char *conninfo,
 					 const char *slotname, bool create_temp_slot)
 {
@@ -267,7 +267,7 @@ RequestXLogStreaming(TimeLineID tli, XLogRecPtr recptr, const char *conninfo,
 		   walrcv->walRcvState == WALRCV_WAITING);
 
 	if (conninfo != NULL)
-		strlcpy((char *) walrcv->conninfo, conninfo, MAXCONNINFO);
+		strlcpy((char *) walrcv->conninfo, conninfo, MAXCONNINFO); // 把primary_conninfo拷贝到共享内存中，walreceiver进程就利用这个参数和主库连接
 	else
 		walrcv->conninfo[0] = '\0';
 
@@ -277,7 +277,7 @@ RequestXLogStreaming(TimeLineID tli, XLogRecPtr recptr, const char *conninfo,
 	 * create_temp_slot to determine whether this WAL receiver should create a
 	 * temporary slot by itself and use it, or not.
 	 */
-	if (slotname != NULL && slotname[0] != '\0')
+	if (slotname != NULL && slotname[0] != '\0') // 来自参数primary_slot_name
 	{
 		strlcpy((char *) walrcv->slotname, slotname, NAMEDATALEN);
 		walrcv->is_temp_slot = false;
@@ -291,7 +291,7 @@ RequestXLogStreaming(TimeLineID tli, XLogRecPtr recptr, const char *conninfo,
 	if (walrcv->walRcvState == WALRCV_STOPPED)
 	{
 		launch = true;
-		walrcv->walRcvState = WALRCV_STARTING;
+		walrcv->walRcvState = WALRCV_STARTING; // 要启动walreceiver进程了
 	}
 	else
 		walrcv->walRcvState = WALRCV_RESTARTING;
@@ -315,7 +315,7 @@ RequestXLogStreaming(TimeLineID tli, XLogRecPtr recptr, const char *conninfo,
 	SpinLockRelease(&walrcv->mutex);
 
 	if (launch)
-		SendPostmasterSignal(PMSIGNAL_START_WALRECEIVER);
+		SendPostmasterSignal(PMSIGNAL_START_WALRECEIVER); // 向主进程发出请求，请求启动walreceiver进程
 	else if (latch)
 		SetLatch(latch);
 }
@@ -328,7 +328,7 @@ RequestXLogStreaming(TimeLineID tli, XLogRecPtr recptr, const char *conninfo,
  * interested in that value may pass NULL for latestChunkStart. Same for
  * receiveTLI.
  */
-XLogRecPtr
+XLogRecPtr // 逻辑很简单，就是直接读取共享内存WalRcv中的信息
 GetWalRcvFlushRecPtr(XLogRecPtr *latestChunkStart, TimeLineID *receiveTLI)
 {
 	WalRcvData *walrcv = WalRcv;
@@ -354,7 +354,7 @@ GetWalRcvWriteRecPtr(void)
 {
 	WalRcvData *walrcv = WalRcv;
 
-	return pg_atomic_read_u64(&walrcv->writtenUpto);
+	return pg_atomic_read_u64(&walrcv->writtenUpto); // 因为64位读取在所有平台上都不是原子性的，这个函数就是原子性读取64-bit
 }
 
 /*

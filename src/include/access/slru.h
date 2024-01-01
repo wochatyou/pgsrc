@@ -101,7 +101,8 @@ typedef struct SlruSharedData
 	int			slru_stats_idx;
 } SlruSharedData;
 
-typedef SlruSharedData *SlruShared;
+typedef SlruSharedData *
+SlruShared;
 
 /*
  * SlruCtlData is an unshared structure that points to the active information

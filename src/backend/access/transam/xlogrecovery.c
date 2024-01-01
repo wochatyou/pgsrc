@@ -3698,7 +3698,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 				lastSourceFailed = true;
 				break;
 
-			case XLOG_FROM_STREAM:
+			case XLOG_FROM_STREAM: /// 要向主库索取WAL记录了
 				{
 					bool		havedata;
 
@@ -3766,6 +3766,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 						}
 						curFileTLI = tli;
 						SetInstallXLogFileSegmentActive();
+						// 这个函数会要求主进程启动walreceiver子进程
 						RequestXLogStreaming(tli, ptr, PrimaryConnInfo,
 											 PrimarySlotName,
 											 wal_receiver_create_temp_slot);

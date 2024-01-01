@@ -401,7 +401,7 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 
 	LWLockAcquire(ShmemIndexLock, LW_EXCLUSIVE); // ShmemIndexLock是控制访问索引表的轻量级锁
 
-	if (!ShmemIndex)
+	if (!ShmemIndex) // 主哈希表还没有创建
 	{
 		PGShmemHeader *shmemseghdr = ShmemSegHdr;
 
@@ -433,12 +433,12 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 		LWLockRelease(ShmemIndexLock);
 		return structPtr;
 	}
-	// 此时主哈希表已经创建，现在是在里面搜索条目
+	// 此时主哈希表已经创建，现在是在里面搜索条目， HASH_ENTER_NULL表示如果没有找到，就插入一条记录。如果返回NULL，表示内存溢出了(OOM:out of memory)
 	/* look it up in the shmem index */
 	result = (ShmemIndexEnt *)
 		hash_search(ShmemIndex, name, HASH_ENTER_NULL, foundPtr); // 如果没有找到就创建这个条目
 
-	if (!result)
+	if (!result) // 这种情况是内存溢出OOM，直接报错退出
 	{
 		LWLockRelease(ShmemIndexLock);
 		ereport(ERROR,
@@ -481,9 +481,10 @@ ShmemInitStruct(const char *name, Size size, bool *foundPtr)
 							" \"%s\" (%zu bytes requested)",
 							name, size)));
 		}
+		// result指向了主哈希表中的条目，所以要更新里面的信息
 		result->size = size;
 		result->allocated_size = allocated_size;
-		result->location = structPtr;
+		result->location = structPtr; 
 	}
 
 	LWLockRelease(ShmemIndexLock);
