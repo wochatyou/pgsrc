@@ -1012,21 +1012,21 @@ pq_peekbyte(void)
  * 0 if no data was available, or EOF if trouble.
  * --------------------------------
  */
-int
+int // 尝试从网络连接处获得第一个字节
 pq_getbyte_if_available(unsigned char *c)
 {
 	int			r;
 
 	Assert(PqCommReadingMsg);
 
-	if (PqRecvPointer < PqRecvLength)
+	if (PqRecvPointer < PqRecvLength) // 如果读取的当前位置没有到最后
 	{
-		*c = PqRecvBuffer[PqRecvPointer++];
+		*c = PqRecvBuffer[PqRecvPointer++]; // PqRecvBuffer是一个缓冲区，包含了来自客户端的数据
 		return 1;
 	}
 
 	/* Put the socket into non-blocking mode */
-	socket_set_nonblocking(true);
+	socket_set_nonblocking(true); // 把socket变成非阻塞模式
 
 	r = secure_read(MyProcPort, c, 1);
 	if (r < 0)
@@ -1142,7 +1142,7 @@ pq_buffer_has_data(void)
  *		This must be called before any of the pq_get* functions.
  * --------------------------------
  */
-void
+void // 在任何pq_get*函数调用之前，设置一下状态，防止再次读取
 pq_startmsgread(void)
 {
 	/*
@@ -1166,7 +1166,7 @@ pq_startmsgread(void)
  *		pq_getmessage() does this implicitly.
  * --------------------------------
  */
-void
+void // 和上面的函数成对出现
 pq_endmsgread(void)
 {
 	Assert(PqCommReadingMsg);

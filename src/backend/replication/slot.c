@@ -404,7 +404,7 @@ SearchNamedReplicationSlot(const char *name, bool need_lock)
  * This is mainly useful to have an efficient key for storing replication slot
  * stats.
  */
-int
+int // 因为复制槽是共享内存中的一个数组，减去开始的位置，就是这个slot在这个数组中的下标
 ReplicationSlotIndex(ReplicationSlot *slot)
 {
 	Assert(slot >= ReplicationSlotCtl->replication_slots &&
@@ -420,8 +420,8 @@ ReplicationSlotIndex(ReplicationSlot *slot)
  * This likely is only useful for pgstat_replslot.c during shutdown, in other
  * cases there are obvious TOCTOU issues.
  */
-bool
-ReplicationSlotName(int index, Name name)
+bool // 获取index的slot的复制槽的名字
+ReplicationSlotName(int index, Name name) // Name实际上就是一个64字节的字符串
 {
 	ReplicationSlot *slot;
 	bool		found;
@@ -435,7 +435,7 @@ ReplicationSlotName(int index, Name name)
 	LWLockAcquire(ReplicationSlotControlLock, LW_SHARED);
 	found = slot->in_use;
 	if (slot->in_use)
-		namestrcpy(name, NameStr(slot->data.name));
+		namestrcpy(name, NameStr(slot->data.name)); // 把后者拷贝给前者
 	LWLockRelease(ReplicationSlotControlLock);
 
 	return found;
@@ -568,7 +568,7 @@ ReplicationSlotRelease(void)
 	 * acquired.
 	 */
 	if (!TransactionIdIsValid(slot->data.xmin) &&
-		TransactionIdIsValid(slot->effective_xmin))
+		TransactionIdIsValid(slot->effective_xmin)) // 如果effective_xmin有效而xmin无效
 	{
 		SpinLockAcquire(&slot->mutex);
 		slot->effective_xmin = InvalidTransactionId;
@@ -850,7 +850,7 @@ ReplicationSlotsComputeRequiredXmin(bool already_locked)
 		TransactionId effective_catalog_xmin;
 		bool		invalidated;
 
-		if (!s->in_use)
+		if (!s->in_use) // 如果是不活跃的复制槽，就跳过
 			continue;
 
 		SpinLockAcquire(&s->mutex);

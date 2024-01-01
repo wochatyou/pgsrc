@@ -71,7 +71,7 @@ initStringInfo(StringInfo str)
  * Reset the StringInfo: the data buffer remains valid, but its
  * previous content, if any, is cleared.
  */
-void // 把两个位置信息变成0
+void // 把两个位置信息变成0，重置，以后就是从零开始读取
 resetStringInfo(StringInfo str)
 {
 	str->data[0] = '\0';

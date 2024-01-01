@@ -1896,7 +1896,7 @@ ProcessRepliesIfAny(void)
 	int			r;
 	bool		received = false;
 
-	last_processing = GetCurrentTimestamp();
+	last_processing = GetCurrentTimestamp(); //获取当前时间
 
 	/*
 	 * If we already received a CopyDone from the frontend, any subsequent
@@ -1906,7 +1906,7 @@ ProcessRepliesIfAny(void)
 	while (!streamingDoneReceiving)
 	{
 		pq_startmsgread();
-		r = pq_getbyte_if_available(&firstchar);
+		r = pq_getbyte_if_available(&firstchar); // 尝试获得来自客户的第一个字节
 		if (r < 0)
 		{
 			/* unexpected error or EOF */
@@ -1942,7 +1942,7 @@ ProcessRepliesIfAny(void)
 		}
 
 		/* Read the message contents */
-		resetStringInfo(&reply_message);
+		resetStringInfo(&reply_message); // 把读取位置归零，从第一个字节开始读取
 		if (pq_getmessage(&reply_message, maxmsglen))
 		{
 			ereport(COMMERROR,
@@ -1991,9 +1991,9 @@ ProcessRepliesIfAny(void)
 	/*
 	 * Save the last reply timestamp if we've received at least one reply.
 	 */
-	if (received)
+	if (received) // 如果我们收到了至少一个来自备库的回复，就更新一下时间记录last_reply_timestamp
 	{
-		last_reply_timestamp = last_processing;
+		last_reply_timestamp = last_processing; 
 		waiting_for_ping_response = false;
 	}
 }
@@ -2009,11 +2009,11 @@ ProcessStandbyMessage(void)
 	/*
 	 * Check message type from the first byte.
 	 */
-	msgtype = pq_getmsgbyte(&reply_message);
+	msgtype = pq_getmsgbyte(&reply_message); // 从备库得到的消息包，取第一个字节
 
 	switch (msgtype)
 	{
-		case 'r':
+		case 'r': // 如果是r表示replay
 			ProcessStandbyReplyMessage();
 			break;
 
@@ -2040,7 +2040,7 @@ PhysicalConfirmReceivedLocation(XLogRecPtr lsn)
 
 	Assert(lsn != InvalidXLogRecPtr);
 	SpinLockAcquire(&slot->mutex);
-	if (slot->data.restart_lsn != lsn)
+	if (slot->data.restart_lsn != lsn) // restart_lsn里面保存着备库确认已经收到的LSN
 	{
 		changed = true;
 		slot->data.restart_lsn = lsn;
@@ -2050,7 +2050,7 @@ PhysicalConfirmReceivedLocation(XLogRecPtr lsn)
 	if (changed)
 	{
 		ReplicationSlotMarkDirty();
-		ReplicationSlotsComputeRequiredLSN();
+		ReplicationSlotsComputeRequiredLSN(); //更新一下要保留的最小的WAL记录，用于删除WAL文件使用
 	}
 
 	/*
@@ -2064,7 +2064,7 @@ PhysicalConfirmReceivedLocation(XLogRecPtr lsn)
 /*
  * Regular reply from standby advising of WAL locations on standby server.
  */
-static void
+static void // 处理来自备库的回复消息
 ProcessStandbyReplyMessage(void)
 {
 	XLogRecPtr	writePtr,
@@ -2444,7 +2444,7 @@ WalSndCheckTimeOut(void)
 }
 
 /* Main loop of walsender process that streams the WAL over Copy messages. */
-static void
+static void // walsender的主循环
 WalSndLoop(WalSndSendDataCallback send_data)
 {
 	/*
@@ -2466,7 +2466,7 @@ WalSndLoop(WalSndSendDataCallback send_data)
 		CHECK_FOR_INTERRUPTS();
 
 		/* Process any requests or signals received recently */
-		if (ConfigReloadPending)
+		if (ConfigReloadPending) // pg_reload_conf()重新加载配置参数
 		{
 			ConfigReloadPending = false;
 			ProcessConfigFile(PGC_SIGHUP);
@@ -2474,7 +2474,7 @@ WalSndLoop(WalSndSendDataCallback send_data)
 		}
 
 		/* Check for input from the client */
-		ProcessRepliesIfAny();
+		ProcessRepliesIfAny(); // 处理任何来自备库/客户端的消息
 
 		/*
 		 * If we have received CopyDone from the client, sent CopyDone
