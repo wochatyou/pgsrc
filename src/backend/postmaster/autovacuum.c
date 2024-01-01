@@ -455,7 +455,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 	if (PostAuthDelay)
 		pg_usleep(PostAuthDelay * 1000000L);
 
-	SetProcessingMode(InitProcessing);
+	SetProcessingMode(InitProcessing); // 就是把这个状态赋给全局变量 ProcessingMode Mode = InitProcessing;
 
 	/*
 	 * Set up signal handlers.  We operate on databases much like a regular

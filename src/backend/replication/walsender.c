@@ -414,7 +414,7 @@ IdentifySystem(void)
 	snprintf(sysid, sizeof(sysid), UINT64_FORMAT,
 			 GetSystemIdentifier()); // 系统标识符是从控制文件中获取的
 
-	am_cascading_walsender = RecoveryInProgress();
+	am_cascading_walsender = RecoveryInProgress(); // 判断是否是级联
 	if (am_cascading_walsender)
 		logptr = GetStandbyFlushRecPtr(&currTLI);
 	else

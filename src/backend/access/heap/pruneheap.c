@@ -261,7 +261,7 @@ heap_page_prune_opt(Relation relation, Buffer buffer)
  *
  * Returns the number of tuples deleted from the page during this call.
  */
-int
+int // 对编号为buffer的数据页进行修剪和修复空间碎片化的问题
 heap_page_prune(Relation relation, Buffer buffer,
 				GlobalVisState *vistest,
 				TransactionId old_snap_xmin,

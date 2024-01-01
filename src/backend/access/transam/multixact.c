@@ -106,13 +106,13 @@
  */
 
 /* We need four bytes per offset */
-#define MULTIXACT_OFFSETS_PER_PAGE (BLCKSZ / sizeof(MultiXactOffset))
+#define MULTIXACT_OFFSETS_PER_PAGE (BLCKSZ / sizeof(MultiXactOffset)) // MultiXactOffset是4个字节，所以一个8KB可以保存2KB的元素
 
 #define MultiXactIdToOffsetPage(xid) \
-	((xid) / (MultiXactOffset) MULTIXACT_OFFSETS_PER_PAGE)
+	((xid) / (MultiXactOffset) MULTIXACT_OFFSETS_PER_PAGE) // 每一个页面可以保存2KB，根据一个事务号，除以2KB，就得到了页面号
 #define MultiXactIdToOffsetEntry(xid) \
-	((xid) % (MultiXactOffset) MULTIXACT_OFFSETS_PER_PAGE)
-#define MultiXactIdToOffsetSegment(xid) (MultiXactIdToOffsetPage(xid) / SLRU_PAGES_PER_SEGMENT)
+	((xid) % (MultiXactOffset) MULTIXACT_OFFSETS_PER_PAGE)  // 取余就得到了页内偏移量
+#define MultiXactIdToOffsetSegment(xid) (MultiXactIdToOffsetPage(xid) / SLRU_PAGES_PER_SEGMENT) // 每个segment也是32 X 8KB = 256KB
 
 /*
  * The situation for members is a bit more complex: we store one byte of

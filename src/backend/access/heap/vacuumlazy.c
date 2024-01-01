@@ -98,7 +98,7 @@
  * (Note that this is deliberately kept to a power-of-two, usually 2^19.)
  */
 #define FAILSAFE_EVERY_PAGES \
-	((BlockNumber) (((uint64) 4 * 1024 * 1024 * 1024) / BLCKSZ))
+	((BlockNumber) (((uint64) 4 * 1024 * 1024 * 1024) / BLCKSZ)) // 4GB / 8KB = 0.5M = 512KB个数据块
 
 /*
  * When a table has no indexes, vacuum the FSM after every 8GB, approximately
@@ -299,7 +299,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
  *		At entry, we have already established a transaction and opened
  *		and locked the relation.
  */
-void
+void // 在一个堆表上执行Vacuum
 heap_vacuum_rel(Relation rel, VacuumParams *params,
 				BufferAccessStrategy bstrategy)
 {
@@ -828,7 +828,7 @@ lazy_scan_heap(LVRelState *vacrel)
 				blkno,
 				next_unskippable_block,
 				next_fsm_block_to_vacuum = 0;
-	VacDeadItems *dead_items = vacrel->dead_items;
+	VacDeadItems *dead_items = vacrel->dead_items; // 这是占用内存最大的数组，里面包含了死亡记录的TD，6个字节
 	Buffer		vmbuffer = InvalidBuffer;
 	bool		next_unskippable_allvis,
 				skipping_current_range;
@@ -840,23 +840,23 @@ lazy_scan_heap(LVRelState *vacrel)
 	int64		initprog_val[3];
 
 	/* Report that we're scanning the heap, advertising total # of blocks */
-	initprog_val[0] = PROGRESS_VACUUM_PHASE_SCAN_HEAP;
-	initprog_val[1] = rel_pages;
-	initprog_val[2] = dead_items->max_items;
+	initprog_val[0] = PROGRESS_VACUUM_PHASE_SCAN_HEAP;  // 表示正在处于的阶段
+	initprog_val[1] = rel_pages; // 这张表有多少条记录
+	initprog_val[2] = dead_items->max_items;  // 共计多少死亡记录
 	pgstat_progress_update_multi_param(3, initprog_index, initprog_val);
 
 	/* Set up an initial range of skippable blocks using the visibility map */
 	next_unskippable_block = lazy_scan_skip(vacrel, &vmbuffer, 0,
 											&next_unskippable_allvis,
 											&skipping_current_range);
-	for (blkno = 0; blkno < rel_pages; blkno++)
+	for (blkno = 0; blkno < rel_pages; blkno++) // 从头开始扫描这张表的每个数据块
 	{
 		Buffer		buf;
 		Page		page;
 		bool		all_visible_according_to_vm;
 		LVPagePruneState prunestate;
 
-		if (blkno == next_unskippable_block)
+		if (blkno == next_unskippable_block) // 下一个不能跳过的数据块
 		{
 			/*
 			 * Can't skip this page safely.  Must scan the page.  But
@@ -866,7 +866,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			next_unskippable_block = lazy_scan_skip(vacrel, &vmbuffer,
 													blkno + 1,
 													&next_unskippable_allvis,
-													&skipping_current_range);
+													&skipping_current_range); // 继续计算下一个不能跳过的数据块
 
 			Assert(next_unskippable_block >= blkno + 1);
 		}
@@ -882,7 +882,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			all_visible_according_to_vm = true;
 		}
 
-		vacrel->scanned_pages++;
+		vacrel->scanned_pages++; // 这一个数据块要被处理，所以扫描块数要加一
 
 		/* Report as block scanned, update error traceback information */
 		pgstat_progress_update_param(PROGRESS_VACUUM_HEAP_BLKS_SCANNED, blkno);
@@ -900,7 +900,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * one-pass strategy, and the two-pass strategy with the index_cleanup
 		 * param set to 'off'.
 		 */
-		if (vacrel->scanned_pages % FAILSAFE_EVERY_PAGES == 0)
+		if (vacrel->scanned_pages % FAILSAFE_EVERY_PAGES == 0) // 每扫描512KB个数据块
 			lazy_check_wraparound_failsafe(vacrel);
 
 		/*
@@ -1531,7 +1531,7 @@ lazy_scan_new_or_empty(LVRelState *vacrel, Buffer buf, BlockNumber blkno,
  * line pointers, and that every remaining item with tuple storage is
  * considered as a candidate for freezing.
  */
-static void
+static void // 对指定数据块进行修剪和冻结
 lazy_scan_prune(LVRelState *vacrel,
 				Buffer buf,
 				BlockNumber blkno,
@@ -1555,7 +1555,7 @@ lazy_scan_prune(LVRelState *vacrel,
 	OffsetNumber deadoffsets[MaxHeapTuplesPerPage];
 	HeapTupleFreeze frozen[MaxHeapTuplesPerPage];
 
-	Assert(BufferGetBlockNumber(buf) == blkno);
+	Assert(BufferGetBlockNumber(buf) == blkno); //blkno指的是数据块的编号，buf是它在共享池中的数据页的编号
 
 	/*
 	 * maxoff might be reduced following line pointer array truncation in

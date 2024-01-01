@@ -3286,7 +3286,7 @@ CheckPointBuffers(int flags)
  *		Assumes that the buffer is valid and pinned, else the
  *		value may be obsolete immediately...
  */
-BlockNumber
+BlockNumber // 根据数据页的编号找到它对应的数据文件的块号，就是读tag中的内容，因为tag是五元组
 BufferGetBlockNumber(Buffer buffer)
 {
 	BufferDesc *bufHdr;
@@ -4476,15 +4476,15 @@ FlushOneBuffer(Buffer buffer)
 /*
  * ReleaseBuffer -- release the pin on a buffer
  */
-void
+void // unpin这个数据页
 ReleaseBuffer(Buffer buffer)
 {
-	if (!BufferIsValid(buffer))
+	if (!BufferIsValid(buffer)) // 如果数据页的页号无效，就报错退出
 		elog(ERROR, "bad buffer ID: %d", buffer);
 
-	if (BufferIsLocal(buffer))
+	if (BufferIsLocal(buffer)) // 如果是私有内存中的buffer
 		UnpinLocalBuffer(buffer);
-	else
+	else // 共享内存中的buffer
 		UnpinBuffer(GetBufferDescriptor(buffer - 1));
 }
 

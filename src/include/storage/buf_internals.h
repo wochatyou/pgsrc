@@ -251,7 +251,7 @@ typedef struct BufferDesc
 
 	int			wait_backend_pgprocno;	/* backend of pin-count waiter */
 	int			freeNext;		/* link in freelist chain */
-	LWLock		content_lock;	/* to lock access to buffer contents */
+	LWLock		content_lock;	/* to lock access to buffer contents */ // 每一个页面都有一个LWLock
 } BufferDesc;
 
 /*

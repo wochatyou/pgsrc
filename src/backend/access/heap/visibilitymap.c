@@ -136,7 +136,7 @@ static Buffer vm_extend(Relation rel, BlockNumber vm_nblocks);
  * Call visibilitymap_pin first to pin the right one. This function doesn't do
  * any I/O.  Returns true if any bits have been cleared and false otherwise.
  */
-bool
+bool // vmbuf就是VM的数据页。rel 这个参数没有用到，只用到了heapBlk，表示数据文件的数据块
 visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags)
 {
 	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
@@ -147,8 +147,8 @@ visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags
 	bool		cleared = false;
 
 	/* Must never clear all_visible bit while leaving all_frozen bit set */
-	Assert(flags & VISIBILITYMAP_VALID_BITS);
-	Assert(flags != VISIBILITYMAP_ALL_VISIBLE);
+	Assert(flags & VISIBILITYMAP_VALID_BITS); // 这个逻辑判断表示flags不能为0
+	Assert(flags != VISIBILITYMAP_ALL_VISIBLE); // flags不等于1，只有10,11两种可能性喽
 
 #ifdef TRACE_VISIBILITYMAP
 	elog(DEBUG1, "vm_clear %s %d", RelationGetRelationName(rel), heapBlk);
@@ -157,8 +157,8 @@ visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags
 	if (!BufferIsValid(vmbuf) || BufferGetBlockNumber(vmbuf) != mapBlock)
 		elog(ERROR, "wrong buffer passed to visibilitymap_clear");
 
-	LockBuffer(vmbuf, BUFFER_LOCK_EXCLUSIVE);
-	map = PageGetContents(BufferGetPage(vmbuf));
+	LockBuffer(vmbuf, BUFFER_LOCK_EXCLUSIVE); // 对这个页面进行加锁。VM的页面也是在shared buffer中，和数据文件的数据页在一个池子里
+	map = PageGetContents(BufferGetPage(vmbuf)); // 就是跳过页头的后面的内容
 
 	if (map[mapByte] & mask)
 	{
@@ -168,7 +168,7 @@ visibilitymap_clear(Relation rel, BlockNumber heapBlk, Buffer vmbuf, uint8 flags
 		cleared = true;
 	}
 
-	LockBuffer(vmbuf, BUFFER_LOCK_UNLOCK);
+	LockBuffer(vmbuf, BUFFER_LOCK_UNLOCK); // 对这个页面进行解锁
 
 	return cleared;
 }
@@ -195,7 +195,7 @@ visibilitymap_pin(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk); // 从数据文件的数据页计算对应的vm文件的数据页
 
 	/* Reuse the old pinned buffer if possible */
-	if (BufferIsValid(*vmbuf))
+	if (BufferIsValid(*vmbuf)) //*vmbuf不为0即为有效页面
 	{
 		if (BufferGetBlockNumber(*vmbuf) == mapBlock)
 			return;

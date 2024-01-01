@@ -158,7 +158,7 @@ SimpleLruShmemSize(int nslots, int nlsns)
 	Size		sz;
 
 	/* we assume nslots isn't so large as to risk overflow */
-	sz = MAXALIGN(sizeof(SlruSharedData));
+	sz = MAXALIGN(sizeof(SlruSharedData)); //总的尺寸和nslots和nlsns相关
 	sz += MAXALIGN(nslots * sizeof(char *));	/* page_buffer[] */
 	sz += MAXALIGN(nslots * sizeof(SlruPageStatus));	/* page_status[] */
 	sz += MAXALIGN(nslots * sizeof(bool));	/* page_dirty[] */
@@ -191,7 +191,7 @@ SimpleLruInit(SlruCtl ctl, const char *name, int nslots, int nlsns,
 {
 	SlruShared	shared;
 	bool		found;
-
+	// 初始化一块共享内存
 	shared = (SlruShared) ShmemInitStruct(name,
 										  SimpleLruShmemSize(nslots, nlsns),
 										  &found);
@@ -205,7 +205,7 @@ SimpleLruInit(SlruCtl ctl, const char *name, int nslots, int nlsns,
 
 		Assert(!found);
 
-		memset(shared, 0, sizeof(SlruSharedData));
+		memset(shared, 0, sizeof(SlruSharedData)); // 初始化这块共享内存
 
 		shared->ControlLock = ctllock;
 
@@ -1031,13 +1031,13 @@ SlruSelectLRUPage(SlruCtl ctl, int pageno)
 		int			best_invalid_page_number = 0;	/* keep compiler quiet */
 
 		/* See if page already has a buffer assigned */
-		for (slotno = 0; slotno < shared->num_slots; slotno++) // 就是在两个数组中扫描查找
+		for (slotno = 0; slotno < shared->num_slots; slotno++) // 就是在两个数组中扫描查找，找到这个页面就返回
 		{
 			if (shared->page_number[slotno] == pageno &&
 				shared->page_status[slotno] != SLRU_PAGE_EMPTY)
 				return slotno;
 		}
-
+		// 走到这里，说明没有找到页面。下面的逻辑是：如果找到空槽就返回，否则使用LRU算法确定驱逐页面
 		/*
 		 * If we find any EMPTY slot, just select that one. Else choose a
 		 * victim page to replace.  We normally take the least recently used
@@ -1071,7 +1071,7 @@ SlruSelectLRUPage(SlruCtl ctl, int pageno)
 			int			this_delta;
 			int			this_page_number;
 
-			if (shared->page_status[slotno] == SLRU_PAGE_EMPTY)
+			if (shared->page_status[slotno] == SLRU_PAGE_EMPTY) // 如果找到空槽就返回它
 				return slotno;
 			this_delta = cur_count - shared->page_lru_count[slotno];
 			if (this_delta < 0)
