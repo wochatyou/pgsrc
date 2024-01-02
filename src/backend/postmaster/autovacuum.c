@@ -640,7 +640,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 	rebuild_database_list(InvalidOid);
 
 	/* loop until shutdown request */
-	while (!ShutdownRequestPending)
+	while (!ShutdownRequestPending) // 如果没有数据库关闭的信号，就反复循环
 	{
 		struct timeval nap;
 		TimestampTz current_time = 0;
@@ -654,7 +654,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 		 */
 
 		launcher_determine_sleep(!dlist_is_empty(&AutoVacuumShmem->av_freeWorkers),
-								 false, &nap);
+								 false, &nap); // 确定休眠的时间。这个函数修改nap里面的时间值
 
 		/*
 		 * Wait until naptime expires or we get some type of signal (all the
@@ -672,7 +672,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 		/*
 		 * a worker finished, or postmaster signaled failure to start a worker
 		 */
-		if (got_SIGUSR2)
+		if (got_SIGUSR2) // 接收到了SIGUSR2的信号，就处理这个信号
 		{
 			got_SIGUSR2 = false;
 
@@ -681,11 +681,11 @@ AutoVacLauncherMain(int argc, char *argv[])
 			{
 				LWLockAcquire(AutovacuumLock, LW_EXCLUSIVE);
 				AutoVacuumShmem->av_signal[AutoVacRebalance] = false;
-				autovac_recalculate_workers_for_balance();
+				autovac_recalculate_workers_for_balance();  // 重新计算，这个回头分析
 				LWLockRelease(AutovacuumLock);
 			}
 
-			if (AutoVacuumShmem->av_signal[AutoVacForkFailed])
+			if (AutoVacuumShmem->av_signal[AutoVacForkFailed]) // AutoVacForkFailed是0，这是一个枚举类型
 			{
 				/*
 				 * If the postmaster failed to start a new worker, we sleep
@@ -698,8 +698,8 @@ AutoVacLauncherMain(int argc, char *argv[])
 				 * of a worker will continue to fail in the same way.
 				 */
 				AutoVacuumShmem->av_signal[AutoVacForkFailed] = false;
-				pg_usleep(1000000L);	/* 1s */
-				SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_WORKER);
+				pg_usleep(1000000L);	/* 1s */   // 休眠一秒钟
+				SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_WORKER); // 继续请求主进程启动AVW进程
 				continue;
 			}
 		}
@@ -736,7 +736,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 			 * before the worker removes the WorkerInfo from the
 			 * startingWorker pointer.
 			 */
-			waittime = Min(autovacuum_naptime, 60) * 1000;
+			waittime = Min(autovacuum_naptime, 60) * 1000; // 等待的时间最长是60秒
 			if (TimestampDifferenceExceeds(worker->wi_launchtime, current_time,
 										   waittime))
 			{
@@ -770,11 +770,11 @@ AutoVacLauncherMain(int argc, char *argv[])
 		LWLockRelease(AutovacuumLock);	/* either shared or exclusive */
 
 		/* if we can't do anything, just go back to sleep */
-		if (!can_launch)
+		if (!can_launch) // 如果不能启动一个AVW进程，就继续休眠
 			continue;
 
 		/* We're OK to start a new worker */
-
+		// 现在我们可以启动一个新的AVW进程了
 		if (dlist_is_empty(&DatabaseList))
 		{
 			/*
@@ -796,7 +796,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 			 */
 			avl_dbase  *avdb;
 
-			avdb = dlist_tail_element(avl_dbase, adl_node, &DatabaseList);
+			avdb = dlist_tail_element(avl_dbase, adl_node, &DatabaseList); // 从尾部获得一个数据库的信息，就对这个数据库进行vacuum
 
 			/*
 			 * launch a worker if next_worker is right now or it is in the
@@ -1150,7 +1150,7 @@ db_comparator(const void *a, const void *b) // 按照score来进行排序
  * or InvalidOid if no worker was actually started.
  */
 static Oid
-do_start_worker(void)
+do_start_worker(void) // 这个函数是AVL进程执行的。
 {
 	List	   *dblist;
 	ListCell   *cell;
@@ -1235,13 +1235,13 @@ do_start_worker(void)
 		dlist_iter	iter;
 
 		/* Check to see if this one is at risk of wraparound */
-		if (TransactionIdPrecedes(tmp->adw_frozenxid, xidForceLimit))
+		if (TransactionIdPrecedes(tmp->adw_frozenxid, xidForceLimit)) // 如果adw_frozenxid在xidForceLimit之前
 		{
 			if (avdb == NULL ||
 				TransactionIdPrecedes(tmp->adw_frozenxid,
 									  avdb->adw_frozenxid))
 				avdb = tmp;
-			for_xid_wrap = true;
+			for_xid_wrap = true; // 这个时候就必须强制FREEZE了
 			continue;
 		}
 		else if (for_xid_wrap)

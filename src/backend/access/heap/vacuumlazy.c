@@ -831,7 +831,7 @@ lazy_scan_heap(LVRelState *vacrel)
 	VacDeadItems *dead_items = vacrel->dead_items; // 这是占用内存最大的数组，里面包含了死亡记录的TD，6个字节
 	Buffer		vmbuffer = InvalidBuffer;
 	bool		next_unskippable_allvis,
-				skipping_current_range;
+				skipping_current_range; // 如果可以跳过的块小于32个，这个值就为false，否则为true
 	const int	initprog_index[] = {
 		PROGRESS_VACUUM_PHASE,
 		PROGRESS_VACUUM_TOTAL_HEAP_BLKS,
@@ -875,7 +875,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			/* Last page always scanned (may need to set nonempty_pages) */
 			Assert(blkno < rel_pages - 1);
 
-			if (skipping_current_range)
+			if (skipping_current_range) // 如果可以被跳过的块的总数小于32，就不能被跳过，要依次检查每一个块
 				continue;
 
 			/* Current range is too small to skip -- just scan the page */
@@ -1027,7 +1027,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		if (prunestate.hastup)
 			vacrel->nonempty_pages = blkno + 1;
 
-		if (vacrel->nindexes == 0)
+		if (vacrel->nindexes == 0) // 该表没有没有索引
 		{
 			/*
 			 * Consider the need to do page-at-a-time heap vacuuming when
@@ -1233,7 +1233,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		ReleaseBuffer(vmbuffer);
 
 	/* report that everything is now scanned */
-	pgstat_progress_update_param(PROGRESS_VACUUM_HEAP_BLKS_SCANNED, blkno);
+	pgstat_progress_update_param(PROGRESS_VACUUM_HEAP_BLKS_SCANNED, blkno); // 显示已经扫描了多少块，我们是从0号块开始扫描的，所以这个数字处于总的块数就是总进度
 
 	/* now we can compute the new value for pg_class.reltuples */
 	vacrel->new_live_tuples = vac_estimate_reltuples(vacrel->rel, rel_pages,
@@ -1292,7 +1292,7 @@ lazy_scan_heap(LVRelState *vacrel)
  * older XIDs/MXIDs.  The vacrel->skippedallvis flag will be set here when the
  * choice to skip such a range is actually made, making everything safe.)
  */
-static BlockNumber
+static BlockNumber // 使用VM文件来决定可以跳过的数据块的范围
 lazy_scan_skip(LVRelState *vacrel, Buffer *vmbuffer, BlockNumber next_block,
 			   bool *next_unskippable_allvis, bool *skipping_current_range)
 {
@@ -1302,19 +1302,19 @@ lazy_scan_skip(LVRelState *vacrel, Buffer *vmbuffer, BlockNumber next_block,
 	bool		skipsallvis = false;
 
 	*next_unskippable_allvis = true;
-	while (next_unskippable_block < rel_pages)
+	while (next_unskippable_block < rel_pages) // rel_pages表示这张表的数据块的总个数
 	{
 		uint8		mapbits = visibilitymap_get_status(vacrel->rel,
 													   next_unskippable_block,
-													   vmbuffer);
+													   vmbuffer); // 给定一个数据文件的数据块，查找VM，返回这个数据块的VM状态，放在最低的2个比特中
 
-		if ((mapbits & VISIBILITYMAP_ALL_VISIBLE) == 0)
+		if ((mapbits & VISIBILITYMAP_ALL_VISIBLE) == 0) // VISIBILITYMAP_ALL_VISIBLE = 0x01，表示该数据块没有死亡记录
 		{
 			Assert((mapbits & VISIBILITYMAP_ALL_FROZEN) == 0);
 			*next_unskippable_allvis = false;
-			break;
+			break; //现在跳出循环，表示next_unskippable_block是没法跳过的数据块编号
 		}
-
+		// 现在编号是next_unskippable_block的数据块是可以跳过的了
 		/*
 		 * Caller must scan the last page to determine whether it has tuples
 		 * (caller must have the opportunity to set vacrel->nonempty_pages).
@@ -1354,8 +1354,8 @@ lazy_scan_skip(LVRelState *vacrel, Buffer *vmbuffer, BlockNumber next_block,
 		}
 
 		vacuum_delay_point();
-		next_unskippable_block++;
-		nskippable_blocks++;
+		next_unskippable_block++; // 继续搜索下一块，根据VM来判定该数据块是否需要跳过
+		nskippable_blocks++; //可以跳过的数据块的数量加一
 	}
 
 	/*
@@ -1368,11 +1368,11 @@ lazy_scan_skip(LVRelState *vacrel, Buffer *vmbuffer, BlockNumber next_block,
 	 * non-aggressive VACUUMs.  If the range has any all-visible pages then
 	 * skipping makes updating relfrozenxid unsafe, which is a real downside.
 	 */
-	if (nskippable_blocks < SKIP_PAGES_THRESHOLD)
-		*skipping_current_range = false;
+	if (nskippable_blocks < SKIP_PAGES_THRESHOLD) // SKIP_PAGES_THRESHOLD是32，可以跳过的数据块的总数小于32
+		*skipping_current_range = false; 
 	else
 	{
-		*skipping_current_range = true;
+		*skipping_current_range = true; //可以跳过的数据块的总数大于等于32
 		if (skipsallvis)
 			vacrel->skippedallvis = true;
 	}

@@ -334,10 +334,10 @@ visibilitymap_set(Relation rel, BlockNumber heapBlk, Buffer heapBuf,
  * we might see the old value.  It is the caller's responsibility to deal with
  * all concurrency issues!
  */
-uint8
+uint8 // 给定一个堆表的数据块的编号，返回它在VM中的状态，保存在最低的2个比特中
 visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 {
-	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk);
+	BlockNumber mapBlock = HEAPBLK_TO_MAPBLOCK(heapBlk); // 根据数据文件的数据块计算出VM对应的数据块
 	uint32		mapByte = HEAPBLK_TO_MAPBYTE(heapBlk);
 	uint8		mapOffset = HEAPBLK_TO_OFFSET(heapBlk);
 	char	   *map;
@@ -350,7 +350,7 @@ visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 	/* Reuse the old pinned buffer if possible */
 	if (BufferIsValid(*vmbuf))
 	{
-		if (BufferGetBlockNumber(*vmbuf) != mapBlock)
+		if (BufferGetBlockNumber(*vmbuf) != mapBlock) // 如果vmbuf里面的内容不是mapBlock的内容，就要从磁盘上读取
 		{
 			ReleaseBuffer(*vmbuf);
 			*vmbuf = InvalidBuffer;
@@ -359,9 +359,9 @@ visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 
 	if (!BufferIsValid(*vmbuf))
 	{
-		*vmbuf = vm_readbuf(rel, mapBlock, false);
+		*vmbuf = vm_readbuf(rel, mapBlock, false); // 从磁盘上把指定的VM文件编号为mapBlock的块读入内存
 		if (!BufferIsValid(*vmbuf))
-			return false;
+			return false; // 这里应该返回0，表示这一块不能跳过
 	}
 
 	map = PageGetContents(BufferGetPage(*vmbuf));
@@ -371,7 +371,7 @@ visibilitymap_get_status(Relation rel, BlockNumber heapBlk, Buffer *vmbuf)
 	 * here, but for performance reasons we make it the caller's job to worry
 	 * about that.
 	 */
-	result = ((map[mapByte] >> mapOffset) & VISIBILITYMAP_VALID_BITS);
+	result = ((map[mapByte] >> mapOffset) & VISIBILITYMAP_VALID_BITS); // VISIBILITYMAP_VALID_BITS = 11
 	return result;
 }
 

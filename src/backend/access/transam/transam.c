@@ -276,7 +276,7 @@ TransactionIdAbortTree(TransactionId xid, int nxids, TransactionId *xids)
 /*
  * TransactionIdPrecedes --- is id1 logically < id2?
  */
-bool
+bool  // 假设id1=5, id2=8, 则返回true，表示5在8之前. Precedes是在之前的意思
 TransactionIdPrecedes(TransactionId id1, TransactionId id2)
 {
 	/*
