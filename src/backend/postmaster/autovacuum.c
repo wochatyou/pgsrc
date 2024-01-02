@@ -2049,7 +2049,7 @@ do_autovacuum(void)
 	 */
 	AutovacMemCxt = AllocSetContextCreate(TopMemoryContext,
 										  "Autovacuum worker",
-										  ALLOCSET_DEFAULT_SIZES);
+										  ALLOCSET_DEFAULT_SIZES); // 创建一个专有的内存池
 	MemoryContextSwitchTo(AutovacMemCxt);
 
 	/* Start a transaction so our commands have one to play into. */
@@ -2104,7 +2104,7 @@ do_autovacuum(void)
 	table_toast_map = hash_create("TOAST to main relid map",
 								  100,
 								  &ctl,
-								  HASH_ELEM | HASH_BLOBS);
+								  HASH_ELEM | HASH_BLOBS); // 创建一个本地哈希表
 
 	/*
 	 * Scan pg_class to determine which tables to vacuum.
