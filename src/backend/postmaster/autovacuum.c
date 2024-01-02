@@ -393,7 +393,7 @@ avlauncher_forkexec(void)
 void
 AutovacuumLauncherIAm(void)
 {
-	am_autovacuum_launcher = true;
+	am_autovacuum_launcher = true; // 记录自己是AVL进程(autovacuum launcher)
 }
 #endif
 
@@ -425,7 +425,7 @@ StartAutoVacLauncher(void)
 			/* Close the postmaster's sockets */
 			ClosePostmasterPorts(false);
 
-			AutoVacLauncherMain(0, NULL);
+			AutoVacLauncherMain(0, NULL); // 转入具体的执行函数AutoVacLauncherMain
 			break;
 #endif
 		default:
@@ -866,7 +866,7 @@ AutoVacLauncherShutdown(void)
  * for example due to the workers being all busy.  If this is false, we will
  * cause a long sleep, which will be interrupted when a worker exits.
  */
-static void
+static void // 根据一定的算法确定休眠的时间，更新nap中的tv_sec和tv_usec这两个值
 launcher_determine_sleep(bool canlaunch, bool recursing, struct timeval *nap)
 {
 	/*
@@ -896,7 +896,7 @@ launcher_determine_sleep(bool canlaunch, bool recursing, struct timeval *nap)
 		nap->tv_sec = secs;
 		nap->tv_usec = usecs;
 	}
-	else
+	else // 数据库列表是空的，就休眠autovacuum_naptime秒
 	{
 		/* list is empty, sleep for whole autovacuum_naptime seconds  */
 		nap->tv_sec = autovacuum_naptime;
@@ -916,12 +916,12 @@ launcher_determine_sleep(bool canlaunch, bool recursing, struct timeval *nap)
 	if (nap->tv_sec == 0 && nap->tv_usec == 0 && !recursing)
 	{
 		rebuild_database_list(InvalidOid);
-		launcher_determine_sleep(canlaunch, true, nap);
+		launcher_determine_sleep(canlaunch, true, nap); // 这次调用, recursing = true，就不会递归到这里了
 		return;
 	}
 
-	/* The smallest time we'll allow the launcher to sleep. */
-	if (nap->tv_sec <= 0 && nap->tv_usec <= MIN_AUTOVAC_SLEEPTIME * 1000)
+	/* The smallest time we'll allow the launcher to sleep. */ // 确保休眠的时间的下限
+	if (nap->tv_sec <= 0 && nap->tv_usec <= MIN_AUTOVAC_SLEEPTIME * 1000) // MIN_AUTOVAC_SLEEPTIME是100毫秒
 	{
 		nap->tv_sec = 0;
 		nap->tv_usec = MIN_AUTOVAC_SLEEPTIME * 1000;
@@ -933,7 +933,7 @@ launcher_determine_sleep(bool canlaunch, bool recursing, struct timeval *nap)
 	 * infinite sleep in strange cases like the system clock going backwards a
 	 * few years.
 	 */
-	if (nap->tv_sec > MAX_AUTOVAC_SLEEPTIME)
+	if (nap->tv_sec > MAX_AUTOVAC_SLEEPTIME) // MAX_AUTOVAC_SLEEPTIME是300秒，确保休眠的上限
 		nap->tv_sec = MAX_AUTOVAC_SLEEPTIME;
 }
 
@@ -951,7 +951,7 @@ launcher_determine_sleep(bool canlaunch, bool recursing, struct timeval *nap)
  * much of a problem.
  */
 static void
-rebuild_database_list(Oid newdb)
+rebuild_database_list(Oid newdb) // 建立一个最新版的数据库列表
 {
 	List	   *dblist;
 	ListCell   *cell;
@@ -969,7 +969,7 @@ rebuild_database_list(Oid newdb)
 								   ALLOCSET_DEFAULT_SIZES);
 	tmpcxt = AllocSetContextCreate(newcxt,
 								   "Autovacuum database list (tmp)",
-								   ALLOCSET_DEFAULT_SIZES);
+								   ALLOCSET_DEFAULT_SIZES); // 这个共享内存是专供后面的哈希表的
 	oldcxt = MemoryContextSwitchTo(tmpcxt);
 
 	/*
@@ -1007,16 +1007,16 @@ rebuild_database_list(Oid newdb)
 		if (entry != NULL)
 		{
 			/* we assume it isn't found because the hash was just created */
-			db = hash_search(dbhash, &newdb, HASH_ENTER, NULL);
+			db = hash_search(dbhash, &newdb, HASH_ENTER, NULL); // 在哈希表中查找，找不到就插入一条记录
 
 			/* hash_search already filled in the key */
-			db->adl_score = score++;
+			db->adl_score = score++; // score的初始值是0，现在变成了1
 			/* next_worker is filled in later */
 		}
 	}
 
 	/* Now insert the databases from the existing list */
-	dlist_foreach(iter, &DatabaseList)
+	dlist_foreach(iter, &DatabaseList) // 依次循环
 	{
 		avl_dbase  *avdb = dlist_container(avl_dbase, adl_node, iter.cur);
 		avl_dbase  *db;
@@ -1027,7 +1027,7 @@ rebuild_database_list(Oid newdb)
 		 * skip databases with no stat entries -- in particular, this gets rid
 		 * of dropped databases
 		 */
-		entry = pgstat_fetch_stat_dbentry(avdb->adl_datid);
+		entry = pgstat_fetch_stat_dbentry(avdb->adl_datid); // 数据库是否可以入选的标准是这个函数
 		if (entry == NULL)
 			continue;
 
@@ -1064,13 +1064,13 @@ rebuild_database_list(Oid newdb)
 			/* next_worker is filled in later */
 		}
 	}
-	nelems = score;
-
+	nelems = score; // nelems是number of elements的含义，表明哈希表中有多少条记录
+	// 至此，哈希表中已经插入了很多数据库
 	/* from here on, the allocated memory belongs to the new list */
 	MemoryContextSwitchTo(newcxt);
 	dlist_init(&DatabaseList);
 
-	if (nelems > 0)
+	if (nelems > 0) // 说明上面插入的哈希表中有记录
 	{
 		TimestampTz current_time;
 		int			millis_increment;
@@ -1080,15 +1080,15 @@ rebuild_database_list(Oid newdb)
 		int			i;
 
 		/* put all the hash elements into an array */
-		dbary = palloc(nelems * sizeof(avl_dbase));
+		dbary = palloc(nelems * sizeof(avl_dbase)); // 把哈希表中的元素转换成数组
 
 		i = 0;
 		hash_seq_init(&seq, dbhash);
 		while ((db = hash_seq_search(&seq)) != NULL)
-			memcpy(&(dbary[i++]), db, sizeof(avl_dbase));
+			memcpy(&(dbary[i++]), db, sizeof(avl_dbase)); // 把哈希表中的元素拷贝到数组中
 
 		/* sort the array */
-		qsort(dbary, nelems, sizeof(avl_dbase), db_comparator);
+		qsort(dbary, nelems, sizeof(avl_dbase), db_comparator); // 对数据库列表的数组进行排序，按照score的大小
 
 		/*
 		 * Determine the time interval between databases in the schedule. If
@@ -1123,14 +1123,14 @@ rebuild_database_list(Oid newdb)
 	/* all done, clean up memory */
 	if (DatabaseListCxt != NULL)
 		MemoryContextDelete(DatabaseListCxt);
-	MemoryContextDelete(tmpcxt);
+	MemoryContextDelete(tmpcxt); // 干掉哈希表所在的内存池
 	DatabaseListCxt = newcxt;
 	MemoryContextSwitchTo(oldcxt);
 }
 
 /* qsort comparator for avl_dbase, using adl_score */
 static int
-db_comparator(const void *a, const void *b)
+db_comparator(const void *a, const void *b) // 按照score来进行排序
 {
 	if (((const avl_dbase *) a)->adl_score == ((const avl_dbase *) b)->adl_score)
 		return 0;

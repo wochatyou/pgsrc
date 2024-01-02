@@ -135,7 +135,7 @@ extern pg_nodiscard void *repalloc_huge(void *pointer, Size size);
 
 #ifndef FRONTEND
 static inline MemoryContext
-MemoryContextSwitchTo(MemoryContext context)
+MemoryContextSwitchTo(MemoryContext context) //CurrentMemoryContext是一个全局指针，让它指向我们选择的内存池，并返回老的内存池
 {
 	MemoryContext old = CurrentMemoryContext;
 
