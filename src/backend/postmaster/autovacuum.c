@@ -1167,7 +1167,7 @@ do_start_worker(void)
 
 	/* return quickly when there are no free workers */
 	LWLockAcquire(AutovacuumLock, LW_SHARED);
-	if (dlist_is_empty(&AutoVacuumShmem->av_freeWorkers))
+	if (dlist_is_empty(&AutoVacuumShmem->av_freeWorkers)) // 如果这个链表是空的，就啥也不做，返回0
 	{
 		LWLockRelease(AutovacuumLock);
 		return InvalidOid;

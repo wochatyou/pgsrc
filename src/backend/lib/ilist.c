@@ -74,7 +74,7 @@ dlist_member_check(const dlist_head *head, const dlist_node *node)
  * Verify integrity of a doubly linked list
  */
 void
-dlist_check(const dlist_head *head)
+dlist_check(const dlist_head *head) // 检查一个双向链表的完整性。如果出错，整个进程就退出了。
 {
 	dlist_node *cur;
 
@@ -85,7 +85,7 @@ dlist_check(const dlist_head *head)
 		return;					/* OK, initialized as zeroes */
 
 	/* iterate in forward direction */
-	for (cur = head->head.next; cur != &head->head; cur = cur->next)
+	for (cur = head->head.next; cur != &head->head; cur = cur->next) // 循环链表？ 向后遍历
 	{
 		if (cur == NULL ||
 			cur->next == NULL ||
@@ -96,7 +96,7 @@ dlist_check(const dlist_head *head)
 	}
 
 	/* iterate in backward direction */
-	for (cur = head->head.prev; cur != &head->head; cur = cur->prev)
+	for (cur = head->head.prev; cur != &head->head; cur = cur->prev) // 向前遍历
 	{
 		if (cur == NULL ||
 			cur->next == NULL ||

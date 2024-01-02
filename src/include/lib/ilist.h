@@ -321,7 +321,7 @@ dlist_init(dlist_head *head)
  *
  * This is only needed when dlist_node_is_detached() may be needed.
  */
-static inline void
+static inline void // 初始化一个元素
 dlist_node_init(dlist_node *node)
 {
 	node->next = node->prev = NULL;
