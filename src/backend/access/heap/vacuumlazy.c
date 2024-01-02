@@ -1614,7 +1614,7 @@ retry:
 		vacrel->offnum = offnum;
 		itemid = PageGetItemId(page, offnum);
 
-		if (!ItemIdIsUsed(itemid))
+		if (!ItemIdIsUsed(itemid)) // 如果这条记录没有本使用
 			continue;
 
 		/* Redirect items mustn't be touched */

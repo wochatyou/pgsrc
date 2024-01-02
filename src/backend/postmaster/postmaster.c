@@ -5076,7 +5076,7 @@ ExitPostmaster(int status)
  * Handle pmsignal conditions representing requests from backends,
  * and check for promote and logrotate requests from pg_ctl.
  */
-static void // 处理从子进程发来的信号
+static void // 处理从子进程发来的信号，这个函数在postmaster的ServerLoop中反复检查
 process_pm_pmsignal(void)
 {
 	pending_pm_pmsignal = false; //把标志位复位，表示本函数已经处理过了
@@ -5181,7 +5181,7 @@ process_pm_pmsignal(void)
 	}
 
 	if (CheckPostmasterSignal(PMSIGNAL_START_AUTOVAC_WORKER) &&
-		Shutdown <= SmartShutdown && pmState < PM_STOP_BACKENDS)
+		Shutdown <= SmartShutdown && pmState < PM_STOP_BACKENDS) // AVL进程请求主进程启动AVW进程
 	{
 		/* The autovacuum launcher wants us to start a worker process. */
 		StartAutovacuumWorker();
@@ -5435,7 +5435,7 @@ StartChildProcess(AuxProcType type)
  *
  * NB -- this code very roughly matches BackendStartup.
  */
-static void
+static void // 主进程启动AVW(autovacuum worker)进程
 StartAutovacuumWorker(void)
 {
 	Backend    *bn;
@@ -5463,7 +5463,7 @@ StartAutovacuumWorker(void)
 			return;
 		}
 
-		bn = (Backend *) malloc(sizeof(Backend));
+		bn = (Backend *) malloc(sizeof(Backend)); // 为什么不在共享池中分配呢？
 		if (bn)
 		{
 			bn->cancel_key = MyCancelKey;

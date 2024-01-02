@@ -177,7 +177,7 @@ typedef struct avl_dbase
 } avl_dbase;
 
 /* struct to keep track of databases in worker */
-typedef struct avw_dbase
+typedef struct avw_dbase  // 这个数据结构帮助AVW进程跟踪要处理的数据库
 {
 	Oid			adw_datid;
 	char	   *adw_name;
@@ -499,7 +499,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 	 */
 	AutovacMemCxt = AllocSetContextCreate(TopMemoryContext,
 										  "Autovacuum Launcher",
-										  ALLOCSET_DEFAULT_SIZES);
+										  ALLOCSET_DEFAULT_SIZES); // 创建一个独立的内存池
 	MemoryContextSwitchTo(AutovacMemCxt);
 
 	/*
@@ -1192,11 +1192,11 @@ do_start_worker(void)
 	 * particular tables, but not loosened.)
 	 */
 	recentXid = ReadNextTransactionId();
-	xidForceLimit = recentXid - autovacuum_freeze_max_age;
+	xidForceLimit = recentXid - autovacuum_freeze_max_age;  // 这是触发AV的条件
 	/* ensure it's a "normal" XID, else TransactionIdPrecedes misbehaves */
 	/* this can cause the limit to go backwards by 3, but that's OK */
-	if (xidForceLimit < FirstNormalTransactionId)
-		xidForceLimit -= FirstNormalTransactionId;
+	if (xidForceLimit < FirstNormalTransactionId)  // TransactionId是无符号32位整型，最小值是0 - typedef uint32 TransactionId;
+		xidForceLimit -= FirstNormalTransactionId; // 所以它的值可能是0,1,2，减去3,变成0xFFFFFFFF等
 
 	/* Also determine the oldest datminmxid we will consider. */
 	recentMulti = ReadNextMultiXactId();
@@ -1225,7 +1225,7 @@ do_start_worker(void)
 	 * isn't clear how to construct a metric that measures that and not cause
 	 * starvation for less busy databases.
 	 */
-	avdb = NULL;
+	avdb = NULL; // avdb表示要处理的数据库。现在把它变成NULL，下面的逻辑是选择数据库
 	for_xid_wrap = false;
 	for_multi_wrap = false;
 	current_time = GetCurrentTimestamp();
@@ -1309,7 +1309,7 @@ do_start_worker(void)
 	}
 
 	/* Found a database -- process it */
-	if (avdb != NULL)
+	if (avdb != NULL)  // avdb就是要处理的数据库
 	{
 		WorkerInfo	worker;
 		dlist_node *wptr;
@@ -1331,7 +1331,7 @@ do_start_worker(void)
 
 		LWLockRelease(AutovacuumLock);
 
-		SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_WORKER);
+		SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_WORKER); // 通知主进程启动worker进程
 
 		retval = avdb->adw_datid;
 	}
@@ -1511,15 +1511,15 @@ StartAutoVacWorker(void)
 /*
  * AutoVacWorkerMain
  */
-NON_EXEC_STATIC void
+NON_EXEC_STATIC void  // AVW的入口函数
 AutoVacWorkerMain(int argc, char *argv[])
 {
 	sigjmp_buf	local_sigjmp_buf;
 	Oid			dbid;
 
-	am_autovacuum_worker = true;
+	am_autovacuum_worker = true; // 记住我是AVW
 
-	MyBackendType = B_AUTOVAC_WORKER;
+	MyBackendType = B_AUTOVAC_WORKER; // 记住后台进程的类型
 	init_ps_display(NULL);
 
 	SetProcessingMode(InitProcessing);
@@ -1647,7 +1647,7 @@ AutoVacWorkerMain(int argc, char *argv[])
 	/*
 	 * Get the info about the database we're going to work on.
 	 */
-	LWLockAcquire(AutovacuumLock, LW_EXCLUSIVE);
+	LWLockAcquire(AutovacuumLock, LW_EXCLUSIVE); // 加锁，从共享内存中获取工作之前的一些信息
 
 	/*
 	 * beware of startingWorker being INVALID; this should normally not
@@ -1658,7 +1658,7 @@ AutoVacWorkerMain(int argc, char *argv[])
 	if (AutoVacuumShmem->av_startingWorker != NULL)
 	{
 		MyWorkerInfo = AutoVacuumShmem->av_startingWorker;
-		dbid = MyWorkerInfo->wi_dboid;
+		dbid = MyWorkerInfo->wi_dboid;  // 准备对哪个数据库动手？
 		MyWorkerInfo->wi_proc = MyProc;
 
 		/* insert into the running list */
@@ -1682,11 +1682,11 @@ AutoVacWorkerMain(int argc, char *argv[])
 	{
 		/* no worker entry for me, go away */
 		elog(WARNING, "autovacuum worker started without a worker entry");
-		dbid = InvalidOid;
+		dbid = InvalidOid; //设置为0，后面的逻辑就不执行了，直接退出本进程
 		LWLockRelease(AutovacuumLock);
 	}
 
-	if (OidIsValid(dbid))
+	if (OidIsValid(dbid)) // 数据库是有效的
 	{
 		char		dbname[NAMEDATALEN];
 
@@ -1719,7 +1719,7 @@ AutoVacWorkerMain(int argc, char *argv[])
 		/* And do an appropriate amount of work */
 		recentXid = ReadNextTransactionId();
 		recentMulti = ReadNextMultiXactId();
-		do_autovacuum();
+		do_autovacuum();  // 真正对一个数据库做Vacuum的工作在这里。
 	}
 
 	/*

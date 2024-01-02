@@ -63,7 +63,7 @@ fork_process(void)
 	 */
 	sigprocmask(SIG_SETMASK, &BlockSig, &save_mask);
 	result = fork();
-	if (result == 0)
+	if (result == 0) // 下面的逻辑在子进程中执行
 	{
 		/* fork succeeded, in child */
 #ifdef LINUX_PROFILE

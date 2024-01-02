@@ -257,7 +257,7 @@ GetNewTransactionId(bool isSubXact)
 /*
  * Read nextXid but don't allocate it.
  */
-FullTransactionId
+FullTransactionId  // 读取ShmemVariableCache->nextXid，只是读取，并不分配这个XID
 ReadNextFullTransactionId(void)
 {
 	FullTransactionId fullXid;

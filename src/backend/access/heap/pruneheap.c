@@ -354,7 +354,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 	/* Scan the page */
 	for (offnum = FirstOffsetNumber;
 		 offnum <= maxoff;
-		 offnum = OffsetNumberNext(offnum))
+		 offnum = OffsetNumberNext(offnum)) //从第一条记录开始扫描，第一条记录的编号是1
 	{
 		ItemId		itemid;
 
@@ -368,8 +368,8 @@ heap_page_prune(Relation relation, Buffer buffer,
 
 		/* Nothing to do if slot is empty or already dead */
 		itemid = PageGetItemId(page, offnum);
-		if (!ItemIdIsUsed(itemid) || ItemIdIsDead(itemid))
-			continue;
+		if (!ItemIdIsUsed(itemid) || ItemIdIsDead(itemid)) // 如果这条记录没有被使用，或者死亡了，就跳过这条记录
+			continue;  // 因为每个记录指针有2个比特表示四种状态：LP_UNUSED, LP_DEAD等等
 
 		/* Process this item or chain of items */
 		ndeleted += heap_prune_chain(buffer, offnum, &prstate);
@@ -591,12 +591,12 @@ static int
 heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 {
 	int			ndeleted = 0;
-	Page		dp = (Page) BufferGetPage(buffer);
+	Page		dp = (Page) BufferGetPage(buffer); // 根据编号获得页面内存地址
 	TransactionId priorXmax = InvalidTransactionId;
 	ItemId		rootlp;
 	HeapTupleHeader htup;
 	OffsetNumber latestdead = InvalidOffsetNumber,
-				maxoff = PageGetMaxOffsetNumber(dp),
+				maxoff = PageGetMaxOffsetNumber(dp), // maxoff等于这个数据页有多少条记录
 				offnum;
 	OffsetNumber chainitems[MaxHeapTuplesPerPage];
 	int			nchain = 0,

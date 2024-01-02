@@ -50,8 +50,8 @@ typedef uint16 OffsetNumber;
  *		real C array index).
  */
 #define OffsetNumberNext(offsetNumber) \
-	((OffsetNumber) (1 + (offsetNumber)))
+	((OffsetNumber) (1 + (offsetNumber))) // 就是加一
 #define OffsetNumberPrev(offsetNumber) \
-	((OffsetNumber) (-1 + (offsetNumber)))
+	((OffsetNumber) (-1 + (offsetNumber))) //就是减一
 
 #endif							/* OFF_H */

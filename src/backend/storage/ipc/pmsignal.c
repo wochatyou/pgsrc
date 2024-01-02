@@ -177,7 +177,7 @@ PMSignalShmemInit(void)
 /*
  * SendPostmasterSignal - signal the postmaster from a child process
  */
-void // 子进程向主进程发送信号SIGUSR1
+void // 子进程向主进程发送信号SIGUSR1，这个函数由子进程执行
 SendPostmasterSignal(PMSignalReason reason)
 {
 	/* If called in a standalone backend, do nothing */

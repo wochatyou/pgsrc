@@ -367,11 +367,11 @@ PageGetItem(Page page, ItemId itemId)
  *		return zero to ensure sane behavior.
  */
 static inline OffsetNumber
-PageGetMaxOffsetNumber(Page page)
+PageGetMaxOffsetNumber(Page page) // 返回值是这个数据页有多少条记录
 {
 	PageHeader	pageheader = (PageHeader) page;
 
-	if (pageheader->pd_lower <= SizeOfPageHeaderData)
+	if (pageheader->pd_lower <= SizeOfPageHeaderData) // 条记录
 		return 0;
 	else
 		return (pageheader->pd_lower - SizeOfPageHeaderData) / sizeof(ItemIdData);

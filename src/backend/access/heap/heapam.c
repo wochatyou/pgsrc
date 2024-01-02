@@ -6579,7 +6579,7 @@ heap_prepare_freeze_tuple(HeapTupleHeader tuple,
 	{
 		Assert(!xmin_already_frozen);
 
-		frz->t_infomask |= HEAP_XMIN_FROZEN;
+		frz->t_infomask |= HEAP_XMIN_FROZEN; // 冻结这条记录的事务号！
 	}
 	if (replace_xvac)
 	{
