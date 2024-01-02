@@ -230,7 +230,7 @@ typedef struct autovac_table
  */
 typedef struct WorkerInfoData
 {
-	dlist_node	wi_links;
+	dlist_node	wi_links; //对于双向链表的结构来说，dlist_node必须是结构体中第一个成员变量
 	Oid			wi_dboid;
 	Oid			wi_tableoid;
 	PGPROC	   *wi_proc;
