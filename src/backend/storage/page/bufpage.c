@@ -470,7 +470,7 @@ typedef itemIdCompactData *itemIdCompact;
  *
  * Callers must ensure that nitems is > 0
  */
-static void
+static void // 对数据页的碎片进行整理
 compactify_tuples(itemIdCompact itemidbase, int nitems, Page page, bool presorted)
 {
 	PageHeader	phdr = (PageHeader) page;
@@ -696,7 +696,7 @@ compactify_tuples(itemIdCompact itemidbase, int nitems, Page page, bool presorte
  * the line pointer array following array truncation.
  */
 void
-PageRepairFragmentation(Page page)
+PageRepairFragmentation(Page page) // 在页面修剪后，进行碎片化整理
 {
 	Offset		pd_lower = ((PageHeader) page)->pd_lower;
 	Offset		pd_upper = ((PageHeader) page)->pd_upper;
@@ -733,11 +733,11 @@ PageRepairFragmentation(Page page)
 	/*
 	 * Run through the line pointer array and collect data about live items.
 	 */
-	nline = PageGetMaxOffsetNumber(page);
+	nline = PageGetMaxOffsetNumber(page); // 返回记录指针有多少个
 	itemidptr = itemidbase;
 	nunused = totallen = 0;
 	last_offset = pd_special;
-	for (i = FirstOffsetNumber; i <= nline; i++)
+	for (i = FirstOffsetNumber; i <= nline; i++) // 从前往后扫描记录指针数组
 	{
 		lp = PageGetItemId(page, i);
 		if (ItemIdIsUsed(lp))
@@ -769,7 +769,7 @@ PageRepairFragmentation(Page page)
 		{
 			/* Unused entries should have lp_len = 0, but make sure */
 			Assert(!ItemIdHasStorage(lp));
-			ItemIdSetUnused(lp);
+			ItemIdSetUnused(lp); // 把这条记录的状态设置为LP_UNUSED
 			nunused++;
 		}
 	}

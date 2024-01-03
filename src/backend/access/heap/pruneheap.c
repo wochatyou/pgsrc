@@ -54,7 +54,7 @@ typedef struct
 	int			ndead;
 	int			nunused;
 	/* arrays that accumulate indexes of items to be changed */
-	OffsetNumber redirected[MaxHeapTuplesPerPage * 2];
+	OffsetNumber redirected[MaxHeapTuplesPerPage * 2]; // 它要保存from和to两个记录，所以要加倍
 	OffsetNumber nowdead[MaxHeapTuplesPerPage];
 	OffsetNumber nowunused[MaxHeapTuplesPerPage];
 
@@ -64,7 +64,7 @@ typedef struct
 	 * This needs to be MaxHeapTuplesPerPage + 1 long as FirstOffsetNumber is
 	 * 1. Otherwise every access would need to subtract 1.
 	 */
-	bool		marked[MaxHeapTuplesPerPage + 1];
+	bool		marked[MaxHeapTuplesPerPage + 1]; // 特地多加一避免每次都要进行下标转换
 
 	/*
 	 * Tuple visibility is only computed once for each tuple, for correctness
@@ -261,7 +261,7 @@ heap_page_prune_opt(Relation relation, Buffer buffer)
  *
  * Returns the number of tuples deleted from the page during this call.
  */
-int // 对编号为buffer的数据页进行修剪和修复空间碎片化的问题
+int // 对编号为buffer的数据页进行修剪和修复空间碎片化的问题，返回值是该页上有多少条死记录
 heap_page_prune(Relation relation, Buffer buffer,
 				GlobalVisState *vistest,
 				TransactionId old_snap_xmin,
@@ -274,7 +274,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 	BlockNumber blockno = BufferGetBlockNumber(buffer);
 	OffsetNumber offnum,
 				maxoff;
-	PruneState	prstate;
+	PruneState	prstate; // 一个控制用的数据结构
 	HeapTupleData tup;
 
 	/*
@@ -298,7 +298,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 	prstate.nredirected = prstate.ndead = prstate.nunused = 0;
 	memset(prstate.marked, 0, sizeof(prstate.marked));
 
-	maxoff = PageGetMaxOffsetNumber(page);
+	maxoff = PageGetMaxOffsetNumber(page); //获取这个页面有多少条记录，包括死亡记录
 	tup.t_tableOid = RelationGetRelid(prstate.rel);
 
 	/*
@@ -323,18 +323,18 @@ heap_page_prune(Relation relation, Buffer buffer,
 	 */
 	for (offnum = maxoff;
 		 offnum >= FirstOffsetNumber;
-		 offnum = OffsetNumberPrev(offnum))
+		 offnum = OffsetNumberPrev(offnum)) // 从后往前扫描记录指针数组
 	{
-		ItemId		itemid = PageGetItemId(page, offnum);
+		ItemId		itemid = PageGetItemId(page, offnum); // 获取编号是offnum的记录指针
 		HeapTupleHeader htup;
 
 		/* Nothing to do if slot doesn't contain a tuple */
-		if (!ItemIdIsNormal(itemid))
+		if (!ItemIdIsNormal(itemid)) // 如果不是正常的记录。每个记录指针有2个比特，表示四种状态，就是读取里面的值
 		{
 			prstate.htsv[offnum] = -1;
 			continue;
 		}
-
+		// 走到这里，itemid指向了一个正常的记录
 		htup = (HeapTupleHeader) PageGetItem(page, itemid);
 		tup.t_data = htup;
 		tup.t_len = ItemIdGetLength(itemid);
@@ -377,13 +377,13 @@ heap_page_prune(Relation relation, Buffer buffer,
 
 	/* Clear the offset information once we have processed the given page. */
 	if (off_loc)
-		*off_loc = InvalidOffsetNumber;
+		*off_loc = InvalidOffsetNumber; // 这个页面上所有的记录都处理完毕了，把这个值设置为0
 
 	/* Any error while applying the changes is critical */
 	START_CRIT_SECTION();
 
 	/* Have we found any prunable items? */
-	if (prstate.nredirected > 0 || prstate.ndead > 0 || prstate.nunused > 0)
+	if (prstate.nredirected > 0 || prstate.ndead > 0 || prstate.nunused > 0) // 找到了有死亡记录的，有没有使用的，或者重定向的记录
 	{
 		/*
 		 * Apply the planned item changes, then repair page fragmentation, and
@@ -398,7 +398,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 		 * Update the page's pd_prune_xid field to either zero, or the lowest
 		 * XID of any soon-prunable tuple.
 		 */
-		((PageHeader) page)->pd_prune_xid = prstate.new_prune_xid;
+		((PageHeader) page)->pd_prune_xid = prstate.new_prune_xid; // 更新数据页页头的这个事务号
 
 		/*
 		 * Also clear the "page is full" flag, since there's no point in
@@ -407,12 +407,12 @@ heap_page_prune(Relation relation, Buffer buffer,
 		 */
 		PageClearFull(page);
 
-		MarkBufferDirty(buffer);
+		MarkBufferDirty(buffer); // 把这个数据页设置为脏页
 
 		/*
 		 * Emit a WAL XLOG_HEAP2_PRUNE record showing what we did
 		 */
-		if (RelationNeedsWAL(relation))
+		if (RelationNeedsWAL(relation)) //生成一条XLOG_HEAP2_PRUNE的WAL记录来保护我们的操作
 		{
 			xl_heap_prune xlrec;
 			XLogRecPtr	recptr;
@@ -908,13 +908,13 @@ heap_prune_record_unused(PruneState *prstate, OffsetNumber offnum)
  * It is expected that the caller has a full cleanup lock on the
  * buffer.
  */
-void
+void // redirected/nowdead/nowunused实际上是三个数组，它们的个数由后面的整型变量指定
 heap_page_prune_execute(Buffer buffer,
 						OffsetNumber *redirected, int nredirected,
 						OffsetNumber *nowdead, int ndead,
 						OffsetNumber *nowunused, int nunused)
 {
-	Page		page = (Page) BufferGetPage(buffer);
+	Page		page = (Page) BufferGetPage(buffer); // 获取页面内存地址
 	OffsetNumber *offnum;
 	HeapTupleHeader htup PG_USED_FOR_ASSERTS_ONLY;
 
@@ -925,7 +925,7 @@ heap_page_prune_execute(Buffer buffer,
 	offnum = redirected;
 	for (int i = 0; i < nredirected; i++)
 	{
-		OffsetNumber fromoff = *offnum++;
+		OffsetNumber fromoff = *offnum++; // 两个元素紧挨着。第一个是from，第二个是to
 		OffsetNumber tooff = *offnum++;
 		ItemId		fromlp = PageGetItemId(page, fromoff);
 		ItemId		tolp PG_USED_FOR_ASSERTS_ONLY;
@@ -1007,7 +1007,7 @@ heap_page_prune_execute(Buffer buffer,
 		}
 #endif
 
-		ItemIdSetDead(lp);
+		ItemIdSetDead(lp); // 把这条记录设置为DEAD，实际上就是更改记录指针的状态位
 	}
 
 	/* Update all now-unused line pointers */
@@ -1029,7 +1029,7 @@ heap_page_prune_execute(Buffer buffer,
 		Assert(HeapTupleHeaderIsHeapOnly(htup));
 #endif
 
-		ItemIdSetUnused(lp);
+		ItemIdSetUnused(lp); // 把这条记录的状态设置为UNUSED
 	}
 
 	/*

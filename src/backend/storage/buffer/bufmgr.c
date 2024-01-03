@@ -2108,7 +2108,7 @@ ExtendBufferedRelShared(BufferManagerRelation bmr,
  * leading to risk of bad data written to disk.)
  */
 void
-MarkBufferDirty(Buffer buffer)
+MarkBufferDirty(Buffer buffer) // 把该数据页设置为脏
 {
 	BufferDesc *bufHdr;
 	uint32		buf_state;
@@ -2138,11 +2138,11 @@ MarkBufferDirty(Buffer buffer)
 		buf_state = old_buf_state;
 
 		Assert(BUF_STATE_GET_REFCOUNT(buf_state) > 0);
-		buf_state |= BM_DIRTY | BM_JUST_DIRTIED;
+		buf_state |= BM_DIRTY | BM_JUST_DIRTIED; // 设置DIRTY标志位
 
 		if (pg_atomic_compare_exchange_u32(&bufHdr->state, &old_buf_state,
 										   buf_state))
-			break;
+			break; //跳出循环
 	}
 
 	/*

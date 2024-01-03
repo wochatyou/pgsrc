@@ -576,7 +576,8 @@ StaticAssertDecl(MaxOffsetNumber < SpecTokenOffsetNumber,
  */
 #define MaxHeapTuplesPerPage	\
 	((int) ((BLCKSZ - SizeOfPageHeaderData) / \
-			(MAXALIGN(SizeofHeapTupleHeader) + sizeof(ItemIdData))))
+			(MAXALIGN(SizeofHeapTupleHeader) + sizeof(ItemIdData)))) // 一个数据页能够存放的最大的记录数，是一个固定值
+// 每条记录有24个字节的头，还有记录指针4个字节，所以每条记录最少是28个字节。
 
 /*
  * MaxAttrSize is a somewhat arbitrary upper limit on the declared size of

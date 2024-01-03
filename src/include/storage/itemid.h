@@ -118,7 +118,7 @@ typedef uint16 ItemLength;
  *		True iff item identifier has associated storage.
  */
 #define ItemIdHasStorage(itemId) \
-	((itemId)->lp_len != 0)
+	((itemId)->lp_len != 0) // 记录指针的长度信息不为0，就表示该记录有存储
 
 /*
  * ItemIdSetUnused
@@ -160,7 +160,8 @@ typedef uint16 ItemLength;
  * ItemIdSetDead
  *		Set the item identifier to be DEAD, with no storage.
  *		Beware of multiple evaluations of itemId!
- */
+ */ 
+// 把这个记录指针的状态设置为DEAD，其余信息归零
 #define ItemIdSetDead(itemId) \
 ( \
 	(itemId)->lp_flags = LP_DEAD, \

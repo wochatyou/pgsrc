@@ -1044,7 +1044,7 @@ lazy_scan_heap(LVRelState *vacrel)
 				lazy_vacuum_heap_page(vacrel, blkno, buf, 0, vmbuffer);
 
 				/* Forget the LP_DEAD items that we just vacuumed */
-				dead_items->num_items = 0;
+				dead_items->num_items = 0; // 处理一个页面，就把这些死的记录清空，为下一个页面做准备
 
 				/*
 				 * Periodically perform FSM vacuuming to make newly-freed
@@ -1562,7 +1562,7 @@ lazy_scan_prune(LVRelState *vacrel,
 	 * heap_page_prune.  That's safe for us to ignore, since the reclaimed
 	 * space will continue to look like LP_UNUSED items below.
 	 */
-	maxoff = PageGetMaxOffsetNumber(page);
+	maxoff = PageGetMaxOffsetNumber(page); // maxoff里面保存了这个页面有多少条记录，可能有些记录已经死了
 
 retry:
 
@@ -1601,7 +1601,7 @@ retry:
 	prunestate->all_frozen = true;
 	prunestate->visibility_cutoff_xid = InvalidTransactionId;
 
-	for (offnum = FirstOffsetNumber;
+	for (offnum = FirstOffsetNumber;  // FirstOffsetNumber 是 1， 扫描记录指针函数
 		 offnum <= maxoff;
 		 offnum = OffsetNumberNext(offnum))
 	{
@@ -1625,7 +1625,7 @@ retry:
 			continue;
 		}
 
-		if (ItemIdIsDead(itemid))
+		if (ItemIdIsDead(itemid)) // 如果是死的记录
 		{
 			/*
 			 * Deliberately don't set hastup for LP_DEAD items.  We make the
@@ -1641,7 +1641,7 @@ retry:
 			 * (This is another case where it's useful to anticipate that any
 			 * LP_DEAD items will become LP_UNUSED during the ongoing VACUUM.)
 			 */
-			deadoffsets[lpdead_items++] = offnum;
+			deadoffsets[lpdead_items++] = offnum; // 把死亡记录放在一个数组中
 			continue;
 		}
 
@@ -1894,7 +1894,7 @@ retry:
 	/*
 	 * Now save details of the LP_DEAD items from the page in vacrel
 	 */
-	if (lpdead_items > 0)
+	if (lpdead_items > 0) // 把死亡记录放在vacrel的大数组中
 	{
 		VacDeadItems *dead_items = vacrel->dead_items;
 		ItemPointerData tmp;
@@ -1902,17 +1902,17 @@ retry:
 		vacrel->lpdead_item_pages++;
 		prunestate->has_lpdead_items = true;
 
-		ItemPointerSetBlockNumber(&tmp, blkno);
+		ItemPointerSetBlockNumber(&tmp, blkno); // 把块好保存进去
 
 		for (int i = 0; i < lpdead_items; i++)
 		{
-			ItemPointerSetOffsetNumber(&tmp, deadoffsets[i]);
-			dead_items->items[dead_items->num_items++] = tmp;
+			ItemPointerSetOffsetNumber(&tmp, deadoffsets[i]); // 把记录指针下标保存进去
+			dead_items->items[dead_items->num_items++] = tmp; // 加入到大的数组中
 		}
 
 		Assert(dead_items->num_items <= dead_items->max_items);
-		pgstat_progress_update_param(PROGRESS_VACUUM_NUM_DEAD_TUPLES,
-									 dead_items->num_items);
+		pgstat_progress_update_param(PROGRESS_VACUUM_NUM_DEAD_TUPLES, 
+									 dead_items->num_items); // 更新一下系统视图，显示目前找到了多少死亡记录
 
 		/*
 		 * It was convenient to ignore LP_DEAD items in all_visible earlier on
@@ -1929,6 +1929,7 @@ retry:
 	}
 
 	/* Finally, add page-local counts to whole-VACUUM counts */
+	// 更新一下统计信息
 	vacrel->tuples_deleted += tuples_deleted;
 	vacrel->tuples_frozen += tuples_frozen;
 	vacrel->lpdead_items += lpdead_items;
