@@ -857,7 +857,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		bool		all_visible_according_to_vm;
 		LVPagePruneState prunestate;
 
-		if (blkno == next_unskippable_block) // 下一个不能跳过的数据块
+		if (blkno == next_unskippable_block) // 计算下一个不能跳过的数据块的编号
 		{
 			/*
 			 * Can't skip this page safely.  Must scan the page.  But
@@ -876,7 +876,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			/* Last page always scanned (may need to set nonempty_pages) */
 			Assert(blkno < rel_pages - 1);
 
-			if (skipping_current_range) // 如果可以被跳过的块的总数小于32，就不能被跳过，要依次检查每一个块
+			if (skipping_current_range) // 如果可以被跳过的块的总数小于32，就不能被跳过，要依次检查每一个块，否则就跳过大于32个数据块
 				continue;
 
 			/* Current range is too small to skip -- just scan the page */
@@ -948,7 +948,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * all-visible.  In most cases this will be very cheap, because we'll
 		 * already have the correct page pinned anyway.
 		 */
-		visibilitymap_pin(vacrel->rel, blkno, &vmbuffer);
+		visibilitymap_pin(vacrel->rel, blkno, &vmbuffer); // 把blkno对应的VM数据块搞到内存中，因为VM每块可以记录32672个数据块，所以大部分情况下这个操作很cheap
 
 		/*
 		 * We need a buffer cleanup lock to prune HOT chains and defragment
@@ -957,7 +957,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * processing using lazy_scan_noprune.
 		 */
 		buf = ReadBufferExtended(vacrel->rel, MAIN_FORKNUM, blkno, RBM_NORMAL,
-								 vacrel->bstrategy);
+								 vacrel->bstrategy); // 根据数据块blkno读取数据页到内存，编号是buf
 		page = BufferGetPage(buf);
 		if (!ConditionalLockBufferForCleanup(buf))
 		{
