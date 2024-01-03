@@ -76,7 +76,7 @@ typedef uint16 ItemLength;
  * In a REDIRECT pointer, lp_off holds offset number for next line pointer
  */
 #define ItemIdGetRedirect(itemId) \
-   ((itemId)->lp_off)
+   ((itemId)->lp_off) //对于一个重定向的指针，它指向的是记录指针数组的另外一个指针，而不是真正的记录的偏移量
 
 /*
  * ItemIdIsValid
@@ -149,6 +149,7 @@ typedef uint16 ItemLength;
  *		Set the item identifier to be REDIRECT, with the specified link.
  *		Beware of multiple evaluations of itemId!
  */
+// LP_REDIRECT类型的记录指针，lp_off指向了记录指针的下标，而不是记录的偏移量
 #define ItemIdSetRedirect(itemId, link) \
 ( \
 	(itemId)->lp_flags = LP_REDIRECT, \

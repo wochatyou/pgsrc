@@ -371,7 +371,7 @@ PageGetMaxOffsetNumber(Page page) // 返回值是这个数据页有多少条记�
 {
 	PageHeader	pageheader = (PageHeader) page;
 
-	if (pageheader->pd_lower <= SizeOfPageHeaderData) // 条记录
+	if (pageheader->pd_lower <= SizeOfPageHeaderData) // 0条记录
 		return 0;
 	else
 		return (pageheader->pd_lower - SizeOfPageHeaderData) / sizeof(ItemIdData);

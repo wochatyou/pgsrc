@@ -29,7 +29,7 @@
 #include "utils/snapmgr.h"
 
 /* Working data for heap_page_prune and subroutines */
-typedef struct
+typedef struct // 这个数据结构用于对数据页进行修剪使用
 {
 	Relation	rel;
 
@@ -64,7 +64,7 @@ typedef struct
 	 * This needs to be MaxHeapTuplesPerPage + 1 long as FirstOffsetNumber is
 	 * 1. Otherwise every access would need to subtract 1.
 	 */
-	bool		marked[MaxHeapTuplesPerPage + 1]; // 特地多加一避免每次都要进行下标转换
+	bool		marked[MaxHeapTuplesPerPage + 1]; // 特地多加一避免每次都要进行下标转换，如果是true的话，如果上面三个数组中有一个包含i，i是本数组的下标
 
 	/*
 	 * Tuple visibility is only computed once for each tuple, for correctness
@@ -74,7 +74,7 @@ typedef struct
 	 *
 	 * Same indexing as ->marked.
 	 */
-	int8		htsv[MaxHeapTuplesPerPage + 1];
+	int8		htsv[MaxHeapTuplesPerPage + 1]; // -1有特殊意义
 } PruneState;
 
 /* Local functions */
@@ -405,7 +405,7 @@ heap_page_prune(Relation relation, Buffer buffer,
 		 * repeating the prune/defrag process until something else happens to
 		 * the page.
 		 */
-		PageClearFull(page);
+		PageClearFull(page); // 数据页页头的状态位设置一下 pd_flags 去掉PD_PAGE_FULL
 
 		MarkBufferDirty(buffer); // 把这个数据页设置为脏页
 
@@ -607,12 +607,12 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 	/*
 	 * If it's a heap-only tuple, then it is not the start of a HOT chain.
 	 */
-	if (ItemIdIsNormal(rootlp))
+	if (ItemIdIsNormal(rootlp)) // 如果这条记录是正常记录，就没有HOT chain
 	{
 		Assert(prstate->htsv[rootoffnum] != -1);
 		htup = (HeapTupleHeader) PageGetItem(dp, rootlp);
 
-		if (HeapTupleHeaderIsHeapOnly(htup))
+		if (HeapTupleHeaderIsHeapOnly(htup)) // 定义： ((tup)->t_infomask2 & HEAP_ONLY_TUPLE) != 0
 		{
 			/*
 			 * If the tuple is DEAD and doesn't chain to anything else, mark
@@ -635,14 +635,14 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 			if (prstate->htsv[rootoffnum] == HEAPTUPLE_DEAD &&
 				!HeapTupleHeaderIsHotUpdated(htup))
 			{
-				heap_prune_record_unused(prstate, rootoffnum);
+				heap_prune_record_unused(prstate, rootoffnum); // 把它放进prstate的死亡记录数组中，供后面进一步处理
 				HeapTupleHeaderAdvanceConflictHorizon(htup,
 													  &prstate->snapshotConflictHorizon);
 				ndeleted++;
 			}
 
 			/* Nothing more to do */
-			return ndeleted;
+			return ndeleted; // 因为本函数每次只处理一条记录，现在处理完了，就返回了
 		}
 	}
 
@@ -650,21 +650,21 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 	offnum = rootoffnum;
 
 	/* while not end of the chain */
-	for (;;)
+	for (;;) // 开始遍历HOT chain了
 	{
 		ItemId		lp;
 		bool		tupdead,
 					recent_dead;
 
 		/* Sanity check (pure paranoia) */
-		if (offnum < FirstOffsetNumber)
+		if (offnum < FirstOffsetNumber) // 这种情况下有问题了
 			break;
 
 		/*
 		 * An offset past the end of page's line pointer array is possible
 		 * when the array was truncated (original item must have been unused)
 		 */
-		if (offnum > maxoff)
+		if (offnum > maxoff) //扫描到头了，退出循环
 			break;
 
 		/* If item is already processed, stop --- it must not be same chain */
@@ -686,8 +686,8 @@ heap_prune_chain(Buffer buffer, OffsetNumber rootoffnum, PruneState *prstate)
 		{
 			if (nchain > 0)
 				break;			/* not at start of chain */
-			chainitems[nchain++] = offnum;
-			offnum = ItemIdGetRedirect(rootlp);
+			chainitems[nchain++] = offnum; // 把这个指针放在chain数组中
+			offnum = ItemIdGetRedirect(rootlp); // 跳到链条的下一个记录
 			continue;
 		}
 
@@ -866,7 +866,7 @@ heap_prune_record_prunable(PruneState *prstate, TransactionId xid)
 }
 
 /* Record line pointer to be redirected */
-static void
+static void // 因为是link，所以是一对，两个一起放进去
 heap_prune_record_redirect(PruneState *prstate,
 						   OffsetNumber offnum, OffsetNumber rdoffnum)
 {
@@ -881,7 +881,7 @@ heap_prune_record_redirect(PruneState *prstate,
 }
 
 /* Record line pointer to be marked dead */
-static void
+static void //和下面的逻辑很类似
 heap_prune_record_dead(PruneState *prstate, OffsetNumber offnum)
 {
 	Assert(prstate->ndead < MaxHeapTuplesPerPage);
@@ -892,7 +892,7 @@ heap_prune_record_dead(PruneState *prstate, OffsetNumber offnum)
 }
 
 /* Record line pointer to be marked unused */
-static void
+static void // 这个逻辑很简单，就是把该记录放在prstate的unused数组中
 heap_prune_record_unused(PruneState *prstate, OffsetNumber offnum)
 {
 	Assert(prstate->nunused < MaxHeapTuplesPerPage);
@@ -919,11 +919,11 @@ heap_page_prune_execute(Buffer buffer,
 	HeapTupleHeader htup PG_USED_FOR_ASSERTS_ONLY;
 
 	/* Shouldn't be called unless there's something to do */
-	Assert(nredirected > 0 || ndead > 0 || nunused > 0);
+	Assert(nredirected > 0 || ndead > 0 || nunused > 0); // 只有这三个指标中至少有一个大于0，本函数才会被调用
 
 	/* Update all redirected line pointers */
 	offnum = redirected;
-	for (int i = 0; i < nredirected; i++)
+	for (int i = 0; i < nredirected; i++) // 先处理重定向类型的记录指针
 	{
 		OffsetNumber fromoff = *offnum++; // 两个元素紧挨着。第一个是from，第二个是to
 		OffsetNumber tooff = *offnum++;
@@ -939,7 +939,7 @@ heap_page_prune_execute(Buffer buffer,
 		 * maintaining an existing LP_REDIRECT from an existing HOT chain that
 		 * has been pruned at least once before now.
 		 */
-		if (!ItemIdIsRedirected(fromlp))
+		if (!ItemIdIsRedirected(fromlp)) // 如果from不是重定向类型的记录指针
 		{
 			Assert(ItemIdHasStorage(fromlp) && ItemIdIsNormal(fromlp));
 
@@ -949,14 +949,14 @@ heap_page_prune_execute(Buffer buffer,
 		else
 		{
 			/* We shouldn't need to redundantly set the redirect */
-			Assert(ItemIdGetRedirect(fromlp) != tooff);
+			Assert(ItemIdGetRedirect(fromlp) != tooff); // 如果from已经指向了to，是不对的，本函数来做这个连接工作
 		}
 
 		/*
 		 * The item that we're about to set as an LP_REDIRECT (the 'from'
 		 * item) will point to an existing item (the 'to' item) that is
 		 * already a heap-only tuple.  There can be at most one LP_REDIRECT
-		 * item per HOT chain.
+		 * item per HOT chain.       //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 注意这里！
 		 *
 		 * We need to keep around an LP_REDIRECT item (after original
 		 * non-heap-only root tuple gets pruned away) so that it's always
@@ -975,12 +975,12 @@ heap_page_prune_execute(Buffer buffer,
 		Assert(HeapTupleHeaderIsHeapOnly(htup));
 #endif
 
-		ItemIdSetRedirect(fromlp, tooff);
+		ItemIdSetRedirect(fromlp, tooff); // 如果跳过上面大段的检查逻辑，这个循环就做这样一件事情：把from连接到to上
 	}
 
 	/* Update all now-dead line pointers */
 	offnum = nowdead;
-	for (int i = 0; i < ndead; i++)
+	for (int i = 0; i < ndead; i++) // 处理死亡的记录
 	{
 		OffsetNumber off = *offnum++;
 		ItemId		lp = PageGetItemId(page, off);
@@ -1012,7 +1012,7 @@ heap_page_prune_execute(Buffer buffer,
 
 	/* Update all now-unused line pointers */
 	offnum = nowunused;
-	for (int i = 0; i < nunused; i++)
+	for (int i = 0; i < nunused; i++) // 处理没用的记录指针
 	{
 		OffsetNumber off = *offnum++;
 		ItemId		lp = PageGetItemId(page, off);
@@ -1036,13 +1036,13 @@ heap_page_prune_execute(Buffer buffer,
 	 * Finally, repair any fragmentation, and update the page's hint bit about
 	 * whether it has free pointers.
 	 */
-	PageRepairFragmentation(page);
+	PageRepairFragmentation(page); // 整理这个数据块里面的碎片
 
 	/*
 	 * Now that the page has been modified, assert that redirect items still
 	 * point to valid targets.
 	 */
-	page_verify_redirects(page);
+	page_verify_redirects(page); // 依次扫描记录指针中所有REDIRECT的指针记录，获得它们指向的下一个指针记录，确保下一个指针记录指向了真正有效的记录
 }
 
 
@@ -1059,27 +1059,27 @@ heap_page_prune_execute(Buffer buffer,
  *
  * Also check comments in heap_page_prune_execute()'s redirection loop.
  */
-static void
-page_verify_redirects(Page page)
+static void // 逻辑很简单，就是依次扫描
+page_verify_redirects(Page page) //验证该页面上所有的LP_REDIRECT记录指针最终指向一个有效的记录
 {
 #ifdef USE_ASSERT_CHECKING
 	OffsetNumber offnum;
 	OffsetNumber maxoff;
 
-	maxoff = PageGetMaxOffsetNumber(page);
+	maxoff = PageGetMaxOffsetNumber(page); // 获得记录指针数组的元素个数
 	for (offnum = FirstOffsetNumber;
 		 offnum <= maxoff;
-		 offnum = OffsetNumberNext(offnum))
+		 offnum = OffsetNumberNext(offnum)) // 从头往后开始扫描
 	{
 		ItemId		itemid = PageGetItemId(page, offnum);
 		OffsetNumber targoff;
 		ItemId		targitem;
 		HeapTupleHeader htup;
 
-		if (!ItemIdIsRedirected(itemid))
+		if (!ItemIdIsRedirected(itemid)) //如果不是重定向指针，就跳过
 			continue;
 
-		targoff = ItemIdGetRedirect(itemid);
+		targoff = ItemIdGetRedirect(itemid); // 获得它指向的下一个记录指针。targoff是记录指针的下标
 		targitem = PageGetItemId(page, targoff);
 
 		Assert(ItemIdIsUsed(targitem));

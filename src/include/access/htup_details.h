@@ -574,6 +574,7 @@ StaticAssertDecl(MaxOffsetNumber < SpecTokenOffsetNumber,
  * pointers to this anyway, to avoid excessive line-pointer bloat and not
  * require increases in the size of work arrays.
  */
+// MaxHeapTuplesPerPage = 291 (8192-24)/(24+4)
 #define MaxHeapTuplesPerPage	\
 	((int) ((BLCKSZ - SizeOfPageHeaderData) / \
 			(MAXALIGN(SizeofHeapTupleHeader) + sizeof(ItemIdData)))) // 一个数据页能够存放的最大的记录数，是一个固定值
