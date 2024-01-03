@@ -2537,10 +2537,10 @@ vac_cleanup_one_index(IndexVacuumInfo *ivinfo, IndexBulkDeleteResult *istat)
  * Returns the total required space for VACUUM's dead_items array given a
  * max_items value.
  */
-Size
+Size // 返回的单位是字节
 vac_max_items_to_alloc_size(int max_items)
 {
-	Assert(max_items <= MAXDEADITEMS(MaxAllocSize));
+	Assert(max_items <= MAXDEADITEMS(MaxAllocSize)); // 确保使用内存不会超过1GB
 
 	return offsetof(VacDeadItems, items) + sizeof(ItemPointerData) * max_items;
 }

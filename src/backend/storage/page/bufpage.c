@@ -831,7 +831,7 @@ PageRepairFragmentation(Page page) // 在页面修剪后，进行碎片化整理
  * buffer.  The page's PD_HAS_FREE_LINES hint bit will be set or unset based
  * on whether or not we leave behind any remaining LP_UNUSED items.
  */
-void
+void // 把记录指针数组的尾部的死亡记录删除掉
 PageTruncateLinePointerArray(Page page)
 {
 	PageHeader	phdr = (PageHeader) page;
@@ -840,7 +840,7 @@ PageTruncateLinePointerArray(Page page)
 	int			nunusedend = 0;
 
 	/* Scan line pointer array back-to-front */
-	for (int i = PageGetMaxOffsetNumber(page); i >= FirstOffsetNumber; i--)
+	for (int i = PageGetMaxOffsetNumber(page); i >= FirstOffsetNumber; i--) // 从头往前扫描
 	{
 		ItemId		lp = PageGetItemId(page, i);
 
@@ -852,9 +852,9 @@ PageTruncateLinePointerArray(Page page)
 			 * safe to truncate, or notice that it's not safe to truncate
 			 * additional line pointers (stop counting line pointers).
 			 */
-			if (!ItemIdIsUsed(lp))
+			if (!ItemIdIsUsed(lp)) // 这个记录是没有使用的
 				nunusedend++;
-			else
+			else // 从后往前扫描，遇到了第一条正常的记录
 				countdone = true;
 		}
 		else
@@ -878,7 +878,7 @@ PageTruncateLinePointerArray(Page page)
 
 	if (nunusedend > 0)
 	{
-		phdr->pd_lower -= sizeof(ItemIdData) * nunusedend;
+		phdr->pd_lower -= sizeof(ItemIdData) * nunusedend; // 调整一下pd_lower，去掉nunusedend个记录
 
 #ifdef CLOBBER_FREED_MEMORY
 		memset((char *) page + phdr->pd_lower, 0x7F,

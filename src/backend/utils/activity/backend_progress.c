@@ -86,7 +86,7 @@ pgstat_progress_incr_param(int index, int64 incr)
  * This is atomic; readers won't see intermediate states.
  *-----------
  */
-void
+void // nparam表示后面两个数组有多少个元素
 pgstat_progress_update_multi_param(int nparam, const int *index,
 								   const int64 *val)
 {
@@ -100,7 +100,7 @@ pgstat_progress_update_multi_param(int nparam, const int *index,
 
 	for (i = 0; i < nparam; ++i)
 	{
-		Assert(index[i] >= 0 && index[i] < PGSTAT_NUM_PROGRESS_PARAM);
+		Assert(index[i] >= 0 && index[i] < PGSTAT_NUM_PROGRESS_PARAM); // PGSTAT_NUM_PROGRESS_PARAM的值是20
 
 		beentry->st_progress_param[index[i]] = val[i];
 	}

@@ -695,7 +695,7 @@ index_getbitmap(IndexScanDesc scan, TIDBitmap *bitmap)
  *		return value is an optional palloc'd struct of statistics
  * ----------------
  */
-IndexBulkDeleteResult *
+IndexBulkDeleteResult * //批量删除索引中的死亡记录
 index_bulk_delete(IndexVacuumInfo *info,
 				  IndexBulkDeleteResult *istat,
 				  IndexBulkDeleteCallback callback,

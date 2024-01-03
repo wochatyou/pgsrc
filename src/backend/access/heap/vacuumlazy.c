@@ -186,7 +186,7 @@ typedef struct LVRelState
 	 * lazy_vacuum_heap_rel, which marks the same LP_DEAD line pointers as
 	 * LP_UNUSED during second heap pass.
 	 */
-	VacDeadItems *dead_items;	/* TIDs whose index tuples we'll delete */
+	VacDeadItems *dead_items;	/* TIDs whose index tuples we'll delete */  // 这个占据最大的内存，死亡记录数组
 	BlockNumber rel_pages;		/* total number of pages */
 	BlockNumber scanned_pages;	/* # pages examined (not skipped via VM) */
 	BlockNumber removed_pages;	/* # pages removed by relation truncation */
@@ -299,7 +299,7 @@ static void restore_vacuum_error_info(LVRelState *vacrel,
  *		At entry, we have already established a transaction and opened
  *		and locked the relation.
  */
-void // 在一个堆表上执行Vacuum
+void // 在一个堆表上执行Vacuum。它做了一些设置工作，然后调用lazy_scan_heap()函数完成真正的Vacuum工作
 heap_vacuum_rel(Relation rel, VacuumParams *params,
 				BufferAccessStrategy bstrategy)
 {
@@ -352,7 +352,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	 * of each rel.  It's convenient for code in lazy_scan_heap to always use
 	 * these temp copies.
 	 */
-	vacrel = (LVRelState *) palloc0(sizeof(LVRelState));
+	vacrel = (LVRelState *) palloc0(sizeof(LVRelState)); // 这个数据结构是控制Vacuum过程的总控数据结构
 	vacrel->dbname = get_database_name(MyDatabaseId);
 	vacrel->relnamespace = get_namespace_name(RelationGetNamespace(rel));
 	vacrel->relname = pstrdup(RelationGetRelationName(rel));
@@ -367,7 +367,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	/* Set up high level stuff about rel and its indexes */
 	vacrel->rel = rel;
 	vac_open_indexes(vacrel->rel, RowExclusiveLock, &vacrel->nindexes,
-					 &vacrel->indrels);
+					 &vacrel->indrels); // 打开这个表上所有的索引，索引的个数保存在vacrel->nindexes中，索引的信息保存在vacrel->indrels中
 	vacrel->bstrategy = bstrategy;
 	if (instrument && vacrel->nindexes > 0)
 	{
@@ -423,7 +423,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	vacrel->lpdead_item_pages = 0;
 	vacrel->missed_dead_pages = 0;
 	vacrel->nonempty_pages = 0;
-	/* dead_items_alloc allocates vacrel->dead_items later on */
+	/* dead_items_alloc allocates vacrel->dead_items later on */ // 死亡记录数组的空间后面分配，这里暂不分配
 
 	/* Allocate/initialize output statistics state */
 	vacrel->new_rel_tuples = 0;
@@ -497,13 +497,13 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	 * is already dangerously old.)
 	 */
 	lazy_check_wraparound_failsafe(vacrel);
-	dead_items_alloc(vacrel, params->nworkers);
+	dead_items_alloc(vacrel, params->nworkers); // 为死亡记录数组分配内存空间
 
 	/*
 	 * Call lazy_scan_heap to perform all required heap pruning, index
 	 * vacuuming, and heap vacuuming (plus related processing)
 	 */
-	lazy_scan_heap(vacrel);
+	lazy_scan_heap(vacrel); // 这里执行主要的Vacuum工作
 
 	/*
 	 * Free resources managed by dead_items_alloc.  This ends parallel mode in
@@ -522,7 +522,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 		update_relstats_all_indexes(vacrel);
 
 	/* Done with rel's indexes */
-	vac_close_indexes(vacrel->nindexes, vacrel->indrels, NoLock);
+	vac_close_indexes(vacrel->nindexes, vacrel->indrels, NoLock); // 关闭表的所有索引
 
 	/* Optionally truncate rel */
 	if (should_attempt_truncation(vacrel))
@@ -821,7 +821,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
  *		which makes index processing very inefficient when memory is in short
  *		supply.
  */
-static void
+static void // 这个是清理的主要马力函数了
 lazy_scan_heap(LVRelState *vacrel)
 {
 	BlockNumber rel_pages = vacrel->rel_pages,
@@ -841,14 +841,15 @@ lazy_scan_heap(LVRelState *vacrel)
 
 	/* Report that we're scanning the heap, advertising total # of blocks */
 	initprog_val[0] = PROGRESS_VACUUM_PHASE_SCAN_HEAP;  // 表示正在处于的阶段
-	initprog_val[1] = rel_pages; // 这张表有多少条记录
+	initprog_val[1] = rel_pages; // 这张表有多少个数据块
 	initprog_val[2] = dead_items->max_items;  // 共计多少死亡记录
-	pgstat_progress_update_multi_param(3, initprog_index, initprog_val);
+	pgstat_progress_update_multi_param(3, initprog_index, initprog_val); // 显示此时所处的阶段，总块数，死亡数组记录的体积
 
 	/* Set up an initial range of skippable blocks using the visibility map */
 	next_unskippable_block = lazy_scan_skip(vacrel, &vmbuffer, 0,
 											&next_unskippable_allvis,
-											&skipping_current_range);
+											&skipping_current_range); // 从编号为0的数据块开始计算，第一个不能跳过的数据块的编号是多少
+
 	for (blkno = 0; blkno < rel_pages; blkno++) // 从头开始扫描这张表的每个数据块
 	{
 		Buffer		buf;
@@ -882,6 +883,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			all_visible_according_to_vm = true;
 		}
 
+		// 扫描的块数scanned_pages不包括被跳过的数据块，所以它的总数是小于等于该表的总块数的
 		vacrel->scanned_pages++; // 这一个数据块要被处理，所以扫描块数要加一
 
 		/* Report as block scanned, update error traceback information */
@@ -909,8 +911,8 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * dead_items TIDs, pause and do a cycle of vacuuming before we tackle
 		 * this page.
 		 */
-		Assert(dead_items->max_items >= MaxHeapTuplesPerPage);
-		if (dead_items->max_items - dead_items->num_items < MaxHeapTuplesPerPage)
+		Assert(dead_items->max_items >= MaxHeapTuplesPerPage); // MaxHeapTuplesPerPage的值是291
+		if (dead_items->max_items - dead_items->num_items < MaxHeapTuplesPerPage) // 如果死亡记录快满了，就处理一批
 		{
 			/*
 			 * Before beginning index vacuuming, we release any pin we may
@@ -926,7 +928,7 @@ lazy_scan_heap(LVRelState *vacrel)
 
 			/* Perform a round of index and heap vacuuming */
 			vacrel->consider_bypass_optimization = false;
-			lazy_vacuum(vacrel);
+			lazy_vacuum(vacrel); // 这里是主要的工作
 
 			/*
 			 * Vacuum the Free Space Map to make newly-freed space visible on
@@ -1019,7 +1021,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		 * were pruned some time earlier.  Also considers freezing XIDs in the
 		 * tuple headers of remaining items with storage.
 		 */
-		lazy_scan_prune(vacrel, buf, blkno, page, &prunestate);
+		lazy_scan_prune(vacrel, buf, blkno, page, &prunestate); // 往死亡记录数组中添加记录
 
 		Assert(!prunestate.all_visible || !prunestate.has_lpdead_items);
 
@@ -1531,7 +1533,7 @@ lazy_scan_new_or_empty(LVRelState *vacrel, Buffer buf, BlockNumber blkno,
  * line pointers, and that every remaining item with tuple storage is
  * considered as a candidate for freezing.
  */
-static void // 对指定数据块进行修剪和冻结
+static void // 对指定的数据块进行修剪和冻结
 lazy_scan_prune(LVRelState *vacrel,
 				Buffer buf,
 				BlockNumber blkno,
@@ -1601,7 +1603,7 @@ retry:
 	prunestate->all_frozen = true;
 	prunestate->visibility_cutoff_xid = InvalidTransactionId;
 
-	for (offnum = FirstOffsetNumber;  // FirstOffsetNumber 是 1， 扫描记录指针函数
+	for (offnum = FirstOffsetNumber;  // FirstOffsetNumber 是 1， 从头开始扫描记录指针数组
 		 offnum <= maxoff;
 		 offnum = OffsetNumberNext(offnum))
 	{
@@ -1614,7 +1616,7 @@ retry:
 		vacrel->offnum = offnum;
 		itemid = PageGetItemId(page, offnum);
 
-		if (!ItemIdIsUsed(itemid)) // 如果这条记录没有本使用
+		if (!ItemIdIsUsed(itemid)) // 如果这条记录没有被使用
 			continue;
 
 		/* Redirect items mustn't be touched */
@@ -2196,7 +2198,7 @@ lazy_vacuum(LVRelState *vacrel)
 	bool		bypass;
 
 	/* Should not end up here with no indexes */
-	Assert(vacrel->nindexes > 0);
+	Assert(vacrel->nindexes > 0); // 只有这张表有索引的时候才能进入本函数
 	Assert(vacrel->lpdead_item_pages > 0);
 
 	if (!vacrel->do_index_vacuuming)
@@ -2334,7 +2336,7 @@ lazy_vacuum_all_indexes(LVRelState *vacrel)
 
 	/* Report that we are now vacuuming indexes */
 	pgstat_progress_update_param(PROGRESS_VACUUM_PHASE,
-								 PROGRESS_VACUUM_PHASE_VACUUM_INDEX);
+								 PROGRESS_VACUUM_PHASE_VACUUM_INDEX); // 在系统视图中显示我们正在处于Vacuum index的阶段
 
 	if (!ParallelVacuumIsActive(vacrel))
 	{
@@ -2411,7 +2413,7 @@ lazy_vacuum_all_indexes(LVRelState *vacrel)
  * tuples until we've removed their index entries, and we want to process
  * index entry removal in batches as large as possible.
  */
-static void
+static void // 对堆表的第二轮扫描
 lazy_vacuum_heap_rel(LVRelState *vacrel)
 {
 	int			index = 0;
@@ -2425,14 +2427,14 @@ lazy_vacuum_heap_rel(LVRelState *vacrel)
 
 	/* Report that we are now vacuuming the heap */
 	pgstat_progress_update_param(PROGRESS_VACUUM_PHASE,
-								 PROGRESS_VACUUM_PHASE_VACUUM_HEAP);
+								 PROGRESS_VACUUM_PHASE_VACUUM_HEAP); // 更新一下系统视图
 
 	/* Update error traceback information */
 	update_vacuum_error_info(vacrel, &saved_err_info,
 							 VACUUM_ERRCB_PHASE_VACUUM_HEAP,
 							 InvalidBlockNumber, InvalidOffsetNumber);
 
-	while (index < vacrel->dead_items->num_items)
+	while (index < vacrel->dead_items->num_items) // 扫描死亡记录的数组
 	{
 		BlockNumber blkno;
 		Buffer		buf;
@@ -2441,7 +2443,7 @@ lazy_vacuum_heap_rel(LVRelState *vacrel)
 
 		vacuum_delay_point();
 
-		blkno = ItemPointerGetBlockNumber(&vacrel->dead_items->items[index]);
+		blkno = ItemPointerGetBlockNumber(&vacrel->dead_items->items[index]); // 获得该TID的数据块的块号
 		vacrel->blkno = blkno;
 
 		/*
@@ -2499,7 +2501,7 @@ lazy_vacuum_heap_rel(LVRelState *vacrel)
  * LP_DEAD item on the page.  The return value is the first index immediately
  * after all LP_DEAD items for the same page in the array.
  */
-static int
+static int // index是在死亡记录数组中，该页的第一个LP_DEAD的记录编号
 lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 					  int index, Buffer vmbuffer)
 {
@@ -2522,27 +2524,27 @@ lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 
 	START_CRIT_SECTION();
 
-	for (; index < dead_items->num_items; index++)
+	for (; index < dead_items->num_items; index++) // 扫描死亡记录数组
 	{
 		BlockNumber tblk;
 		OffsetNumber toff;
 		ItemId		itemid;
 
 		tblk = ItemPointerGetBlockNumber(&dead_items->items[index]);
-		if (tblk != blkno)
+		if (tblk != blkno) // 已经不是本块了，所以就跳出循环后返回
 			break;				/* past end of tuples for this block */
 		toff = ItemPointerGetOffsetNumber(&dead_items->items[index]);
 		itemid = PageGetItemId(page, toff);
 
 		Assert(ItemIdIsDead(itemid) && !ItemIdHasStorage(itemid));
-		ItemIdSetUnused(itemid);
+		ItemIdSetUnused(itemid); // 把这个记录的状态变成LP_UNUSED， 这是最主要的动作
 		unused[nunused++] = toff;
 	}
 
 	Assert(nunused > 0);
 
 	/* Attempt to truncate line pointer array now */
-	PageTruncateLinePointerArray(page);
+	PageTruncateLinePointerArray(page); // 把该数据页的记录指针数组的尾部的不需要的记录指针去掉
 
 	/*
 	 * Mark buffer dirty before we write WAL.
@@ -2707,7 +2709,7 @@ lazy_cleanup_all_indexes(LVRelState *vacrel)
  *
  * Returns bulk delete stats derived from input stats
  */
-static IndexBulkDeleteResult *
+static IndexBulkDeleteResult * // Vacuum一个索引
 lazy_vacuum_one_index(Relation indrel, IndexBulkDeleteResult *istat,
 					  double reltuples, LVRelState *vacrel)
 {
@@ -3117,27 +3119,27 @@ count_nondeletable_pages(LVRelState *vacrel, bool *lock_waiter_detected)
 static int
 dead_items_max_items(LVRelState *vacrel)
 {
-	int64		max_items;
+	int64		max_items; // 它的单位不是字节，而是字节/6，因为每个TID都是6个字节
 	int			vac_work_mem = IsAutoVacuumWorkerProcess() &&
 		autovacuum_work_mem != -1 ?
-		autovacuum_work_mem : maintenance_work_mem;
+		autovacuum_work_mem : maintenance_work_mem; // 如果autovacuum_work_mem没有设置，就取maintenance_work_mem的值
 
-	if (vacrel->nindexes > 0)
+	if (vacrel->nindexes > 0) // 如果有索引的话，这是最常见的情况。按照vac_work_mem的大小分配，如果超过了总块数/291，就按照后者为准
 	{
 		BlockNumber rel_pages = vacrel->rel_pages;
 
-		max_items = MAXDEADITEMS(vac_work_mem * 1024L);
+		max_items = MAXDEADITEMS(vac_work_mem * 1024L); // vac_work_mem的缺省单位是KB
 		max_items = Min(max_items, INT_MAX);
-		max_items = Min(max_items, MAXDEADITEMS(MaxAllocSize));
+		max_items = Min(max_items, MAXDEADITEMS(MaxAllocSize)); // MaxAllocSize是1GB，这里限制了最多不能超过1GB的内存使用量
 
 		/* curious coding here to ensure the multiplication can't overflow */
 		if ((BlockNumber) (max_items / MaxHeapTuplesPerPage) > rel_pages)
-			max_items = rel_pages * MaxHeapTuplesPerPage;
+			max_items = rel_pages * MaxHeapTuplesPerPage; //rel_pages是这个表的总的块数，每块最多291条记录，所以。。。
 
 		/* stay sane if small maintenance_work_mem */
-		max_items = Max(max_items, MaxHeapTuplesPerPage);
+		max_items = Max(max_items, MaxHeapTuplesPerPage); // 确保最小值是291
 	}
-	else
+	else // 这张表没有索引，就简单了，只要设置为291就行了，因为没有索引的表，直接对堆表的数据进行一个页面一个页面的处理
 	{
 		/* One-pass case only stores a single heap page's TIDs at a time */
 		max_items = MaxHeapTuplesPerPage;
@@ -3153,14 +3155,14 @@ dead_items_max_items(LVRelState *vacrel)
  * Also handles parallel initialization as part of allocating dead_items in
  * DSM when required.
  */
-static void
+static void // 分配死亡记录数组的内存，挂在vacrel->dead_items中
 dead_items_alloc(LVRelState *vacrel, int nworkers)
 {
 	VacDeadItems *dead_items;
 	int			max_items;
 
-	max_items = dead_items_max_items(vacrel);
-	Assert(max_items >= MaxHeapTuplesPerPage);
+	max_items = dead_items_max_items(vacrel); // 在这里确定要分配的TID的总个数，最高不超过1GB字节的内存使用
+	Assert(max_items >= MaxHeapTuplesPerPage); // MaxHeapTuplesPerPage就是291
 
 	/*
 	 * Initialize state for a parallel vacuum.  As of now, only one worker can
@@ -3200,7 +3202,7 @@ dead_items_alloc(LVRelState *vacrel, int nworkers)
 	}
 
 	/* Serial VACUUM case */
-	dead_items = (VacDeadItems *) palloc(vac_max_items_to_alloc_size(max_items));
+	dead_items = (VacDeadItems *) palloc(vac_max_items_to_alloc_size(max_items)); // 在内存中按照max_items指定的大小分配数组保存死亡记录的TID
 	dead_items->max_items = max_items;
 	dead_items->num_items = 0;
 
