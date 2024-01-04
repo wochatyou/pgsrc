@@ -2395,7 +2395,7 @@ XLogSetAsyncXactLSN(XLogRecPtr asyncXactLSN)
  * Record the LSN up to which we can remove WAL because it's not required by
  * any replication slot.
  */
-void //最小LSN，低于这个LSN的WAL记录可以被删除掉
+void //设置复制槽的最小LSN，低于这个LSN的WAL记录可以被删除掉
 XLogSetReplicationSlotMinimumLSN(XLogRecPtr lsn)
 {
 	SpinLockAcquire(&XLogCtl->info_lck);
@@ -2408,7 +2408,7 @@ XLogSetReplicationSlotMinimumLSN(XLogRecPtr lsn)
  * Return the oldest LSN we must retain to satisfy the needs of some
  * replication slot.
  */
-static XLogRecPtr
+static XLogRecPtr // 获取复制槽的最小的LSN
 XLogGetReplicationSlotMinimumLSN(void)
 {
 	XLogRecPtr	retval;
@@ -6421,7 +6421,7 @@ update_checkpoint_display(int flags, bool restartpoint, bool reset)
 
 
 /*
- * Perform a checkpoint --- either during shutdown, or on-the-fly
+ * Perform a checkpoint --- either during shutdown, or on-the-fly // 两种情况，online检查点和shutdown检查点
  *
  * flags is a bitwise OR of the following:
  *	CHECKPOINT_IS_SHUTDOWN: checkpoint is for database shutdown.
@@ -7462,7 +7462,7 @@ KeepLogSeg(XLogRecPtr recptr, XLogSegNo *logSegNo)
 	 * Calculate how many segments are kept by slots first, adjusting for
 	 * max_slot_wal_keep_size.
 	 */
-	keep = XLogGetReplicationSlotMinimumLSN();
+	keep = XLogGetReplicationSlotMinimumLSN(); // 获取复制槽需要保留的最小的LSN
 	if (keep != InvalidXLogRecPtr && keep < recptr)
 	{
 		XLByteToSeg(keep, segno, wal_segment_size);

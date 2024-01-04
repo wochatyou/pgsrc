@@ -53,7 +53,7 @@ AuxProcType MyAuxProcType = NotAnAuxProcess;	/* declared in miscadmin.h */
  *
  *	 This code is here just because of historical reasons.
  */
-void // 这个函数是主进程成功创建子进程后，在子进程内部执行的
+void // 这个函数是主进程成功创建子进程后，在子进程内部执行的。因为它最后调用pg_exit(1)，所以它不会返回给调用者了
 AuxiliaryProcessMain(AuxProcType auxtype)
 {
 	Assert(IsUnderPostmaster);
@@ -135,7 +135,7 @@ AuxiliaryProcessMain(AuxProcType auxtype)
 
 	SetProcessingMode(NormalProcessing);
 
-	switch (MyAuxProcType)
+	switch (MyAuxProcType) // 根据子进程的不同类型，分别执行不同的逻辑
 	{
 		case StartupProcess:
 			StartupProcessMain();

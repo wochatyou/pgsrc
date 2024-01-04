@@ -1465,7 +1465,7 @@ CreateLockFile(const char *filename, bool amPostmaster,
  * postmaster.c will rewrite it upon creating the first Unix socket.
  */
 void
-CreateDataDirLockFile(bool amPostmaster)
+CreateDataDirLockFile(bool amPostmaster) // 参数amPostmaster表明执行这个函数的进程是不是主进程
 {
 	CreateLockFile(DIRECTORY_LOCK_FILE, amPostmaster, "", true, DataDir);
 }

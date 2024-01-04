@@ -29,7 +29,7 @@
  * the child must unblock.
  */
 pid_t
-fork_process(void)
+fork_process(void) // 对fork()系统调用的封装，返回值是0表示是子进程，大于0表示是父进程，小于0表示出错
 {
 	pid_t		result;
 	const char *oomfilename;
@@ -62,7 +62,7 @@ fork_process(void)
 	 * signal. With more analysis this could potentially be relaxed.
 	 */
 	sigprocmask(SIG_SETMASK, &BlockSig, &save_mask);
-	result = fork();
+	result = fork(); // =========================================== 在这里执行fork()!!!!!!!
 	if (result == 0) // 下面的逻辑在子进程中执行
 	{
 		/* fork succeeded, in child */
@@ -112,7 +112,7 @@ fork_process(void)
 		}
 
 		/* do post-fork initialization for random number generation */
-		pg_strong_random_init();
+		pg_strong_random_init(); // 产生随机数，只是在使用SSL的时候才用到，否则啥也不做
 	}
 	else
 	{

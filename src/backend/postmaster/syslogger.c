@@ -678,7 +678,7 @@ SysLogger_Start(void)
 			return 0;
 
 #ifndef EXEC_BACKEND
-		case 0:
+		case 0:    // 现在是子进程的状态
 			/* in postmaster child ... */
 			InitPostmasterChild();
 
@@ -690,11 +690,11 @@ SysLogger_Start(void)
 			PGSharedMemoryDetach();
 
 			/* do the work */
-			SysLoggerMain(0, NULL);
+			SysLoggerMain(0, NULL); // 真正执行日志进程的工作
 			break;
 #endif
 
-		default:
+		default: // 现在主进程当中
 			/* success, in postmaster */
 
 			/* now we redirect stderr, if not done already */

@@ -101,7 +101,7 @@ static int	on_proc_exit_index,
  * ----------------------------------------------------------------
  */
 void
-proc_exit(int code)
+proc_exit(int code) // PG版的exit函数，它在退出之前会调用退出之前的回调函数，最后调用系统的exit()
 {
 	/* not safe if forked by system(), etc. */
 	if (MyProcPid != (int) getpid())
@@ -209,7 +209,7 @@ proc_exit_prepare(int code)
 	 * previously-completed callbacks).  So, an infinite loop should not be
 	 * possible.
 	 */
-	while (--on_proc_exit_index >= 0)
+	while (--on_proc_exit_index >= 0) // 执行所有已经注册的退出回调函数
 		on_proc_exit_list[on_proc_exit_index].function(code,
 													   on_proc_exit_list[on_proc_exit_index].arg);
 

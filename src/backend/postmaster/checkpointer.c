@@ -178,7 +178,7 @@ static void ReqCheckpointHandler(SIGNAL_ARGS);
  * basic execution environment, but not enabled signals yet.
  */
 void
-CheckpointerMain(void)
+CheckpointerMain(void) // 检查点进程的入口函数
 {
 	sigjmp_buf	local_sigjmp_buf;
 	MemoryContext checkpointer_context;

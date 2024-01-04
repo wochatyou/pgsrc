@@ -1157,7 +1157,7 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * If enabled, start up syslogger collection subprocess
 	 */
-	SysLoggerPID = SysLogger_Start();
+	SysLoggerPID = SysLogger_Start(); // 启动系统日志进程
 
 	/*
 	 * Reset whereToSendOutput from DestDebug (its starting state) to
@@ -1362,7 +1362,7 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * Write the external PID file if requested
 	 */
-	if (external_pid_file)
+	if (external_pid_file) // 额外的一个pid文件，里面只有一个进程号而已。本地的锁文件是必须有的。这个额外的pid文件是可选项
 	{
 		FILE	   *fpidfile = fopen(external_pid_file, "w");
 
@@ -1448,14 +1448,14 @@ PostmasterMain(int argc, char *argv[])
 
 	/* Start bgwriter and checkpointer so they can help with recovery */
 	if (CheckpointerPID == 0)
-		CheckpointerPID = StartCheckpointer();
+		CheckpointerPID = StartCheckpointer(); // 启动检查点进程
 	if (BgWriterPID == 0)
-		BgWriterPID = StartBackgroundWriter();
+		BgWriterPID = StartBackgroundWriter(); // 启动后台写进程
 
 	/*
 	 * We're ready to rock and roll...
 	 */
-	StartupPID = StartupDataBase();
+	StartupPID = StartupDataBase();  // 启动恢复进程
 	Assert(StartupPID != 0);
 	StartupStatus = STARTUP_RUNNING;
 	pmState = PM_STARTUP;
@@ -1779,7 +1779,7 @@ ServerLoop(void)
 				port = ConnCreate(events[i].fd);
 				if (port)
 				{
-					BackendStartup(port);
+					BackendStartup(port); // 启动子进程
 
 					/*
 					 * We no longer need the open socket or port structure in
@@ -5329,7 +5329,7 @@ CountChildren(int target)
  * to start subprocess.
  */
 static pid_t
-StartChildProcess(AuxProcType type)
+StartChildProcess(AuxProcType type) // 入口参数type决定了启动子进程的类型，譬如checkpoint, startup, walreceiver等
 {
 	pid_t		pid;
 
@@ -5355,7 +5355,7 @@ StartChildProcess(AuxProcType type)
 		pid = postmaster_forkexec(ac, av);
 	}
 #else							/* !EXEC_BACKEND */
-	pid = fork_process();
+	pid = fork_process(); // 创建子进程
 
 	if (pid == 0)				/* child */
 	{
@@ -5369,11 +5369,11 @@ StartChildProcess(AuxProcType type)
 		MemoryContextDelete(PostmasterContext);
 		PostmasterContext = NULL;
 
-		AuxiliaryProcessMain(type); /* does not return */
+		AuxiliaryProcessMain(type); /* does not return */ // 进入子进程的执行入口函数，从此一去不复返了
 	}
 #endif							/* EXEC_BACKEND */
 
-	if (pid < 0)
+	if (pid < 0) // 现在处于父进程当中，但是fork失败了
 	{
 		/* in parent, fork failed */
 		int			save_errno = errno;
@@ -5423,7 +5423,7 @@ StartChildProcess(AuxProcType type)
 	/*
 	 * in parent, successful fork
 	 */
-	return pid;
+	return pid; // 如果父进程fork子进程成功，就直接返回子进程的进程号
 }
 
 /*
