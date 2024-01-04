@@ -920,7 +920,7 @@ ApplyLauncherRegister(void)
 	bgw.bgw_notify_pid = 0;
 	bgw.bgw_main_arg = (Datum) 0;
 
-	RegisterBackgroundWorker(&bgw);
+	RegisterBackgroundWorker(&bgw); // 有一个单向链表记录后台进程的情况
 }
 
 /*

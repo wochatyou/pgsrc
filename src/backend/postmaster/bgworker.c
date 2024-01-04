@@ -926,7 +926,7 @@ RegisterBackgroundWorker(BackgroundWorker *worker)
 	/*
 	 * Copy the registration data into the registered workers list.
 	 */
-	rw = malloc(sizeof(RegisteredBgWorker));
+	rw = malloc(sizeof(RegisteredBgWorker)); // 直接使用malloc分配内存
 	if (rw == NULL)
 	{
 		ereport(LOG,

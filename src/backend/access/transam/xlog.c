@@ -3968,7 +3968,7 @@ WriteControlFile(void)
 }
 
 static void
-ReadControlFile(void)
+ReadControlFile(void) // 读取磁盘上控制文件的内容到全局变量ControlFile中，此时ControlFile是在私有内存中分配的，然后再做一系列的校验工作
 {
 	pg_crc32c	crc;
 	int			fd;
@@ -4462,10 +4462,10 @@ show_in_hot_standby(void)
  * reset case, there's a dangling pointer into old shared memory), or not.
  */
 void
-LocalProcessControlFile(bool reset)
+LocalProcessControlFile(bool reset) // 调用这个函数时，共享内存还没有初始化
 {
 	Assert(reset || ControlFile == NULL);
-	ControlFile = palloc(sizeof(ControlFileData));
+	ControlFile = palloc(sizeof(ControlFileData)); // 先在本地内存中存放控制文件中的内容
 	ReadControlFile();
 }
 

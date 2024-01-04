@@ -596,7 +596,7 @@ PostmasterMain(int argc, char *argv[])
 
 	PostmasterPid = MyProcPid;
 
-	IsPostmasterEnvironment = true;
+	IsPostmasterEnvironment = true; // 表明进入了主进程的环境当中了
 
 	/*
 	 * Start our win32 signal implementation
@@ -623,7 +623,7 @@ PostmasterMain(int argc, char *argv[])
 	 */
 	PostmasterContext = AllocSetContextCreate(TopMemoryContext,
 											  "Postmaster",
-											  ALLOCSET_DEFAULT_SIZES);
+											  ALLOCSET_DEFAULT_SIZES); // 在TopMemoryContext之下创建一个Postmaster内存池
 	MemoryContextSwitchTo(PostmasterContext);
 
 	/* Initialize paths to installation files */
@@ -907,13 +907,13 @@ PostmasterMain(int argc, char *argv[])
 	}
 
 	/* Verify that DataDir looks reasonable */
-	checkDataDir();
+	checkDataDir(); // 检查目录是否存在，权限等，最后检查一下PG_VERSION这个文件的版本和程序的版本是否一致
 
 	/* Check that pg_control exists */
-	checkControlFile();
+	checkControlFile(); // 只检查控制文件是否存在，不检查里面的内容
 
 	/* And switch working directory into it */
-	ChangeToDataDir();
+	ChangeToDataDir(); // 把进程的当前工作目录切换到数据库集群目录下
 
 	/*
 	 * Check for invalid combinations of GUC settings.
@@ -994,7 +994,7 @@ PostmasterMain(int argc, char *argv[])
 	 * processes will inherit the correct function pointer and not need to
 	 * repeat the test.
 	 */
-	LocalProcessControlFile(false);
+	LocalProcessControlFile(false); // 读取控制文件的内容到私有内存，因为这个时候共享内存还没有被创建出来
 
 	/*
 	 * Register the apply launcher.  It's probably a good idea to call this
@@ -1069,7 +1069,7 @@ PostmasterMain(int argc, char *argv[])
 	 * normally choose the same IPC keys.  This helps ensure that we will
 	 * clean up dead IPC objects if the postmaster crashes and is restarted.
 	 */
-	CreateSharedMemoryAndSemaphores();
+	CreateSharedMemoryAndSemaphores(); // 在这里第一次也是唯一一次创建共享内存，并进行各种初始化的工作
 
 	/*
 	 * Estimate number of openable files.  This must happen after setting up
@@ -1463,7 +1463,7 @@ PostmasterMain(int argc, char *argv[])
 	/* Some workers may be scheduled to start now */
 	maybe_start_bgworkers();
 
-	status = ServerLoop();
+	status = ServerLoop(); // 主进程的主循环
 
 	/*
 	 * ServerLoop probably shouldn't ever return, but if it does, close down.
@@ -1580,7 +1580,7 @@ getInstallationPaths(const char *argv0)
  * just a sanity check to see if we are looking at a real data directory.
  */
 static void
-checkControlFile(void)
+checkControlFile(void) // 只是检查控制文件是否存在，并不检查里面的内容
 {
 	char		path[MAXPGPATH];
 	FILE	   *fp;
@@ -1751,7 +1751,7 @@ ServerLoop(void)
 		 * Latch set by signal handler, or new connection pending on any of
 		 * our sockets? If the latter, fork a child process to deal with it.
 		 */
-		for (int i = 0; i < nevents; i++)
+		for (int i = 0; i < nevents; i++) // 事件的个数？
 		{
 			if (events[i].events & WL_LATCH_SET)
 				ResetLatch(MyLatch);

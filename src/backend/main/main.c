@@ -97,7 +97,7 @@ main(int argc, char *argv[])
 	 * localization of messages may not work right away, and messages won't go
 	 * anywhere but stderr until GUC settings get loaded.
 	 */
-	MemoryContextInit();
+	MemoryContextInit(); // 初始化最初的两个内存池
 
 	/*
 	 * Set up locale information
@@ -164,7 +164,7 @@ main(int argc, char *argv[])
 		 * reduces the risk that we might misinterpret some other mode's -C
 		 * switch as being the postmaster/postgres one.
 		 */
-		if (strcmp(argv[1], "--describe-config") == 0)
+		if (strcmp(argv[1], "--describe-config") == 0) // 这两个操作root执行问题不大
 			do_check_root = false;
 		else if (argc > 2 && strcmp(argv[1], "-C") == 0)
 			do_check_root = false;
@@ -175,7 +175,7 @@ main(int argc, char *argv[])
 	 * option.
 	 */
 	if (do_check_root)
-		check_root(progname);
+		check_root(progname); // 检查是否root在执行本程序，如果是，就报错退出了
 
 	/*
 	 * Dispatch to one of various subprograms depending on first argument.
@@ -195,7 +195,7 @@ main(int argc, char *argv[])
 		PostgresSingleUserMain(argc, argv,
 							   strdup(get_user_name_or_exit(progname)));
 	else
-		PostmasterMain(argc, argv);
+		PostmasterMain(argc, argv); // 正常的情况下都是走这个流程
 	/* the functions above should not return */
 	abort();
 }
@@ -386,7 +386,7 @@ static void
 check_root(const char *progname)
 {
 #ifndef WIN32
-	if (geteuid() == 0)
+	if (geteuid() == 0) // 获得自身的pid，如果是0，表明root在执行本程序
 	{
 		write_stderr("\"root\" execution of the PostgreSQL server is not permitted.\n"
 					 "The server must be started under an unprivileged user ID to prevent\n"
@@ -403,7 +403,7 @@ check_root(const char *progname)
 	 * trying to actively fix this situation seems more trouble than it's
 	 * worth; we'll just expend the effort to check for it.)
 	 */
-	if (getuid() != geteuid())
+	if (getuid() != geteuid()) // 这两个系统调用的结果要一致
 	{
 		write_stderr("%s: real and effective user IDs must match\n",
 					 progname);

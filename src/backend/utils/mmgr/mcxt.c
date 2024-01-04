@@ -283,7 +283,7 @@ BogusGetChunkSpace(void *pointer)
  * In a standalone backend this must be called during backend startup.
  */
 void
-MemoryContextInit(void)
+MemoryContextInit(void) // 创建第一个内存池TopMemoryContext，在它下面创建ErrorContext
 {
 	Assert(TopMemoryContext == NULL);
 

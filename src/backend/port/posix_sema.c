@@ -221,7 +221,7 @@ PGReserveSemaphores(int maxSemas)
 	 * are emulating spinlocks with semaphores.)
 	 */
 	sharedSemas = (PGSemaphore)
-		ShmemAllocUnlocked(PGSemaphoreShmemSize(maxSemas));
+		ShmemAllocUnlocked(PGSemaphoreShmemSize(maxSemas)); // 对于使用信号量来模拟spinlock，必须先使用无锁的共享内存分配函数
 #endif
 
 	numSems = 0;

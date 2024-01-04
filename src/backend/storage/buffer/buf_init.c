@@ -65,7 +65,7 @@ CkptSortItem *CkptBufferIds;
  * postmaster, or in a standalone backend).
  */
 void
-InitBufferPool(void)
+InitBufferPool(void) // 创建共享池的函数，只在主进程启动时调用一次
 {
 	bool		foundBufs,
 				foundDescs,
@@ -75,15 +75,15 @@ InitBufferPool(void)
 	/* Align descriptors to a cacheline boundary. */
 	BufferDescriptors = (BufferDescPadded *)
 		ShmemInitStruct("Buffer Descriptors",
-						NBuffers * sizeof(BufferDescPadded),
+						NBuffers * sizeof(BufferDescPadded), // NBuffers规定了共享池的大小
 						&foundDescs);
 
 	/* Align buffer pool on IO page size boundary. */
 	BufferBlocks = (char *)
 		TYPEALIGN(PG_IO_ALIGN_SIZE,
 				  ShmemInitStruct("Buffer Blocks",
-								  NBuffers * (Size) BLCKSZ + PG_IO_ALIGN_SIZE,
-								  &foundBufs));
+								  NBuffers * (Size) BLCKSZ + PG_IO_ALIGN_SIZE,  // PG_IO_ALIGN_SIZE是4096
+								  &foundBufs));  // 这个是真正保存数据页的内存快，也是最大的
 
 	/* Align condition variables to cacheline boundary. */
 	BufferIOCVArray = (ConditionVariableMinimallyPadded *)
@@ -102,13 +102,13 @@ InitBufferPool(void)
 		ShmemInitStruct("Checkpoint BufferIds",
 						NBuffers * sizeof(CkptSortItem), &foundBufCkpt);
 
-	if (foundDescs || foundBufs || foundIOCV || foundBufCkpt)
+	if (foundDescs || foundBufs || foundIOCV || foundBufCkpt) // 要么全发现，要么全没有发现
 	{
 		/* should find all of these, or none of them */
 		Assert(foundDescs && foundBufs && foundIOCV && foundBufCkpt);
 		/* note: this path is only taken in EXEC_BACKEND case */
 	}
-	else
+	else // 这是第一次调用，进行初始化的工作
 	{
 		int			i;
 

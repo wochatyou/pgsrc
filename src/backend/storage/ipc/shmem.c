@@ -140,7 +140,7 @@ InitShmemAllocation(void)
 
 	/* ShmemIndex can't be set up yet (need LWLocks first) */
 	shmhdr->index = NULL;
-	ShmemIndex = (HTAB *) NULL;
+	ShmemIndex = (HTAB *) NULL; // 主哈希表需要LWLock，所以现在还没有被创建
 
 	/*
 	 * Initialize ShmemVariableCache for transaction manager. (This doesn't
@@ -158,7 +158,7 @@ InitShmemAllocation(void)
  *
  * Assumes ShmemLock and ShmemSegHdr are initialized.
  */
-void * // 在共享内存中分配指定大小的内存块,如果分配失败就报错。
+void * // 在共享内存中分配指定大小的内存块,如果分配失败就报错。这个是有锁分配
 ShmemAlloc(Size size)
 {
 	void	   *newSpace;
@@ -290,7 +290,7 @@ ShmemAddrIsValid(const void *addr)
  *	InitShmemIndex() --- set up or attach to shmem index table.
  */
 void
-InitShmemIndex(void)
+InitShmemIndex(void) //创建或者贴到主哈希表上
 {
 	HASHCTL		info;
 

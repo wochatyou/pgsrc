@@ -473,7 +473,7 @@ LWLockShmemSize(void)
 void
 CreateLWLocks(void)
 {
-	if (!IsUnderPostmaster)
+	if (!IsUnderPostmaster) // 这段逻辑是在主进程中执行，此时IsUnderPostmaster是false
 	{
 		Size		spaceLocks = LWLockShmemSize();
 		int		   *LWLockCounter;

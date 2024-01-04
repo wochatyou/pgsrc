@@ -233,7 +233,7 @@ struct slist_node
  * lists; we just set head.next to NULL if empty.  This doesn't incur any
  * additional branches in the usual manipulations.
  */
-typedef struct slist_head
+typedef struct slist_head // 单向链表的头部
 {
 	slist_node	head;
 } slist_head;

@@ -190,7 +190,7 @@ CreateSharedMemoryAndSemaphores(void)
 		 */
 		seghdr = PGSharedMemoryCreate(size, &shim); // 创建共享内存
 
-		InitShmemAccess(seghdr);
+		InitShmemAccess(seghdr); // 就是设置三个全局变量指向头尾
 
 		/*
 		 * Create semaphores
@@ -202,7 +202,7 @@ CreateSharedMemoryAndSemaphores(void)
 		 * depends on semaphores, so the order is important here).
 		 */
 #ifndef HAVE_SPINLOCKS
-		SpinlockSemaInit();
+		SpinlockSemaInit(); // 如果没有硬件支持的spinlock，就使用信号量来模拟。这块可以跳过不用看
 #endif
 	}
 	else
@@ -226,12 +226,12 @@ CreateSharedMemoryAndSemaphores(void)
 	 * Now initialize LWLocks, which do shared memory allocation and are
 	 * needed for InitShmemIndex.
 	 */
-	CreateLWLocks();
+	CreateLWLocks(); // 这个是主哈希表需要的
 
 	/*
 	 * Set up shmem.c index hashtable
 	 */
-	InitShmemIndex();
+	InitShmemIndex(); // 创建主哈希表
 
 	dsm_shmem_init();
 
@@ -245,7 +245,7 @@ CreateSharedMemoryAndSemaphores(void)
 	CommitTsShmemInit();
 	SUBTRANSShmemInit();
 	MultiXactShmemInit();
-	InitBufferPool();
+	InitBufferPool(); // 最大个的共享池的创建
 
 	/*
 	 * Set up lock manager

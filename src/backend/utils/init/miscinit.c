@@ -447,7 +447,7 @@ SetDataDir(const char *dir)
  * setup, however, we don't force the chdir to occur during SetDataDir.
  */
 void
-ChangeToDataDir(void)
+ChangeToDataDir(void) // 把进程的当先工作目录切换到数据库集群的目录
 {
 	Assert(DataDir);
 
@@ -1720,7 +1720,7 @@ RecheckDataDirLockFile(void)
  * If compatible, return. Otherwise, ereport(FATAL).
  */
 void
-ValidatePgVersion(const char *path)
+ValidatePgVersion(const char *path) // 读取PG_VERSION文件里面的内容和常数PG_VERSION进行对比，不一致就报错退出了
 {
 	char		full_path[MAXPGPATH];
 	FILE	   *file;
