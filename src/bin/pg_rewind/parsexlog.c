@@ -98,7 +98,7 @@ extractPageMap(const char *datadir, XLogRecPtr startpoint, int tliIndex,
 		}
 
 		extractPageInfo(xlogreader);
-	} while (xlogreader->EndRecPtr < endpoint); 一直读到终点的LSN
+	} while (xlogreader->EndRecPtr < endpoint); //一直读到终点的LSN
 
 	/*
 	 * If 'endpoint' didn't point exactly at a record boundary, the caller

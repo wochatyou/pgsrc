@@ -38,7 +38,7 @@
  * Define a hash table which we can use to store information about the files
  * appearing in source and target systems.
  */
-static uint32 hash_string_pointer(const char *s);
+static uint32 hash_string_pointer(const char *s); // 可以参考src/include/lib/simplehash.h。类似C++的模板技术
 #define SH_PREFIX		filehash
 #define SH_ELEMENT_TYPE	file_entry_t
 #define SH_KEY_TYPE		const char *
@@ -177,8 +177,8 @@ insert_filehash_entry(const char *path)
 	file_entry_t *entry;
 	bool		found;
 
-	entry = filehash_insert(filehash, path, &found);
-	if (!found)
+	entry = filehash_insert(filehash, path, &found); // 在哈希表中查询记录，如果没有找到，就插入一条
+	if (!found) // 没有找到，该记录已经插入到哈希表中了，现在初始化里面的内容
 	{
 		entry->path = pg_strdup(path);
 		entry->isrelfile = isRelDataFile(path);

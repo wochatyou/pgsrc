@@ -28,7 +28,7 @@ struct datapagemap_iterator
 /*
  * Add a block to the bitmap.
  */
-void
+void // 把一个数据块加入到数据块位图中，必要时扩充位图的体积
 datapagemap_add(datapagemap_t *map, BlockNumber blkno)
 {
 	int			offset;
@@ -38,7 +38,7 @@ datapagemap_add(datapagemap_t *map, BlockNumber blkno)
 	bitno = blkno % 8;
 
 	/* enlarge or create bitmap if needed */
-	if (map->bitmapsize <= offset)
+	if (map->bitmapsize <= offset) // 位图的大小不够了，要扩容
 	{
 		int			oldsize = map->bitmapsize;
 		int			newsize;
@@ -50,12 +50,12 @@ datapagemap_add(datapagemap_t *map, BlockNumber blkno)
 		 * of a relation to the end.
 		 */
 		newsize = offset + 1;
-		newsize += 10;
+		newsize += 10; // 多加10个字节
 
 		map->bitmap = pg_realloc(map->bitmap, newsize);
 
 		/* zero out the newly allocated region */
-		memset(&map->bitmap[oldsize], 0, newsize - oldsize);
+		memset(&map->bitmap[oldsize], 0, newsize - oldsize); // 把扩容的部分清零
 
 		map->bitmapsize = newsize;
 	}

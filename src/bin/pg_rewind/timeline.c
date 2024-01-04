@@ -26,7 +26,7 @@
  * ID.
  */
 TimeLineHistoryEntry * // buffer里面就包含时间线的信息，以0结尾
-rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries)
+rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries) // 这个函数解析时间线历史文件，有多少次切换，分配的数组就有多少个元素
 {
 	char	   *fline;
 	TimeLineHistoryEntry *entry;
@@ -90,9 +90,9 @@ rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries)
 			exit(1);
 		}
 
-		lasttli = tli;
+		lasttli = tli; // 记录着最后一个时间线
 
-		nlines++;
+		nlines++; // 成功读到第一行切换点，这个值就是1
 		entries = pg_realloc(entries, nlines * sizeof(TimeLineHistoryEntry));
 
 		entry = &entries[nlines - 1];
@@ -104,7 +104,7 @@ rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries)
 		/* we ignore the remainder of each line */
 	}
 
-	if (entries && targetTLI <= lasttli)
+	if (entries && targetTLI <= lasttli) // 6.history中最后一个时间线是5
 	{
 		pg_log_error("invalid data in history file");
 		pg_log_error_detail("Timeline IDs must be less than child timeline's ID.");

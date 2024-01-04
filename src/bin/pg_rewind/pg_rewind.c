@@ -382,7 +382,7 @@ main(int argc, char **argv)
 
 		findCommonAncestorTimeline(sourceHistory, sourceNentries,
 								   targetHistory, targetNentries,
-								   &divergerec, &lastcommontliIndex);
+								   &divergerec, &lastcommontliIndex); // 最后两个参数包含返回值，分叉点和分叉所在的时间线
 
 		pg_log_info("servers diverged at WAL location %X/%X on timeline %u",
 					LSN_FORMAT_ARGS(divergerec),
@@ -392,7 +392,7 @@ main(int argc, char **argv)
 		 * Don't need the source history anymore. The target history is still
 		 * needed by the routines in parsexlog.c, when we read the target WAL.
 		 */
-		pfree(sourceHistory);
+		pfree(sourceHistory); // 拿到分叉点了，源端的数据库时间线历史记录就没用了，释放内存
 
 
 		/*
@@ -424,7 +424,7 @@ main(int argc, char **argv)
 		 * ancestor of the source. In that case, there is no divergent history
 		 * in the target that needs rewinding.
 		 */
-		if (target_wal_endrec > divergerec)
+		if (target_wal_endrec > divergerec) // LSN已经超过了分叉点，说明要回滚
 		{
 			rewind_needed = true;
 		}
@@ -437,7 +437,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (!rewind_needed)
+	if (!rewind_needed) // 如果不需要回滚
 	{
 		pg_log_info("no rewind required");
 		if (writerecoveryconf && !dry_run)
@@ -841,7 +841,7 @@ MinXLogRecPtr(XLogRecPtr a, XLogRecPtr b) // 返回两个LSN的最小值，考�
  * Retrieve timeline history for the source or target system.
  */
 static TimeLineHistoryEntry *
-getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
+getTimelineHistory(TimeLineID tli, bool is_source, int *nentries) //解析时间线文件，获得一个数组，里面是切换的历史
 {
 	TimeLineHistoryEntry *history;
 
@@ -861,15 +861,15 @@ getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
 		char		path[MAXPGPATH];
 		char	   *histfile;
 
-		TLHistoryFilePath(path, tli); // 给定时间线，获得它的时间线文件，如0000000A.history
+		TLHistoryFilePath(path, tli); // 给定时间线，获得它的时间线文件，如pg_wal/0000000A.history
 
 		/* Get history file from appropriate source */
 		if (is_source)
 			histfile = source->fetch_file(source, path, NULL);
 		else
-			histfile = slurpFile(datadir_target, path, NULL);
+			histfile = slurpFile(datadir_target, path, NULL); // 就是读datadir_target/path这个文件到内存，文本文件，以0结尾
 
-		history = rewind_parseTimeLineHistory(histfile, tli, nentries); //解析时间线的文件
+		history = rewind_parseTimeLineHistory(histfile, tli, nentries); //解析时间线的文件，history的内存在这个函数中分配，其实就是一个数组
 		pg_free(histfile);
 	}
 
@@ -906,7 +906,7 @@ getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
  * diverged (ie. the first WAL record that's not the same in both clusters).
  */
 static void
-findCommonAncestorTimeline(TimeLineHistoryEntry *a_history, int a_nentries,  //a_history和b_history是两个数组，后面的参数是它的个数
+getTimelineHistory(TimeLineHistoryEntry *a_history, int a_nentries,  //a_history和b_history是两个数组，后面的参数是它的个数
 						   TimeLineHistoryEntry *b_history, int b_nentries,
 						   XLogRecPtr *recptr, int *tliIndex) // 这两个函数是返回值
 {

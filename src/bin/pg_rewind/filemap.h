@@ -65,7 +65,7 @@ typedef struct file_entry_t
 	 * Pages that were modified in the target and need to be replaced from the
 	 * source.
 	 */
-	datapagemap_t target_pages_to_overwrite;
+	datapagemap_t target_pages_to_overwrite; // 记录该文件的数据块的位图
 
 	/*
 	 * Status of the file in the source.
