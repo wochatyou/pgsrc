@@ -3503,7 +3503,7 @@ UpdateLastRemovedPtr(char *filename)
  * at a point where no other processes write fresh WAL data.
  */
 static void
-RemoveTempXlogFiles(void)
+RemoveTempXlogFiles(void) // 删除pg_wal目录下的所有临时的WAL文件。这些文件的文件名包含xlogtemp
 {
 	DIR		   *xldir;
 	struct dirent *xlde;
@@ -3769,20 +3769,20 @@ RemoveXlogFile(const struct dirent *segment_de,
  * plain directory would result in degraded performance with no notice.
  */
 static void
-ValidateXLOGDirectoryStructure(void)
+ValidateXLOGDirectoryStructure(void) // 就是检查pg_wal这个目录存在不存在，并不检查目录里面的内容
 {
 	char		path[MAXPGPATH];
 	struct stat stat_buf;
 
 	/* Check for pg_wal; if it doesn't exist, error out */
 	if (stat(XLOGDIR, &stat_buf) != 0 ||
-		!S_ISDIR(stat_buf.st_mode))
+		!S_ISDIR(stat_buf.st_mode))  // XLOGDIR就是pa_wal
 		ereport(FATAL,
 				(errmsg("required WAL directory \"%s\" does not exist",
-						XLOGDIR)));
+						XLOGDIR)));  // 如果pg_wal目录不存在，就报错
 
 	/* Check for archive_status */
-	snprintf(path, MAXPGPATH, XLOGDIR "/archive_status");
+	snprintf(path, MAXPGPATH, XLOGDIR "/archive_status"); // 检查pg_wal/archive_status目录，如果这个目录不存在就重新创建。这个目录不重要
 	if (stat(path, &stat_buf) == 0)
 	{
 		/* Check for weird cases where it exists but isn't a directory */
@@ -5030,7 +5030,7 @@ CheckRequiredParameterValues(void)
  * This must be called ONCE during postmaster or standalone-backend startup
  */
 void
-StartupXLOG(void)
+StartupXLOG(void) // 这个函数只在startup进程中调用一次
 {
 	XLogCtlInsert *Insert;
 	CheckPoint	checkPoint;
@@ -5064,7 +5064,7 @@ StartupXLOG(void)
 		ereport(FATAL,
 				(errmsg("control file contains invalid checkpoint location")));
 
-	switch (ControlFile->state)
+	switch (ControlFile->state) // 根据控制文件中的状态，在日志中打印信息
 	{
 		case DB_SHUTDOWNED:
 
@@ -5127,7 +5127,7 @@ StartupXLOG(void)
 	 * someone has performed a copy for PITR, these directories may have been
 	 * excluded and need to be re-created.
 	 */
-	ValidateXLOGDirectoryStructure();
+	ValidateXLOGDirectoryStructure(); // 检查pg_wal目录是否存在，不存在就报错退出
 
 	/* Set up timeout handler needed to report startup progress. */
 	if (!IsBootstrapProcessingMode())
@@ -5153,7 +5153,7 @@ StartupXLOG(void)
 	{
 		RemoveTempXlogFiles();
 		SyncDataDirectory();
-		didCrash = true;
+		didCrash = true; // 如果控制文件的状态不是SHUTDOWN则表明要做恢复
 	}
 	else
 		didCrash = false;
@@ -5167,7 +5167,7 @@ StartupXLOG(void)
 	 * It also applies the tablespace map file, if any.
 	 */
 	InitWalRecovery(ControlFile, &wasShutdown,
-					&haveBackupLabel, &haveTblspcMap);
+					&haveBackupLabel, &haveTblspcMap); // 初始化WAL恢复的准备工作
 	checkPoint = ControlFile->checkPointCopy;
 
 	/* initialize shared memory variables from the checkpoint record */
@@ -5200,7 +5200,7 @@ StartupXLOG(void)
 	 * Initialize replication slots, before there's a chance to remove
 	 * required resources.
 	 */
-	StartupReplicationSlots();
+	StartupReplicationSlots(); // 就是把复制槽在磁盘上的文件读入到共享内存
 
 	/*
 	 * Startup logical state, needs to be setup now so we have proper data
@@ -5284,7 +5284,7 @@ StartupXLOG(void)
 	else
 		pgstat_restore_stats();
 
-	lastFullPageWrites = checkPoint.fullPageWrites;
+	lastFullPageWrites = checkPoint.fullPageWrites; // 是不是全页写
 
 	RedoRecPtr = XLogCtl->RedoRecPtr = XLogCtl->Insert.RedoRecPtr = checkPoint.redo;
 	doPageWrites = lastFullPageWrites;
@@ -5295,7 +5295,7 @@ StartupXLOG(void)
 		/* Initialize state for RecoveryInProgress() */
 		SpinLockAcquire(&XLogCtl->info_lck);
 		if (InArchiveRecovery)
-			XLogCtl->SharedRecoveryState = RECOVERY_STATE_ARCHIVE;
+			XLogCtl->SharedRecoveryState = RECOVERY_STATE_ARCHIVE; // 更新一下恢复进程的状态
 		else
 			XLogCtl->SharedRecoveryState = RECOVERY_STATE_CRASH;
 		SpinLockRelease(&XLogCtl->info_lck);
@@ -5318,7 +5318,7 @@ StartupXLOG(void)
 		 * to the backup start point.  It seems prudent though to just rename
 		 * the file out of the way rather than delete it completely.
 		 */
-		if (haveBackupLabel)
+		if (haveBackupLabel) // 如果存在backup_label文件，我们已经从它那里拿到了恢复的起点，所以这个文件就不需要了，改一个名字保存一下
 		{
 			unlink(BACKUP_LABEL_OLD);
 			durable_rename(BACKUP_LABEL_FILE, BACKUP_LABEL_OLD, FATAL);

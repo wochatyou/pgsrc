@@ -283,14 +283,14 @@ RelationPreserveStorage(RelFileLocator rlocator, bool atCommit)
  * This includes getting rid of any buffers for the blocks that are to be
  * dropped.
  */
-void
+void // 把这张表从尾部截断，只保留nblocks个数据块
 RelationTruncate(Relation rel, BlockNumber nblocks)
 {
 	bool		fsm;
 	bool		vm;
 	bool		need_fsm_vacuum = false;
 	ForkNumber	forks[MAX_FORKNUM];
-	BlockNumber blocks[MAX_FORKNUM];
+	BlockNumber blocks[MAX_FORKNUM];  // MAX_FORKNUM是3
 	int			nforks = 0;
 	SMgrRelation reln;
 

@@ -26,7 +26,7 @@ typedef uint64 XLogRecPtr;
  * record can begin at zero.
  */
 #define InvalidXLogRecPtr	0
-#define XLogRecPtrIsInvalid(r)	((r) == InvalidXLogRecPtr)
+#define XLogRecPtrIsInvalid(r)	((r) == InvalidXLogRecPtr) // 0表示无效的LSN
 
 /*
  * First LSN to use for "fake" LSNs.

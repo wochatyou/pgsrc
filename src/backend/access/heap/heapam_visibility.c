@@ -1211,7 +1211,7 @@ HeapTupleSatisfiesVacuumHorizon(HeapTuple htup, Buffer buffer, TransactionId *de
 	 * If the inserting transaction aborted, then the tuple was never visible
 	 * to any other transaction, so we can delete it immediately.
 	 */
-	if (!HeapTupleHeaderXminCommitted(tuple))
+	if (!HeapTupleHeaderXminCommitted(tuple)) // 就是判断HEAP_XMIN_COMMITTED是否置位
 	{
 		if (HeapTupleHeaderXminInvalid(tuple))
 			return HEAPTUPLE_DEAD;

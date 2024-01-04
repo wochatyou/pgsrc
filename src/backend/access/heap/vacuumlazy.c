@@ -503,7 +503,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	 * Call lazy_scan_heap to perform all required heap pruning, index
 	 * vacuuming, and heap vacuuming (plus related processing)
 	 */
-	lazy_scan_heap(vacrel); // 这里执行主要的Vacuum工作
+	lazy_scan_heap(vacrel); // 这里执行主要的Vacuum工作=============================================
 
 	/*
 	 * Free resources managed by dead_items_alloc.  This ends parallel mode in
@@ -624,7 +624,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 			memset(&walusage, 0, sizeof(WalUsage));
 			WalUsageAccumDiff(&walusage, &pgWalUsage, &startwalusage);
 
-			initStringInfo(&buf);
+			initStringInfo(&buf); // 分配1KB的内存给这个数据结构
 			if (verbose)
 			{
 				/*
@@ -1554,7 +1554,7 @@ lazy_scan_prune(LVRelState *vacrel,
 	int			nnewlpdead;
 	HeapPageFreeze pagefrz;
 	int64		fpi_before = pgWalUsage.wal_fpi;
-	OffsetNumber deadoffsets[MaxHeapTuplesPerPage];
+	OffsetNumber deadoffsets[MaxHeapTuplesPerPage]; // 死亡记录数组，最大291个元素
 	HeapTupleFreeze frozen[MaxHeapTuplesPerPage];
 
 	Assert(BufferGetBlockNumber(buf) == blkno); //blkno指的是数据块的编号，buf是它在共享池中的数据页的编号
@@ -1904,7 +1904,7 @@ retry:
 		vacrel->lpdead_item_pages++;
 		prunestate->has_lpdead_items = true;
 
-		ItemPointerSetBlockNumber(&tmp, blkno); // 把块好保存进去
+		ItemPointerSetBlockNumber(&tmp, blkno); // 把块号保存进去
 
 		for (int i = 0; i < lpdead_items; i++)
 		{
@@ -2842,17 +2842,17 @@ should_attempt_truncation(LVRelState *vacrel)
 /*
  * lazy_truncate_heap - try to truncate off any empty pages at the end
  */
-static void
+static void // 截断heap表的最后的空页
 lazy_truncate_heap(LVRelState *vacrel)
 {
-	BlockNumber orig_rel_pages = vacrel->rel_pages;
+	BlockNumber orig_rel_pages = vacrel->rel_pages; // 记录这张表一开始有多少个数据块
 	BlockNumber new_rel_pages;
 	bool		lock_waiter_detected;
 	int			lock_retry;
 
 	/* Report that we are now truncating */
 	pgstat_progress_update_param(PROGRESS_VACUUM_PHASE,
-								 PROGRESS_VACUUM_PHASE_TRUNCATE);
+								 PROGRESS_VACUUM_PHASE_TRUNCATE); // 更新系统视图，表示我们进入了TRUNCATE阶段
 
 	/* Update error traceback information one last time */
 	update_vacuum_error_info(vacrel, NULL, VACUUM_ERRCB_PHASE_TRUNCATE,
@@ -2874,8 +2874,8 @@ lazy_truncate_heap(LVRelState *vacrel)
 		lock_retry = 0;
 		while (true)
 		{
-			if (ConditionalLockRelation(vacrel->rel, AccessExclusiveLock))
-				break;
+			if (ConditionalLockRelation(vacrel->rel, AccessExclusiveLock)) // 尝试独占式锁住这张表
+				break; // 如果失败就放弃
 
 			/*
 			 * Check for interrupts while trying to (re-)acquire the exclusive
@@ -2909,7 +2909,7 @@ lazy_truncate_heap(LVRelState *vacrel)
 		 * the newly added pages presumably contain non-deletable tuples.
 		 */
 		new_rel_pages = RelationGetNumberOfBlocks(vacrel->rel);
-		if (new_rel_pages != orig_rel_pages)
+		if (new_rel_pages != orig_rel_pages) // 如果数据块的个数发生了变化
 		{
 			/*
 			 * Note: we intentionally don't update vacrel->rel_pages with the

@@ -268,7 +268,7 @@ main(int argc, char **argv)
 	 * the data directory.
 	 */
 #ifndef WIN32
-	if (geteuid() == 0)
+	if (geteuid() == 0) // 禁止使用root用户运行pg_rewind
 	{
 		pg_log_error("cannot be executed by \"root\"");
 		pg_log_error_hint("You must run %s as the PostgreSQL superuser.",
@@ -294,7 +294,7 @@ main(int argc, char **argv)
 	 * Ok, we have all the options and we're ready to start. First, connect to
 	 * remote server.
 	 */
-	if (connstr_source)
+	if (connstr_source) // 如果有连接字符串，就连接源数据库
 	{
 		conn = PQconnectdb(connstr_source);
 
@@ -349,11 +349,11 @@ main(int argc, char **argv)
 	 * minRecoveryPoint or the latest checkpoint.
 	 */
 	source_tli = Max(ControlFile_source.minRecoveryPointTLI,
-					 ControlFile_source.checkPointCopy.ThisTimeLineID);
+					 ControlFile_source.checkPointCopy.ThisTimeLineID); // 源数据库的时间线，取最大值
 
 	/* Similarly for the target. */
 	target_tli = Max(ControlFile_target.minRecoveryPointTLI,
-					 ControlFile_target.checkPointCopy.ThisTimeLineID);
+					 ControlFile_target.checkPointCopy.ThisTimeLineID); // 目标数据库的时间线
 
 	/*
 	 * Find the common ancestor timeline between the clusters.
@@ -361,7 +361,7 @@ main(int argc, char **argv)
 	 * If both clusters are already on the same timeline, there's nothing to
 	 * do.
 	 */
-	if (target_tli == source_tli)
+	if (target_tli == source_tli) // 如果源时间线和目标时间线相同
 	{
 		pg_log_info("source and target cluster are on the same timeline");
 		rewind_needed = false;
@@ -827,14 +827,14 @@ progress_report(bool finished)
  * be used only when comparing WAL locations related to history files.
  */
 static XLogRecPtr
-MinXLogRecPtr(XLogRecPtr a, XLogRecPtr b)
+MinXLogRecPtr(XLogRecPtr a, XLogRecPtr b) // 返回两个LSN的最小值，考虑到了0的情况
 {
-	if (XLogRecPtrIsInvalid(a))
+	if (XLogRecPtrIsInvalid(a)) // 如果a是0的话，就返回b
 		return b;
-	else if (XLogRecPtrIsInvalid(b))
+	else if (XLogRecPtrIsInvalid(b)) // 如果b是0的话，就返回a
 		return a;
 	else
-		return Min(a, b);
+		return Min(a, b); // 如果两个都是正常的LSN，就返回最小值
 }
 
 /*
@@ -849,7 +849,7 @@ getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
 	 * Timeline 1 does not have a history file, so there is no need to check
 	 * and fake an entry with infinite start and end positions.
 	 */
-	if (tli == 1)
+	if (tli == 1) // 如果时间线是1的话，特殊情况
 	{
 		history = (TimeLineHistoryEntry *) pg_malloc(sizeof(TimeLineHistoryEntry));
 		history->tli = tli;
@@ -861,7 +861,7 @@ getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
 		char		path[MAXPGPATH];
 		char	   *histfile;
 
-		TLHistoryFilePath(path, tli);
+		TLHistoryFilePath(path, tli); // 给定时间线，获得它的时间线文件，如0000000A.history
 
 		/* Get history file from appropriate source */
 		if (is_source)
@@ -869,7 +869,7 @@ getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
 		else
 			histfile = slurpFile(datadir_target, path, NULL);
 
-		history = rewind_parseTimeLineHistory(histfile, tli, nentries);
+		history = rewind_parseTimeLineHistory(histfile, tli, nentries); //解析时间线的文件
 		pg_free(histfile);
 	}
 
@@ -906,9 +906,9 @@ getTimelineHistory(TimeLineID tli, bool is_source, int *nentries)
  * diverged (ie. the first WAL record that's not the same in both clusters).
  */
 static void
-findCommonAncestorTimeline(TimeLineHistoryEntry *a_history, int a_nentries,
+findCommonAncestorTimeline(TimeLineHistoryEntry *a_history, int a_nentries,  //a_history和b_history是两个数组，后面的参数是它的个数
 						   TimeLineHistoryEntry *b_history, int b_nentries,
-						   XLogRecPtr *recptr, int *tliIndex)
+						   XLogRecPtr *recptr, int *tliIndex) // 这两个函数是返回值
 {
 	int			i,
 				n;
@@ -921,7 +921,7 @@ findCommonAncestorTimeline(TimeLineHistoryEntry *a_history, int a_nentries,
 	 * recovery processes. Hence check the start position of the new timeline
 	 * as well and move down by one extra timeline entry if they do not match.
 	 */
-	n = Min(a_nentries, b_nentries);
+	n = Min(a_nentries, b_nentries); // 取两个数组的最小值
 	for (i = 0; i < n; i++)
 	{
 		if (a_history[i].tli != b_history[i].tli ||

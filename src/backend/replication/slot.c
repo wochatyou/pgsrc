@@ -832,7 +832,7 @@ ReplicationSlotPersist(void)
  * If already_locked is true, ProcArrayLock has already been acquired
  * exclusively.
  */
-void
+void // 扫描复制槽数组，找到最老的事务号，把它存放在ProArray中
 ReplicationSlotsComputeRequiredXmin(bool already_locked)
 {
 	int			i;
@@ -843,7 +843,7 @@ ReplicationSlotsComputeRequiredXmin(bool already_locked)
 
 	LWLockAcquire(ReplicationSlotControlLock, LW_SHARED);
 
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) // 依次扫描复制槽
 	{
 		ReplicationSlot *s = &ReplicationSlotCtl->replication_slots[i];
 		TransactionId effective_xmin;
@@ -866,13 +866,13 @@ ReplicationSlotsComputeRequiredXmin(bool already_locked)
 		/* check the data xmin */
 		if (TransactionIdIsValid(effective_xmin) &&
 			(!TransactionIdIsValid(agg_xmin) ||
-			 TransactionIdPrecedes(effective_xmin, agg_xmin)))
+			 TransactionIdPrecedes(effective_xmin, agg_xmin))) // agg_xmin是最老的那个事务号
 			agg_xmin = effective_xmin;
 
 		/* check the catalog xmin */
 		if (TransactionIdIsValid(effective_catalog_xmin) &&
 			(!TransactionIdIsValid(agg_catalog_xmin) ||
-			 TransactionIdPrecedes(effective_catalog_xmin, agg_catalog_xmin)))
+			 TransactionIdPrecedes(effective_catalog_xmin, agg_catalog_xmin))) //agg_catalog_xmin是最老的那个事务号
 			agg_catalog_xmin = effective_catalog_xmin;
 	}
 
@@ -888,7 +888,7 @@ ReplicationSlotsComputeRequiredXmin(bool already_locked)
  * purpose, we don't try to account for that, because this module doesn't
  * know what to compare against.
  */
-void
+void // 扫描复制槽数组，找到最小的LSN，存放在共享内存中
 ReplicationSlotsComputeRequiredLSN(void)
 {
 	int			i;
@@ -1611,7 +1611,7 @@ CheckPointReplicationSlots(void)
  * needs to be run before we start crash recovery.
  */
 void
-StartupReplicationSlots(void)
+StartupReplicationSlots(void) // 从磁盘上把复制槽的信息拷贝到共享内存中
 {
 	DIR		   *replication_dir;
 	struct dirent *replication_de;
@@ -1620,13 +1620,13 @@ StartupReplicationSlots(void)
 
 	/* restore all slots by iterating over all on-disk entries */
 	replication_dir = AllocateDir("pg_replslot");
-	while ((replication_de = ReadDir(replication_dir, "pg_replslot")) != NULL)
+	while ((replication_de = ReadDir(replication_dir, "pg_replslot")) != NULL) // 依次读取pg_replslot目录中的内容
 	{
 		char		path[MAXPGPATH + 12];
 		PGFileType	de_type;
 
 		if (strcmp(replication_de->d_name, ".") == 0 ||
-			strcmp(replication_de->d_name, "..") == 0)
+			strcmp(replication_de->d_name, "..") == 0) // 跳过 . 和.. 这两个特殊目录
 			continue;
 
 		snprintf(path, sizeof(path), "pg_replslot/%s", replication_de->d_name);
@@ -1637,7 +1637,7 @@ StartupReplicationSlots(void)
 			continue;
 
 		/* we crashed while a slot was being setup or deleted, clean up */
-		if (pg_str_endswith(replication_de->d_name, ".tmp"))
+		if (pg_str_endswith(replication_de->d_name, ".tmp")) // 如果包含tmp就是临时文件，就删除它
 		{
 			if (!rmtree(path, true))
 			{
@@ -1651,7 +1651,7 @@ StartupReplicationSlots(void)
 		}
 
 		/* looks like a slot in a normal state, restore */
-		RestoreSlotFromDisk(replication_de->d_name);
+		RestoreSlotFromDisk(replication_de->d_name); // 这是一个正常的复制槽，恢复它
 	}
 	FreeDir(replication_dir);
 
@@ -1886,7 +1886,7 @@ SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
 /*
  * Load a single slot from disk into memory.
  */
-static void
+static void // 把指定名字的复制槽的磁盘文件中的内容加载到共享内存中
 RestoreSlotFromDisk(const char *name)
 {
 	ReplicationSlotOnDisk cp;
@@ -1908,7 +1908,7 @@ RestoreSlotFromDisk(const char *name)
 				(errcode_for_file_access(),
 				 errmsg("could not remove file \"%s\": %m", path)));
 
-	sprintf(path, "%s/state", slotdir);
+	sprintf(path, "%s/state", slotdir); // path现在是 pg_replslot/xxx/state的形式
 
 	elog(DEBUG1, "restoring replication slot from \"%s\"", path);
 
@@ -1943,7 +1943,7 @@ RestoreSlotFromDisk(const char *name)
 
 	/* read part of statefile that's guaranteed to be version independent */
 	pgstat_report_wait_start(WAIT_EVENT_REPLICATION_SLOT_READ);
-	readBytes = read(fd, &cp, ReplicationSlotOnDiskConstantSize);
+	readBytes = read(fd, &cp, ReplicationSlotOnDiskConstantSize); // 把磁盘文件读入到内存中
 	pgstat_report_wait_end();
 	if (readBytes != ReplicationSlotOnDiskConstantSize)
 	{
@@ -1958,16 +1958,16 @@ RestoreSlotFromDisk(const char *name)
 							path, readBytes,
 							(Size) ReplicationSlotOnDiskConstantSize)));
 	}
-
+	// 读入到内存中后就要做一系列的检查，确保内容是有效的
 	/* verify magic */
-	if (cp.magic != SLOT_MAGIC)
+	if (cp.magic != SLOT_MAGIC) // 检查魔幻数是不是存在
 		ereport(PANIC,
 				(errcode(ERRCODE_DATA_CORRUPTED),
 				 errmsg("replication slot file \"%s\" has wrong magic number: %u instead of %u",
 						path, cp.magic, SLOT_MAGIC)));
 
 	/* verify version */
-	if (cp.version != SLOT_VERSION)
+	if (cp.version != SLOT_VERSION) // 检查版本
 		ereport(PANIC,
 				(errcode(ERRCODE_DATA_CORRUPTED),
 				 errmsg("replication slot file \"%s\" has unsupported version %u",
@@ -2011,7 +2011,7 @@ RestoreSlotFromDisk(const char *name)
 				ReplicationSlotOnDiskChecksummedSize);
 	FIN_CRC32C(checksum);
 
-	if (!EQ_CRC32C(checksum, cp.checksum))
+	if (!EQ_CRC32C(checksum, cp.checksum)) // 检查校验码
 		ereport(PANIC,
 				(errmsg("checksum mismatch for replication slot file \"%s\": is %u, should be %u",
 						path, checksum, cp.checksum)));
@@ -2020,7 +2020,7 @@ RestoreSlotFromDisk(const char *name)
 	 * If we crashed with an ephemeral slot active, don't restore but delete
 	 * it.
 	 */
-	if (cp.slotdata.persistency != RS_PERSISTENT)
+	if (cp.slotdata.persistency != RS_PERSISTENT) // 如果不是永久复制槽，就删除它
 	{
 		if (!rmtree(slotdir, true))
 		{
@@ -2058,7 +2058,7 @@ RestoreSlotFromDisk(const char *name)
 				 errhint("Change wal_level to be replica or higher.")));
 
 	/* nothing can be active yet, don't lock anything */
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) // 扫描复制槽数组，找到一个空闲的位置，把从磁盘上读取的内容写进去。这个内存是共享内存
 	{
 		ReplicationSlot *slot;
 

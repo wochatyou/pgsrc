@@ -153,7 +153,7 @@ StartupProcShutdownHandler(SIGNAL_ARGS)
 static void
 StartupRereadConfig(void)
 {
-	char	   *conninfo = pstrdup(PrimaryConnInfo);
+	char	   *conninfo = pstrdup(PrimaryConnInfo); //pstrdup函数在当前内存池中分配内存，把输入的字符串拷贝进去
 	char	   *slotname = pstrdup(PrimarySlotName);
 	bool		tempSlot = wal_receiver_create_temp_slot;
 	bool		conninfoChanged;
@@ -169,7 +169,7 @@ StartupRereadConfig(void)
 	 * wal_receiver_create_temp_slot is used only when we have no slot
 	 * configured.  We do not need to track this change if it has no effect.
 	 */
-	if (!slotnameChanged && strcmp(PrimarySlotName, "") == 0)
+	if (!slotnameChanged && strcmp(PrimarySlotName, "") == 0) // 没有配置primary slot name这个参数
 		tempSlotChanged = tempSlot != wal_receiver_create_temp_slot;
 	pfree(conninfo);
 	pfree(slotname);
@@ -242,7 +242,7 @@ StartupProcExit(int code, Datum arg)
  * ----------------------------------
  */
 void
-StartupProcessMain(void)
+StartupProcessMain(void) // starupt进程的主要入口点
 {
 	/* Arrange to clean up at startup process exit */
 	on_shmem_exit(StartupProcExit, 0);
@@ -279,7 +279,7 @@ StartupProcessMain(void)
 	/*
 	 * Do what we came for.
 	 */
-	StartupXLOG();
+	StartupXLOG(); //真正的工作在这里做的
 
 	/*
 	 * Exit normally. Exit code 0 tells postmaster that we completed recovery

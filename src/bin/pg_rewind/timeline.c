@@ -25,7 +25,7 @@
  * timeline has no parents, and return a list of just the specified timeline
  * ID.
  */
-TimeLineHistoryEntry *
+TimeLineHistoryEntry * // buffer里面就包含时间线的信息，以0结尾
 rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries)
 {
 	char	   *fline;
@@ -42,7 +42,7 @@ rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries)
 	 */
 	prevend = InvalidXLogRecPtr;
 	bufptr = buffer;
-	while (!lastline)
+	while (!lastline) // 如果没有读到最后一行
 	{
 		char	   *ptr;
 		TimeLineID	tli;
@@ -51,23 +51,24 @@ rewind_parseTimeLineHistory(char *buffer, TimeLineID targetTLI, int *nentries)
 		int			nfields;
 
 		fline = bufptr;
-		while (*bufptr && *bufptr != '\n')
+		while (*bufptr && *bufptr != '\n') // 寻找回车符号
 			bufptr++;
-		if (!(*bufptr))
+		if (!(*bufptr)) // 读到最后一个0，表示这是最后一行的
 			lastline = true;
 		else
-			*bufptr++ = '\0';
+			*bufptr++ = '\0'; // 现在fline就指向了一个以0结尾的字符串，这是一行
 
 		/* skip leading whitespace and check for # comment */
 		for (ptr = fline; *ptr; ptr++)
 		{
-			if (!isspace((unsigned char) *ptr))
+			if (!isspace((unsigned char) *ptr)) // 遇到第一个非空格的字符就跳出扫描
 				break;
 		}
-		if (*ptr == '\0' || *ptr == '#')
+		if (*ptr == '\0' || *ptr == '#') 到行尾了，这一行没啥内容，就跳过
 			continue;
 
-		nfields = sscanf(fline, "%u\t%X/%X", &tli, &switchpoint_hi, &switchpoint_lo);
+		nfields = sscanf(fline, "%u\t%X/%X", &tli, &switchpoint_hi, &switchpoint_lo); // 这里可以参考时间线历史文件的格式去理解
+		// 正常情况下，会读取3列，时间线，LSN的高4个字节，LSN的低4个字节
 
 		if (nfields < 1)
 		{

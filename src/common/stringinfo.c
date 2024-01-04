@@ -62,7 +62,7 @@ initStringInfo(StringInfo str)
 
 	str->data = (char *) palloc(size); // 初始化是先分配1KB的缓冲区
 	str->maxlen = size;
-	resetStringInfo(str);
+	resetStringInfo(str); // 把len, cursor的值设置为0
 }
 
 /*

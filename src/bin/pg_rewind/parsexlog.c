@@ -79,12 +79,12 @@ extractPageMap(const char *datadir, XLogRecPtr startpoint, int tliIndex,
 	if (xlogreader == NULL)
 		pg_fatal("out of memory while allocating a WAL reading processor");
 
-	XLogBeginRead(xlogreader, startpoint);
+	XLogBeginRead(xlogreader, startpoint); // 从起点开始读取
 	do
 	{
 		record = XLogReadRecord(xlogreader, &errormsg);
 
-		if (record == NULL)
+		if (record == NULL) //如果没有读到WAL记录
 		{
 			XLogRecPtr	errptr = xlogreader->EndRecPtr;
 
@@ -98,13 +98,13 @@ extractPageMap(const char *datadir, XLogRecPtr startpoint, int tliIndex,
 		}
 
 		extractPageInfo(xlogreader);
-	} while (xlogreader->EndRecPtr < endpoint);
+	} while (xlogreader->EndRecPtr < endpoint); 一直读到终点的LSN
 
 	/*
 	 * If 'endpoint' didn't point exactly at a record boundary, the caller
 	 * messed up.
 	 */
-	if (xlogreader->EndRecPtr != endpoint)
+	if (xlogreader->EndRecPtr != endpoint) // 终点必须是一个有效的LSN
 		pg_fatal("end pointer %X/%X is not a valid end point; expected %X/%X",
 				 LSN_FORMAT_ARGS(endpoint), LSN_FORMAT_ARGS(xlogreader->EndRecPtr));
 
@@ -365,7 +365,7 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
  * Extract information on which blocks the current record modifies.
  */
 static void
-extractPageInfo(XLogReaderState *record)
+extractPageInfo(XLogReaderState *record) // 从WAL文件中读取这个WAL记录修改了哪一个数据块
 {
 	int			block_id;
 	RmgrId		rmid = XLogRecGetRmid(record);

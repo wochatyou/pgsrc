@@ -272,7 +272,7 @@ LockRelation(Relation relation, LOCKMODE lockmode)
  * already-open relation.  Never try to do "relation_open(foo, NoLock)"
  * and then lock with this.
  */
-bool
+bool 
 ConditionalLockRelation(Relation relation, LOCKMODE lockmode)
 {
 	LOCKTAG		tag;

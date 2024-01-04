@@ -3874,7 +3874,7 @@ TerminateOtherDBBackends(Oid databaseId)
  * and HOT pruning from removing affected rows still needed by clients with
  * replication slots.
  */
-void
+void // 就是把xmin和catalog_xmin设置到procArray这个共享内存中
 ProcArraySetReplicationSlotXmin(TransactionId xmin, TransactionId catalog_xmin,
 								bool already_locked)
 {

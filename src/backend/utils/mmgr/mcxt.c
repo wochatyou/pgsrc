@@ -1627,7 +1627,7 @@ repalloc_huge(void *pointer, Size size)
  * MemoryContextStrdup
  *		Like strdup(), but allocate from the specified context
  */
-char *
+char * // 在当前内存池中分配和源字符串一样大小的内存空间，并拷贝字符串
 MemoryContextStrdup(MemoryContext context, const char *string)
 {
 	char	   *nstr;
