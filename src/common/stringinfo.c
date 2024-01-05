@@ -56,7 +56,7 @@ makeStringInfo(void)
  * to describe an empty string.
  */
 void
-initStringInfo(StringInfo str)
+initStringInfo(StringInfo str) // 这个函数一开始分配1KB的内存
 {
 	int			size = 1024;	/* initial default buffer size */
 

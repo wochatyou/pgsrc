@@ -108,7 +108,7 @@ static XLogSegNo recvSegNo = 0;
  * LogstreamResult indicates the byte positions that we have already
  * written/fsynced.
  */
-static struct
+static struct // 分为写的位置和刷新的位置
 {
 	XLogRecPtr	Write;			/* last byte + 1 written out in the standby */
 	XLogRecPtr	Flush;			/* last byte + 1 flushed in the standby */
@@ -117,7 +117,7 @@ static struct
 /*
  * Reasons to wake up and perform periodic tasks.
  */
-typedef enum WalRcvWakeupReason
+typedef enum WalRcvWakeupReason // wr(walreceiver)进程醒来的原因
 {
 	WALRCV_WAKEUP_TERMINATE,
 	WALRCV_WAKEUP_PING,
@@ -129,7 +129,7 @@ typedef enum WalRcvWakeupReason
 /*
  * Wake up times for periodic tasks.
  */
-static TimestampTz wakeup[NUM_WALRCV_WAKEUPS];
+static TimestampTz wakeup[NUM_WALRCV_WAKEUPS]; // 这是一个数组，里面是醒来的原因，每一个占用一个槽。每个元素的值是时间
 
 static StringInfoData reply_message;
 static StringInfoData incoming_message;
@@ -184,7 +184,7 @@ ProcessWalRcvInterrupts(void)
 
 /* Main entry point for walreceiver process */
 void
-WalReceiverMain(void)
+WalReceiverMain(void) // wr进程的主入口函数
 {
 	char		conninfo[MAXCONNINFO];
 	char	   *tmp_conninfo;
@@ -204,7 +204,7 @@ WalReceiverMain(void)
 	 * WalRcv should be set up already (if we are a backend, we inherit this
 	 * by fork() or EXEC_BACKEND mechanism from the postmaster).
 	 */
-	Assert(walrcv != NULL);
+	Assert(walrcv != NULL); // 共享内存中的内容已经设置好了
 
 	/*
 	 * Mark walreceiver as running in shared memory.
@@ -225,10 +225,10 @@ WalReceiverMain(void)
 		case WALRCV_STOPPED:
 			SpinLockRelease(&walrcv->mutex);
 			ConditionVariableBroadcast(&walrcv->walRcvStoppedCV);
-			proc_exit(1);
+			proc_exit(1);  // 退出本进程
 			break;
 
-		case WALRCV_STARTING:
+		case WALRCV_STARTING:  //startup进程呼叫启动本进程时，会设置状态为WALRCV_STARTING
 			/* The usual case */
 			break;
 
@@ -241,8 +241,8 @@ WalReceiverMain(void)
 			elog(PANIC, "walreceiver still running according to shared memory state");
 	}
 	/* Advertise our PID so that the startup process can kill us */
-	walrcv->pid = MyProcPid;
-	walrcv->walRcvState = WALRCV_STREAMING;
+	walrcv->pid = MyProcPid; // 登记一下本进程的进程号
+	walrcv->walRcvState = WALRCV_STREAMING; // 把状态设置为WALRCV_STREAMING
 
 	/* Fetch information required to start streaming */
 	walrcv->ready_to_display = false;
@@ -250,7 +250,7 @@ WalReceiverMain(void)
 	strlcpy(slotname, (char *) walrcv->slotname, NAMEDATALEN);
 	is_temp_slot = walrcv->is_temp_slot;
 	startpoint = walrcv->receiveStart;  // 向主库索取WAL记录的起点
-	startpointTLI = walrcv->receiveStartTLI; // 向主库索取WAL记录的时间线
+	startpointTLI = walrcv->receiveStartTLI; // 向主库索取WAL记录的时间线，这些信息startup进程应该已经设置好了
 
 	/*
 	 * At most one of is_temp_slot and slotname can be set; otherwise,
@@ -261,14 +261,14 @@ WalReceiverMain(void)
 	/* Initialise to a sanish value */
 	now = GetCurrentTimestamp();
 	walrcv->lastMsgSendTime =
-		walrcv->lastMsgReceiptTime = walrcv->latestWalEndTime = now;
+		walrcv->lastMsgReceiptTime = walrcv->latestWalEndTime = now; // 更新一下时间
 
 	/* Report the latch to use to awaken this process */
 	walrcv->latch = &MyProc->procLatch;
 
 	SpinLockRelease(&walrcv->mutex);
 
-	pg_atomic_write_u64(&WalRcv->writtenUpto, 0);
+	pg_atomic_write_u64(&WalRcv->writtenUpto, 0); // 原子性地往64位共享内存写入0
 
 	/* Arrange to clean up at walreceiver exit */
 	on_shmem_exit(WalRcvDie, PointerGetDatum(&startpointTLI));
@@ -301,7 +301,7 @@ WalReceiverMain(void)
 	wrconn = walrcv_connect(conninfo, false, false,
 							cluster_name[0] ? cluster_name : "walreceiver",
 							&err);
-	if (!wrconn)
+	if (!wrconn) // 如果连接不成功，就报错退出了
 		ereport(ERROR,
 				(errcode(ERRCODE_CONNECTION_FAILURE),
 				 errmsg("could not connect to the primary server: %s", err)));
@@ -311,7 +311,7 @@ WalReceiverMain(void)
 	 * conninfo, for security. Also save host and port of the sender server
 	 * this walreceiver is connected to.
 	 */
-	tmp_conninfo = walrcv_get_conninfo(wrconn); // 这些信息可以通过pg_stat_wal_receiver这个系统视图查询到
+	tmp_conninfo = walrcv_get_conninfo(wrconn); // 这些信息可以通过pg_stat_wal_receiver这个系统视图查询到。这是实际上就是执行回调函数
 	walrcv_get_senderinfo(wrconn, &sender_host, &sender_port);
 	SpinLockAcquire(&walrcv->mutex);
 	memset(walrcv->conninfo, 0, MAXCONNINFO);
@@ -346,7 +346,7 @@ WalReceiverMain(void)
 		primary_sysid = walrcv_identify_system(wrconn, &primaryTLI);  // 向主库索要系统标识符
 
 		snprintf(standby_sysid, sizeof(standby_sysid), UINT64_FORMAT,
-				 GetSystemIdentifier());
+				 GetSystemIdentifier()); // GetSystemIdentifier()就是直接读取控制文件中的系统标识符
 		if (strcmp(primary_sysid, standby_sysid) != 0) // 如果主库的系统标识符和本库控制文件中的系统标识符不一致，则报错退出
 		{
 			ereport(ERROR,
@@ -360,7 +360,7 @@ WalReceiverMain(void)
 		 * Confirm that the current timeline of the primary is the same or
 		 * ahead of ours.
 		 */
-		if (primaryTLI < startpointTLI)
+		if (primaryTLI < startpointTLI) // 备库的时间线不可能大于主库的时间线
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 					 errmsg("highest timeline %u of the primary is behind recovery timeline %u",
@@ -376,7 +376,7 @@ WalReceiverMain(void)
 		 * but let's avoid the confusion of timeline id collisions where we
 		 * can.
 		 */
-		WalRcvFetchTimeLineHistoryFiles(startpointTLI, primaryTLI);
+		WalRcvFetchTimeLineHistoryFiles(startpointTLI, primaryTLI); // 获取备库时间线和主库时间线之间的时间线切换历史
 
 		/*
 		 * Create temporary replication slot if requested, and update slot
@@ -387,12 +387,12 @@ WalReceiverMain(void)
 		{
 			snprintf(slotname, sizeof(slotname),
 					 "pg_walreceiver_%lld",
-					 (long long int) walrcv_get_backend_pid(wrconn));
+					 (long long int) walrcv_get_backend_pid(wrconn)); // 根据一定的规则产生一个临时复制槽的名字
 
-			walrcv_create_slot(wrconn, slotname, true, false, 0, NULL);
+			walrcv_create_slot(wrconn, slotname, true, false, 0, NULL); // 创建复制槽
 
 			SpinLockAcquire(&walrcv->mutex);
-			strlcpy(walrcv->slotname, slotname, NAMEDATALEN);
+			strlcpy(walrcv->slotname, slotname, NAMEDATALEN); // 把复制槽的名字放在共享内存中
 			SpinLockRelease(&walrcv->mutex);
 		}
 
@@ -408,13 +408,13 @@ WalReceiverMain(void)
 		 * history file, bump recovery target timeline, and ask us to restart
 		 * on the new timeline.
 		 */
-		options.logical = false;
-		options.startpoint = startpoint;
+		options.logical = false; // 是物理复制，不是逻辑复制
+		options.startpoint = startpoint; // 向主库索取从这一个LSN开始的WAL记录
 		options.slotname = slotname[0] != '\0' ? slotname : NULL;
-		options.proto.physical.startpointTLI = startpointTLI;
+		options.proto.physical.startpointTLI = startpointTLI; //开始的时间线
 		if (walrcv_startstreaming(wrconn, &options))
 		{
-			if (first_stream)
+			if (first_stream) //如果是第一次，就打印一条日志，告诉用户我是从哪个时间线，哪个LSN开始起步的
 				ereport(LOG,
 						(errmsg("started streaming WAL from primary at %X/%X on timeline %u",
 								LSN_FORMAT_ARGS(startpoint), startpointTLI)));
@@ -422,16 +422,16 @@ WalReceiverMain(void)
 				ereport(LOG,
 						(errmsg("restarted WAL streaming at %X/%X on timeline %u",
 								LSN_FORMAT_ARGS(startpoint), startpointTLI)));
-			first_stream = false;
+			first_stream = false; // 以后就不是第一次了
 
 			/* Initialize LogstreamResult and buffers for processing messages */
-			LogstreamResult.Write = LogstreamResult.Flush = GetXLogReplayRecPtr(NULL);
+			LogstreamResult.Write = LogstreamResult.Flush = GetXLogReplayRecPtr(NULL); // 获得startup进程最后的apply的LSN，时间线我们不关心，已经有了
 			initStringInfo(&reply_message);
 			initStringInfo(&incoming_message);
 
 			/* Initialize nap wakeup times. */
 			now = GetCurrentTimestamp();
-			for (int i = 0; i < NUM_WALRCV_WAKEUPS; ++i)
+			for (int i = 0; i < NUM_WALRCV_WAKEUPS; ++i) // 为每一种原因设置超时时间
 				WalRcvComputeNextWakeup(i, now);
 
 			/* Send initial reply/feedback messages. */
@@ -459,15 +459,15 @@ WalReceiverMain(void)
 							 errmsg("cannot continue WAL streaming, recovery has already ended")));
 
 				/* Process any requests or signals received recently */
-				ProcessWalRcvInterrupts();
+				ProcessWalRcvInterrupts(); // 处理最近收到的请求或者信号
 
-				if (ConfigReloadPending)
+				if (ConfigReloadPending) // 如果要求重新加载参数，就加载一下
 				{
 					ConfigReloadPending = false;
 					ProcessConfigFile(PGC_SIGHUP);
 					/* recompute wakeup times */
 					now = GetCurrentTimestamp();
-					for (int i = 0; i < NUM_WALRCV_WAKEUPS; ++i)
+					for (int i = 0; i < NUM_WALRCV_WAKEUPS; ++i) // 可能超时时间参数修改了，要重新设置一下各种原因的超时时间
 						WalRcvComputeNextWakeup(i, now);
 					XLogWalRcvSendHSFeedback(true);
 				}
@@ -488,12 +488,12 @@ WalReceiverMain(void)
 							 * Something was received from primary, so adjust
 							 * the ping and terminate wakeup times.
 							 */
-							now = GetCurrentTimestamp();
+							now = GetCurrentTimestamp(); // 从主库获得了一些信息，重新调整下面两个原因的超时时间
 							WalRcvComputeNextWakeup(WALRCV_WAKEUP_TERMINATE,
 													now);
 							WalRcvComputeNextWakeup(WALRCV_WAKEUP_PING, now);
 							XLogWalRcvProcessMsg(buf[0], &buf[1], len - 1,
-												 startpointTLI);
+												 startpointTLI); // 处理来自主库的消息包
 						}
 						else if (len == 0)
 							break;
@@ -507,11 +507,11 @@ WalReceiverMain(void)
 							endofwal = true;
 							break;
 						}
-						len = walrcv_receive(wrconn, &buf, &wait_fd);
+						len = walrcv_receive(wrconn, &buf, &wait_fd); // 继续接收来自主库的消息包
 					}
 
 					/* Let the primary know that we received some data. */
-					XLogWalRcvSendReply(false, false);
+					XLogWalRcvSendReply(false, false); // 给主库反馈一些信息
 
 					/*
 					 * If we've written some records, flush them to disk and
@@ -528,11 +528,11 @@ WalReceiverMain(void)
 				/* Find the soonest wakeup time, to limit our nap. */
 				nextWakeup = TIMESTAMP_INFINITY;
 				for (int i = 0; i < NUM_WALRCV_WAKEUPS; ++i)
-					nextWakeup = Min(wakeup[i], nextWakeup);
+					nextWakeup = Min(wakeup[i], nextWakeup); // 扫描原因数组，拿到最小的超时时间
 
 				/* Calculate the nap time, clamping as necessary. */
 				now = GetCurrentTimestamp();
-				nap = TimestampDifferenceMilliseconds(now, nextWakeup);
+				nap = TimestampDifferenceMilliseconds(now, nextWakeup); // 计算一下我可以睡眠多长时间
 
 				/*
 				 * Ideally we would reuse a WaitEventSet object repeatedly
@@ -646,7 +646,7 @@ WalReceiverMain(void)
 			 * Create .done file forcibly to prevent the streamed segment from
 			 * being archived later.
 			 */
-			if (XLogArchiveMode != ARCHIVE_MODE_ALWAYS)
+			if (XLogArchiveMode != ARCHIVE_MODE_ALWAYS) // archive_mode参数为always
 				XLogArchiveForceDone(xlogfname);
 			else
 				XLogArchiveNotify(xlogfname);
@@ -836,7 +836,7 @@ WalRcvDie(int code, Datum arg)
 /*
  * Accept the message from XLOG stream, and process it.
  */
-static void
+static void // 处理来自主库的消息包，type是消息包的第一个字节，表示消息的类型。buf是消息包的第二个字节开始的
 XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 {
 	int			hdrlen;
@@ -845,14 +845,14 @@ XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 	TimestampTz sendTime;
 	bool		replyRequested;
 
-	resetStringInfo(&incoming_message);
+	resetStringInfo(&incoming_message); // 重新置位字符串
 
 	switch (type)
 	{
 		case 'w':				/* WAL records */ // w是真正的数据包
 			{
 				/* copy message to StringInfo */
-				hdrlen = sizeof(int64) + sizeof(int64) + sizeof(int64);
+				hdrlen = sizeof(int64) + sizeof(int64) + sizeof(int64); // 消息头部是24个字节
 				if (len < hdrlen)
 					ereport(ERROR,
 							(errcode(ERRCODE_PROTOCOL_VIOLATION),
@@ -863,17 +863,17 @@ XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 				dataStart = pq_getmsgint64(&incoming_message);
 				walEnd = pq_getmsgint64(&incoming_message);
 				sendTime = pq_getmsgint64(&incoming_message);
-				ProcessWalSndrMessage(walEnd, sendTime);
+				ProcessWalSndrMessage(walEnd, sendTime); // 更新一下pg_stat_wal_receiver里面的信息
 
 				buf += hdrlen;
 				len -= hdrlen;
-				XLogWalRcvWrite(buf, len, dataStart, tli);
+				XLogWalRcvWrite(buf, len, dataStart, tli); // 写入本地磁盘的WAL文件中
 				break;
 			}
 		case 'k':				/* Keepalive */   // k表示keepalive，心跳功能
 			{
 				/* copy message to StringInfo */
-				hdrlen = sizeof(int64) + sizeof(int64) + sizeof(char);
+				hdrlen = sizeof(int64) + sizeof(int64) + sizeof(char); // 8 + 8 + 1共计17个字节，消息头部是17个字节
 				if (len != hdrlen)
 					ereport(ERROR,
 							(errcode(ERRCODE_PROTOCOL_VIOLATION),
@@ -881,18 +881,18 @@ XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 				appendBinaryStringInfo(&incoming_message, buf, hdrlen);
 
 				/* read the fields */
-				walEnd = pq_getmsgint64(&incoming_message);
-				sendTime = pq_getmsgint64(&incoming_message);
-				replyRequested = pq_getmsgbyte(&incoming_message);
+				walEnd = pq_getmsgint64(&incoming_message); // 这是LSN
+				sendTime = pq_getmsgint64(&incoming_message); // 这是发送的时间
+				replyRequested = pq_getmsgbyte(&incoming_message); // 是否需要回复给主库
 
-				ProcessWalSndrMessage(walEnd, sendTime);
+				ProcessWalSndrMessage(walEnd, sendTime); //更新一下pg_stat_wal_receiver里面的信息
 
 				/* If the primary requested a reply, send one immediately */
-				if (replyRequested)
+				if (replyRequested) // 如果主库需要回复，就发一个回复给它
 					XLogWalRcvSendReply(true, false);
 				break;
 			}
-		default:
+		default: // 如果收到的主库的消息包不是w或者k，说明出现异常，直接退出本进程了
 			ereport(ERROR,
 					(errcode(ERRCODE_PROTOCOL_VIOLATION),
 					 errmsg_internal("invalid replication message type %d",
@@ -903,7 +903,7 @@ XLogWalRcvProcessMsg(unsigned char type, char *buf, Size len, TimeLineID tli)
 /*
  * Write XLOG data to disk.
  */
-static void
+static void // 把WAL记录写入到磁盘上
 XLogWalRcvWrite(char *buf, Size nbytes, XLogRecPtr recptr, TimeLineID tli)
 {
 	int			startoff;
@@ -916,30 +916,30 @@ XLogWalRcvWrite(char *buf, Size nbytes, XLogRecPtr recptr, TimeLineID tli)
 		int			segbytes;
 
 		/* Close the current segment if it's completed */
-		if (recvFile >= 0 && !XLByteInSeg(recptr, recvSegNo, wal_segment_size))
-			XLogWalRcvClose(recptr, tli);
+		if (recvFile >= 0 && !XLByteInSeg(recptr, recvSegNo, wal_segment_size)) // WAL文件打开了，但是LSN不在这个文件的范围内
+			XLogWalRcvClose(recptr, tli); // 写满了本WAL文件，要写下一个WAL文件
 
 		if (recvFile < 0)
 		{
 			/* Create/use new log file */
 			XLByteToSeg(recptr, recvSegNo, wal_segment_size);
-			recvFile = XLogFileInit(recvSegNo, tli);
+			recvFile = XLogFileInit(recvSegNo, tli); // 打开recptr所在的WAL文件
 			recvFileTLI = tli;
 		}
 
 		/* Calculate the start offset of the received logs */
-		startoff = XLogSegmentOffset(recptr, wal_segment_size);
+		startoff = XLogSegmentOffset(recptr, wal_segment_size); // 获得recptr在这个WAL文件中的偏移量
 
-		if (startoff + nbytes > wal_segment_size)
+		if (startoff + nbytes > wal_segment_size) // 如果消息包超过了WAL文件的尾部
 			segbytes = wal_segment_size - startoff;
 		else
-			segbytes = nbytes;
+			segbytes = nbytes; // 最后segbytes表明从recptr开始要往本WAL文件中写入多少个字节
 
 		/* OK to write the logs */
 		errno = 0;
 
-		byteswritten = pg_pwrite(recvFile, buf, segbytes, (off_t) startoff);
-		if (byteswritten <= 0)
+		byteswritten = pg_pwrite(recvFile, buf, segbytes, (off_t) startoff); // 往WAL文件中写入字节
+		if (byteswritten <= 0) // 如果写入出错，就报错退出本进程
 		{
 			char		xlogfname[MAXFNAMELEN];
 			int			save_errno;
@@ -959,12 +959,12 @@ XLogWalRcvWrite(char *buf, Size nbytes, XLogRecPtr recptr, TimeLineID tli)
 		}
 
 		/* Update state for write */
-		recptr += byteswritten;
+		recptr += byteswritten; //调整下一次写入的位置
 
 		nbytes -= byteswritten;
 		buf += byteswritten;
 
-		LogstreamResult.Write = recptr;
+		LogstreamResult.Write = recptr; // 记录一下写入的位置
 	}
 
 	/* Update shared-memory status */
@@ -986,7 +986,7 @@ XLogWalRcvWrite(char *buf, Size nbytes, XLogRecPtr recptr, TimeLineID tli)
  * If we're in the midst of dying, it's unwise to do anything that might throw
  * an error, so we skip sending a reply in that case.
  */
-static void
+static void // 把当前打开的文件同步到磁盘上
 XLogWalRcvFlush(bool dying, TimeLineID tli)
 {
 	Assert(tli != 0);
@@ -995,7 +995,7 @@ XLogWalRcvFlush(bool dying, TimeLineID tli)
 	{
 		WalRcvData *walrcv = WalRcv;
 
-		issue_xlog_fsync(recvFile, recvSegNo, tli);
+		issue_xlog_fsync(recvFile, recvSegNo, tli); // 这里做的是真正的fync
 
 		LogstreamResult.Flush = LogstreamResult.Write;
 
@@ -1053,7 +1053,7 @@ XLogWalRcvClose(XLogRecPtr recptr, TimeLineID tli)
 	 * fsync() and close current file before we switch to next one. We would
 	 * otherwise have to reopen this file to fsync it later
 	 */
-	XLogWalRcvFlush(false, tli);
+	XLogWalRcvFlush(false, tli); // 使用fync把当前已经打开的WAL文件刷新到磁盘上
 
 	XLogFileName(xlogfname, recvFileTLI, recvSegNo, wal_segment_size);
 
@@ -1258,7 +1258,7 @@ XLogWalRcvSendHSFeedback(bool immed)
  * 'walEnd' and 'sendTime' are the end-of-WAL and timestamp of the latest
  * message, reported by primary.
  */
-static void
+static void // 更新一下共享内存中的信息。这两列信息都是来自主库的
 ProcessWalSndrMessage(XLogRecPtr walEnd, TimestampTz sendTime)
 {
 	WalRcvData *walrcv = WalRcv;
@@ -1310,16 +1310,16 @@ ProcessWalSndrMessage(XLogRecPtr walEnd, TimestampTz sendTime)
  * GetCurrentTimestamp().  It had better be a reasonably up-to-date value
  * though.
  */
-static void
-WalRcvComputeNextWakeup(WalRcvWakeupReason reason, TimestampTz now)
+static void // 为每一种原因都指定一个超时时间，这需要wal_receiver_timeout和wal_receiver_status_interval超时时间设置好
+WalRcvComputeNextWakeup(WalRcvWakeupReason reason, TimestampTz now) 
 {
 	switch (reason)
 	{
 		case WALRCV_WAKEUP_TERMINATE:
 			if (wal_receiver_timeout <= 0)
-				wakeup[reason] = TIMESTAMP_INFINITY;
+				wakeup[reason] = TIMESTAMP_INFINITY; // TIMESTAMP_INFINITY是一个64位的上限，表示无限大
 			else
-				wakeup[reason] = TimestampTzPlusMilliseconds(now, wal_receiver_timeout);
+				wakeup[reason] = TimestampTzPlusMilliseconds(now, wal_receiver_timeout); // 在指定的时间now上加上一个超时
 			break;
 		case WALRCV_WAKEUP_PING:
 			if (wal_receiver_timeout <= 0)

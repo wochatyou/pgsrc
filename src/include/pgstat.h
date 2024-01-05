@@ -32,7 +32,7 @@
 #define PG_STAT_TMP_DIR		"pg_stat_tmp"
 
 /* The types of statistics entries */
-typedef enum PgStat_Kind
+typedef enum PgStat_Kind // 统计数据的分类
 {
 	/* use 0 for INVALID, to catch zero-initialized data */
 	PGSTAT_KIND_INVALID = 0,
@@ -86,7 +86,7 @@ typedef enum SessionEndType
  * The data type used for counters.
  * ----------
  */
-typedef int64 PgStat_Counter;
+typedef int64 PgStat_Counter; // 每一种指标都是64位，足够大了
 
 
 /* ------------------------------------------------------------

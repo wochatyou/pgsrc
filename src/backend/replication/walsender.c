@@ -3332,7 +3332,7 @@ WalSndShmemInit(void)
  * advisable.
  */
 void
-WalSndWakeup(bool physical, bool logical)
+WalSndWakeup(bool physical, bool logical) // 唤醒walsender进程。这个函数是别的子进程调用的
 {
 	/*
 	 * Wake up all the walsenders waiting on WAL being flushed or replayed

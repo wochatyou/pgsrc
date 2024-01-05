@@ -30,7 +30,7 @@ void
 pgstat_report_checkpointer(void)
 {
 	/* We assume this initializes to zeroes */
-	static const PgStat_CheckpointerStats all_zeroes;
+	static const PgStat_CheckpointerStats all_zeroes; // 因为它使用了static的类型，初始值是0
 	PgStatShared_Checkpointer *stats_shmem = &pgStatLocal.shmem->checkpointer;
 
 	Assert(!pgStatLocal.shmem->is_shutdown);
@@ -41,12 +41,12 @@ pgstat_report_checkpointer(void)
 	 * this case, avoid unnecessarily modifying the stats entry.
 	 */
 	if (memcmp(&PendingCheckpointerStats, &all_zeroes,
-			   sizeof(all_zeroes)) == 0)
+			   sizeof(all_zeroes)) == 0) // 如果PendingCheckpointerStats里面的内容全都是0，就啥也不做
 		return;
 
-	pgstat_begin_changecount_write(&stats_shmem->changecount);
+	pgstat_begin_changecount_write(&stats_shmem->changecount); // 就是把的值加一
 
-#define CHECKPOINTER_ACC(fld) stats_shmem->stats.fld += PendingCheckpointerStats.fld
+#define CHECKPOINTER_ACC(fld) stats_shmem->stats.fld += PendingCheckpointerStats.fld // 这个值是累积的，因为是+=
 	CHECKPOINTER_ACC(timed_checkpoints);
 	CHECKPOINTER_ACC(requested_checkpoints);
 	CHECKPOINTER_ACC(checkpoint_write_time);
@@ -61,7 +61,7 @@ pgstat_report_checkpointer(void)
 	/*
 	 * Clear out the statistics buffer, so it can be re-used.
 	 */
-	MemSet(&PendingCheckpointerStats, 0, sizeof(PendingCheckpointerStats));
+	MemSet(&PendingCheckpointerStats, 0, sizeof(PendingCheckpointerStats)); // 把它里面的内容重新归零
 
 	/*
 	 * Report IO statistics

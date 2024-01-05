@@ -2700,7 +2700,7 @@ XLogFlush(XLogRecPtr record)
  * to wal_writer_delay/wal_writer_flush_after.
  */
 bool
-XLogBackgroundFlush(void)
+XLogBackgroundFlush(void) // 这个函数由WAL写进程walwriter周期性地执行
 {
 	XLogwrtRqst WriteRqst;
 	bool		flexible = true;
@@ -2710,7 +2710,7 @@ XLogBackgroundFlush(void)
 	TimeLineID	insertTLI;
 
 	/* XLOG doesn't need flushing during recovery */
-	if (RecoveryInProgress())
+	if (RecoveryInProgress()) // 如果处于恢复过程中，就啥也不做
 		return false;
 
 	/*
@@ -2719,14 +2719,14 @@ XLogBackgroundFlush(void)
 	 */
 	insertTLI = XLogCtl->InsertTimeLineID;
 
-	/* read LogwrtResult and update local state */
+	/* read LogwrtResult and update local state */ // 把共享内存中的值读入到本地变量中
 	SpinLockAcquire(&XLogCtl->info_lck);
 	LogwrtResult = XLogCtl->LogwrtResult;
 	WriteRqst = XLogCtl->LogwrtRqst;
 	SpinLockRelease(&XLogCtl->info_lck);
 
 	/* back off to last completed page boundary */
-	WriteRqst.Write -= WriteRqst.Write % XLOG_BLCKSZ;
+	WriteRqst.Write -= WriteRqst.Write % XLOG_BLCKSZ; // 按照8KB对齐
 
 	/* if we have already flushed that far, consider async commit records */
 	if (WriteRqst.Write <= LogwrtResult.Flush)
@@ -2809,14 +2809,14 @@ XLogBackgroundFlush(void)
 	if (WriteRqst.Write > LogwrtResult.Write ||
 		WriteRqst.Flush > LogwrtResult.Flush)
 	{
-		XLogWrite(WriteRqst, insertTLI, flexible);
+		XLogWrite(WriteRqst, insertTLI, flexible); // 把WAL记录写入到磁盘
 	}
 	LWLockRelease(WALWriteLock);
 
 	END_CRIT_SECTION();
 
 	/* wake up walsenders now that we've released heavily contended locks */
-	WalSndWakeupProcessRequests(true, !RecoveryInProgress());
+	WalSndWakeupProcessRequests(true, !RecoveryInProgress()); // 唤醒walsender进程
 
 	/*
 	 * Great, done. To take some work off the critical path, try to initialize
@@ -7093,7 +7093,7 @@ RecoveryRestartPoint(const CheckPoint *checkPoint, XLogReaderState *record)
  * restartpoint.
  */
 bool
-CreateRestartPoint(int flags)
+CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点往后恢复
 {
 	XLogRecPtr	lastCheckPointRecPtr;
 	XLogRecPtr	lastCheckPointEndPtr;
@@ -8159,11 +8159,11 @@ assign_xlog_sync_method(int new_sync_method, void *extra)
  * 'fd' is a file descriptor for the XLOG file to be fsync'd.
  * 'segno' is for error reporting purposes.
  */
-void
+void // 把WAL文件刷新到磁盘上
 issue_xlog_fsync(int fd, XLogSegNo segno, TimeLineID tli)
 {
 	char	   *msg = NULL;
-	instr_time	start;
+	instr_time	start; // 64位的时间戳
 
 	Assert(tli != 0);
 
@@ -8171,7 +8171,7 @@ issue_xlog_fsync(int fd, XLogSegNo segno, TimeLineID tli)
 	 * Quick exit if fsync is disabled or write() has already synced the WAL
 	 * file.
 	 */
-	if (!enableFsync ||
+	if (!enableFsync ||  // 如果没有打开fsync选项，就返回
 		sync_method == SYNC_METHOD_OPEN ||
 		sync_method == SYNC_METHOD_OPEN_DSYNC)
 		return;

@@ -251,7 +251,7 @@ WalWriterMain(void)
 		 * Do what we're here for; then, if XLogBackgroundFlush() found useful
 		 * work to do, reset hibernation counter.
 		 */
-		if (XLogBackgroundFlush())
+		if (XLogBackgroundFlush()) // 这里是主力函数，做了真正的工作
 			left_till_hibernate = LOOPS_UNTIL_HIBERNATE;
 		else if (left_till_hibernate > 0)
 			left_till_hibernate--;

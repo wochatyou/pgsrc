@@ -104,7 +104,7 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
 		(dest) = (segno) * (wal_segsz_bytes) + (offset)
 
 #define XLogSegmentOffset(xlogptr, wal_segsz_bytes)	\
-	((xlogptr) & ((wal_segsz_bytes) - 1))
+	((xlogptr) & ((wal_segsz_bytes) - 1)) // 就是取余，但是因为wal_segsz_bytes是2的指数，只要减去一进行与就可以了，一点优化技巧
 
 /*
  * Compute a segment number from an XLogRecPtr.
@@ -135,7 +135,7 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
  * a boundary byte is taken to be in the previous segment.
  */
 #define XLByteInSeg(xlrp, logSegNo, wal_segsz_bytes) \
-	(((xlrp) / (wal_segsz_bytes)) == (logSegNo))
+	(((xlrp) / (wal_segsz_bytes)) == (logSegNo)) // 判断指定的LSN是否在指定的WAL文件中，就是简单地除于WAL文件的大小，true表示在，否则表示不在
 
 #define XLByteInPrevSeg(xlrp, logSegNo, wal_segsz_bytes) \
 	((((xlrp) - 1) / (wal_segsz_bytes)) == (logSegNo))

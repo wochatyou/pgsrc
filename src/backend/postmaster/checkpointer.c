@@ -230,7 +230,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 	 */
 	checkpointer_context = AllocSetContextCreate(TopMemoryContext,
 												 "Checkpointer",
-												 ALLOCSET_DEFAULT_SIZES);
+												 ALLOCSET_DEFAULT_SIZES); // 在TopMemoryContext下面分配一个单独的内存池
 	MemoryContextSwitchTo(checkpointer_context);
 
 	/*
@@ -344,7 +344,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 	 */
 	for (;;)
 	{
-		bool		do_checkpoint = false;
+		bool		do_checkpoint = false; // 这个标志变量表明要不要做checkpoint
 		int			flags = 0;
 		pg_time_t	now;
 		int			elapsed_secs;
@@ -367,7 +367,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 		if (((volatile CheckpointerShmemStruct *) CheckpointerShmem)->ckpt_flags)
 		{
 			do_checkpoint = true;
-			PendingCheckpointerStats.requested_checkpoints++;
+			PendingCheckpointerStats.requested_checkpoints++; // 因为请求而发生的检查点
 		}
 
 		/*
@@ -377,19 +377,19 @@ CheckpointerMain(void) // 检查点进程的入口函数
 		 * bit even if there is also an external request.
 		 */
 		now = (pg_time_t) time(NULL);
-		elapsed_secs = now - last_checkpoint_time;
-		if (elapsed_secs >= CheckPointTimeout)
+		elapsed_secs = now - last_checkpoint_time; // 把当前时间减去上一次检查点的时间，
+		if (elapsed_secs >= CheckPointTimeout) //如果超过了检查点的超时时间，就必须要做检查点操作了
 		{
 			if (!do_checkpoint)
-				PendingCheckpointerStats.timed_checkpoints++;
+				PendingCheckpointerStats.timed_checkpoints++;  // 因为超过了时间而导致的检查点
 			do_checkpoint = true;
-			flags |= CHECKPOINT_CAUSE_TIME;
+			flags |= CHECKPOINT_CAUSE_TIME; // 表示是因为超时而导致执行检查点
 		}
 
 		/*
 		 * Do a checkpoint if requested.
 		 */
-		if (do_checkpoint)
+		if (do_checkpoint) // 如果要执行检查点了
 		{
 			bool		ckpt_performed = false;
 			bool		do_restartpoint;
@@ -499,17 +499,17 @@ CheckpointerMain(void) // 检查点进程的入口函数
 		}
 
 		/* Check for archive_timeout and switch xlog files if necessary. */
-		CheckArchiveTimeout();
+		CheckArchiveTimeout(); // 检查归档超时的问题
 
 		/* Report pending statistics to the cumulative stats system */
-		pgstat_report_checkpointer();
+		pgstat_report_checkpointer(); // 更新一下统计信息
 		pgstat_report_wal(true);
 
 		/*
 		 * If any checkpoint flags have been set, redo the loop to handle the
 		 * checkpoint without sleeping.
 		 */
-		if (((volatile CheckpointerShmemStruct *) CheckpointerShmem)->ckpt_flags)
+		if (((volatile CheckpointerShmemStruct *) CheckpointerShmem)->ckpt_flags) // 如果此时还有新的检查点请求，就返回起点执行检查点
 			continue;
 
 		/*
@@ -518,7 +518,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 		 */
 		now = (pg_time_t) time(NULL);
 		elapsed_secs = now - last_checkpoint_time;
-		if (elapsed_secs >= CheckPointTimeout)
+		if (elapsed_secs >= CheckPointTimeout) // 又超时了，继续返回起点开始执行检查点
 			continue;			/* no sleep for us ... */
 		cur_timeout = CheckPointTimeout - elapsed_secs;
 		if (XLogArchiveTimeout > 0 && !RecoveryInProgress())
@@ -605,19 +605,19 @@ HandleCheckpointerInterrupts(void)
  * records.
  */
 static void
-CheckArchiveTimeout(void)
+CheckArchiveTimeout(void) // 检查归档超时的问题
 {
 	pg_time_t	now;
 	pg_time_t	last_time;
 	XLogRecPtr	last_switch_lsn;
 
-	if (XLogArchiveTimeout <= 0 || RecoveryInProgress())
+	if (XLogArchiveTimeout <= 0 || RecoveryInProgress()) // 超时归档只在主库上做
 		return;
 
 	now = (pg_time_t) time(NULL);
 
 	/* First we do a quick check using possibly-stale local state. */
-	if ((int) (now - last_xlog_switch_time) < XLogArchiveTimeout)
+	if ((int) (now - last_xlog_switch_time) < XLogArchiveTimeout) // XLogArchiveTimeout记录超时的时间值
 		return;
 
 	/*
@@ -626,10 +626,10 @@ CheckArchiveTimeout(void)
 	 */
 	last_time = GetLastSegSwitchData(&last_switch_lsn);
 
-	last_xlog_switch_time = Max(last_xlog_switch_time, last_time);
+	last_xlog_switch_time = Max(last_xlog_switch_time, last_time); // 取两者的最大值
 
 	/* Now we can do the real checks */
-	if ((int) (now - last_xlog_switch_time) >= XLogArchiveTimeout)
+	if ((int) (now - last_xlog_switch_time) >= XLogArchiveTimeout) // 超时了，开始做切换
 	{
 		/*
 		 * Switch segment only when "important" WAL has been logged since the
@@ -641,7 +641,7 @@ CheckArchiveTimeout(void)
 			XLogRecPtr	switchpoint;
 
 			/* mark switch as unimportant, avoids triggering checkpoints */
-			switchpoint = RequestXLogSwitch(true);
+			switchpoint = RequestXLogSwitch(true); // 请求WAL文件的切换
 
 			/*
 			 * If the returned pointer points exactly to a segment boundary,
@@ -666,7 +666,7 @@ CheckArchiveTimeout(void)
  * there is one pending behind it.)
  */
 static bool
-ImmediateCheckpointRequested(void)
+ImmediateCheckpointRequested(void) // 在共享内存中检查状态为是否为CHECKPOINT_IMMEDIATE
 {
 	volatile CheckpointerShmemStruct *cps = CheckpointerShmem;
 

@@ -1193,7 +1193,7 @@ CreateLockFile(const char *filename, bool amPostmaster,
 	 * would surely never launch a competing postmaster or pg_ctl process
 	 * directly.
 	 */
-	my_pid = getpid();
+	my_pid = getpid(); 
 
 #ifndef WIN32
 	my_p_pid = getppid();

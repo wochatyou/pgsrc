@@ -133,7 +133,7 @@ extern PGDLLIMPORT bool XLOG_DEBUG;
 /* These directly affect the behavior of CreateCheckPoint and subsidiaries */
 #define CHECKPOINT_IS_SHUTDOWN	0x0001	/* Checkpoint is for shutdown */
 #define CHECKPOINT_END_OF_RECOVERY	0x0002	/* Like shutdown checkpoint, but
-											 * issued at end of WAL recovery */
+											 * issued at end of WAL recovery */ // 在恢复到最后也会执行一个检查点
 #define CHECKPOINT_IMMEDIATE	0x0004	/* Do it without delays */
 #define CHECKPOINT_FORCE		0x0008	/* Force even if no activity */
 #define CHECKPOINT_FLUSH_ALL	0x0010	/* Flush all pages, including those
@@ -141,7 +141,7 @@ extern PGDLLIMPORT bool XLOG_DEBUG;
 /* These are important to RequestCheckpoint */
 #define CHECKPOINT_WAIT			0x0020	/* Wait for completion */
 #define CHECKPOINT_REQUESTED	0x0040	/* Checkpoint request has been made */
-/* These indicate the cause of a checkpoint request */
+/* These indicate the cause of a checkpoint request */ // 这两个比特表明检查点的触发原因，超时？还是WAL文件过大导致的
 #define CHECKPOINT_CAUSE_XLOG	0x0080	/* XLOG consumption */
 #define CHECKPOINT_CAUSE_TIME	0x0100	/* Elapsed time */
 
