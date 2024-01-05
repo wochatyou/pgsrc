@@ -1035,7 +1035,7 @@ RegisterDynamicBackgroundWorker(BackgroundWorker *worker,
 
 	/* If we found a slot, tell the postmaster to notice the change. */
 	if (success)
-		SendPostmasterSignal(PMSIGNAL_BACKGROUND_WORKER_CHANGE);
+		SendPostmasterSignal(PMSIGNAL_BACKGROUND_WORKER_CHANGE); // 通知主进程
 
 	/*
 	 * If we found a slot and the user has provided a handle, initialize it.

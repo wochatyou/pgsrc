@@ -47,7 +47,7 @@
  * Represents the different dest cases we need to worry about at
  * the bottom level
  */
-typedef enum CopyDest
+typedef enum CopyDest // 从哪里获得数据。回调函数可以支持远程获得数据
 {
 	COPY_FILE,					/* to file (or a piped program) */
 	COPY_FRONTEND,				/* to frontend */

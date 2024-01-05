@@ -133,7 +133,7 @@ static StringInfo copybuf = NULL; // 使用StringInfo数据结构来表示拷贝
  */
 static void
 pg_attribute_noreturn()
-finish_sync_worker(void)
+finish_sync_worker(void) // 退出本进程的扫尾函数
 {
 	/*
 	 * Commit any outstanding transaction. This is the usual case, unless
@@ -684,14 +684,14 @@ make_copy_attnamelist(LogicalRepRelMapEntry *rel)
  * Data source callback for the COPY FROM, which reads from the remote
  * connection and passes the data back to our local COPY.
  */
-static int
-copy_read_data(void *outbuf, int minread, int maxread)
+static int  // outbuf是接受数据的缓冲区，minread是读取的最少字节，maxread是读取的最大字节数
+copy_read_data(void *outbuf, int minread, int maxread) // COPY命令获取数据的回调函数
 {
 	int			bytesread = 0;
 	int			avail;
 
 	/* If there are some leftover data from previous read, use it. */
-	avail = copybuf->len - copybuf->cursor;
+	avail = copybuf->len - copybuf->cursor; // 从cursor到len之间的数据是没有处理过的数据
 	if (avail)
 	{
 		if (avail > maxread)
@@ -702,7 +702,7 @@ copy_read_data(void *outbuf, int minread, int maxread)
 		bytesread += avail;
 	}
 
-	while (maxread > 0 && bytesread < minread)
+	while (maxread > 0 && bytesread < minread) // 读取的字节数还不够minread
 	{
 		pgsocket	fd = PGINVALID_SOCKET;
 		int			len;
@@ -711,7 +711,7 @@ copy_read_data(void *outbuf, int minread, int maxread)
 		for (;;)
 		{
 			/* Try read the data. */
-			len = walrcv_receive(LogRepWorkerWalRcvConn, &buf, &fd);
+			len = walrcv_receive(LogRepWorkerWalRcvConn, &buf, &fd); // 从publisher端读取数据
 
 			CHECK_FOR_INTERRUPTS();
 
@@ -719,7 +719,7 @@ copy_read_data(void *outbuf, int minread, int maxread)
 				break;
 			else if (len < 0)
 				return bytesread;
-			else
+			else // 我们已经读到数据了
 			{
 				/* Process the data */
 				copybuf->data = buf;
@@ -729,7 +729,7 @@ copy_read_data(void *outbuf, int minread, int maxread)
 				avail = copybuf->len - copybuf->cursor;
 				if (avail > maxread)
 					avail = maxread;
-				memcpy(outbuf, &copybuf->data[copybuf->cursor], avail);
+				memcpy(outbuf, &copybuf->data[copybuf->cursor], avail); // 把数据从COPYbuf复制到outbuf
 				outbuf = (void *) ((char *) outbuf + avail);
 				copybuf->cursor += avail;
 				maxread -= avail;
@@ -1082,7 +1082,7 @@ fetch_remote_table_info(char *nspname, char *relname,
  * Caller is responsible for locking the local relation.
  */
 static void
-copy_table(Relation rel)
+copy_table(Relation rel) // 从publisher端拷贝数据
 {
 	LogicalRepRelMapEntry *relmapentry;
 	LogicalRepRelation lrel;
@@ -1106,7 +1106,7 @@ copy_table(Relation rel)
 	Assert(rel == relmapentry->localrel);
 
 	/* Start copy on the publisher. */
-	initStringInfo(&cmd);
+	initStringInfo(&cmd); // 为cmd分配1KB的内存
 
 	/* Regular table with no row filter */
 	if (lrel.relkind == RELKIND_RELATION && qual == NIL)
@@ -1126,7 +1126,7 @@ copy_table(Relation rel)
 			appendStringInfoString(&cmd, quote_identifier(lrel.attnames[i]));
 		}
 
-		appendStringInfoString(&cmd, ") TO STDOUT");
+		appendStringInfoString(&cmd, ") TO STDOUT"); // 命令是： COPY table_name(col1, col2, ... ,coln) TO STDOUT
 	}
 	else
 	{
@@ -1176,7 +1176,7 @@ copy_table(Relation rel)
 	 * Prior to v16, initial table synchronization will use text format even
 	 * if the binary option is enabled for a subscription.
 	 */
-	if (walrcv_server_version(LogRepWorkerWalRcvConn) >= 160000 &&
+	if (walrcv_server_version(LogRepWorkerWalRcvConn) >= 160000 &&  // PG 16的COPY命令增强了
 		MySubscription->binary)
 	{
 		appendStringInfoString(&cmd, " WITH (FORMAT binary)");
@@ -1184,7 +1184,7 @@ copy_table(Relation rel)
 										 (Node *) makeString("binary"), -1));
 	}
 
-	res = walrcv_exec(LogRepWorkerWalRcvConn, cmd.data, 0, NULL);
+	res = walrcv_exec(LogRepWorkerWalRcvConn, cmd.data, 0, NULL); // 在源端执行COPY命令
 	pfree(cmd.data);
 	if (res->status != WALRCV_OK_COPY_OUT)
 		ereport(ERROR,
@@ -1242,7 +1242,7 @@ ReplicationSlotNameForTablesync(Oid suboid, Oid relid,
  * The returned slot name is palloc'ed in current memory context.
  */
 char *
-LogicalRepSyncTableStart(XLogRecPtr *origin_startpos)
+LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始拷贝数据
 {
 	char	   *slotname;
 	char	   *err;
@@ -1302,7 +1302,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos)
 	LogRepWorkerWalRcvConn =
 		walrcv_connect(MySubscription->conninfo, true,
 					   must_use_password,
-					   slotname, &err);
+					   slotname, &err); // 和publisher进行网络连接
 	if (LogRepWorkerWalRcvConn == NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_CONNECTION_FAILURE),
@@ -1386,7 +1386,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos)
 	 */
 	res = walrcv_exec(LogRepWorkerWalRcvConn,
 					  "BEGIN READ ONLY ISOLATION LEVEL REPEATABLE READ",
-					  0, NULL);
+					  0, NULL);                                         // 在源端执行REPEATABLE READ
 	if (res->status != WALRCV_OK_COMMAND)
 		ereport(ERROR,
 				(errcode(ERRCODE_CONNECTION_FAILURE),
@@ -1401,7 +1401,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos)
 	 */
 	walrcv_create_slot(LogRepWorkerWalRcvConn,
 					   slotname, false /* permanent */ , false /* two_phase */ ,
-					   CRS_USE_SNAPSHOT, origin_startpos);
+					   CRS_USE_SNAPSHOT, origin_startpos); // 在源端创建一个永久性的复制槽
 
 	/*
 	 * Setup replication origin tracking. The purpose of doing this before the
@@ -1471,10 +1471,10 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos)
 
 	/* Now do the initial data copy */
 	PushActiveSnapshot(GetTransactionSnapshot());
-	copy_table(rel);
+	copy_table(rel);    // 这个是拷贝的主函数， 它使用回调函数从源端获取数据
 	PopActiveSnapshot();
 
-	res = walrcv_exec(LogRepWorkerWalRcvConn, "COMMIT", 0, NULL);
+	res = walrcv_exec(LogRepWorkerWalRcvConn, "COMMIT", 0, NULL); // 在源端执行COMMIT命令
 	if (res->status != WALRCV_OK_COMMAND)
 		ereport(ERROR,
 				(errcode(ERRCODE_CONNECTION_FAILURE),

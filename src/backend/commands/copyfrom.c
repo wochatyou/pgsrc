@@ -1336,7 +1336,7 @@ BeginCopyFrom(ParseState *pstate,
 			  Node *whereClause,
 			  const char *filename,
 			  bool is_program,
-			  copy_data_source_cb data_source_cb,
+			  copy_data_source_cb data_source_cb, // 回调函数，用来提供输入数据的
 			  List *attnamelist,
 			  List *options)
 {
@@ -1641,8 +1641,8 @@ BeginCopyFrom(ParseState *pstate,
 	if (data_source_cb)
 	{
 		progress_vals[1] = PROGRESS_COPY_TYPE_CALLBACK;
-		cstate->copy_src = COPY_CALLBACK;
-		cstate->data_source_cb = data_source_cb;
+		cstate->copy_src = COPY_CALLBACK;         // 通过回调函数获得数据
+		cstate->data_source_cb = data_source_cb;  // 这个就是回调函数
 	}
 	else if (pipe)
 	{

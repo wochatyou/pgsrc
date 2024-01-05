@@ -241,7 +241,7 @@ ReceiveCopyBinaryHeader(CopyFromState cstate)
  *
  * NB: no data conversion is applied here.
  */
-static int
+static int // 获得数据，第一个参数是控制参数，第二个是接受数据的缓冲区，minread是希望读取的最小字节，maxread是读取的最大字节
 CopyGetData(CopyFromState cstate, void *databuf, int minread, int maxread)
 {
 	int			bytesread = 0;
@@ -341,7 +341,7 @@ CopyGetData(CopyFromState cstate, void *databuf, int minread, int maxread)
 			}
 			break;
 		case COPY_CALLBACK:
-			bytesread = cstate->data_source_cb(databuf, minread, maxread);
+			bytesread = cstate->data_source_cb(databuf, minread, maxread); // 通过回调函数来获取源端的数据
 			break;
 	}
 

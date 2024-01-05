@@ -4520,7 +4520,7 @@ InitializeApplyWorker(void)
 
 /* Logical Replication Apply worker entry point */
 void
-ApplyWorkerMain(Datum main_arg)
+ApplyWorkerMain(Datum main_arg) // worker进程的入口函数
 {
 	int			worker_slot = DatumGetInt32(main_arg);
 	char		originname[NAMEDATALEN];
@@ -4553,13 +4553,13 @@ ApplyWorkerMain(Datum main_arg)
 
 	InitializeApplyWorker();
 
-	InitializingApplyWorker = false;
+	InitializingApplyWorker = false; // 这个变量表示正在初始化，现在初始化完了，它就是false
 
 	/* Connect to the origin and start the replication. */
 	elog(DEBUG1, "connecting to publisher using connection string \"%s\"",
 		 MySubscription->conninfo);
 
-	if (am_tablesync_worker()) // 是表同步进程，每张表一个同步进程
+	if (am_tablesync_worker()) // 是表同步进程，每张表一个同步进程， 判断条件：OidIsValid(MyLogicalRepWorker->relid)
 	{
 		start_table_sync(&origin_startpos, &myslotname);
 
@@ -4609,7 +4609,7 @@ ApplyWorkerMain(Datum main_arg)
 
 		LogRepWorkerWalRcvConn = walrcv_connect(MySubscription->conninfo, true,
 												must_use_password,
-												MySubscription->name, &err);
+												MySubscription->name, &err); // 和主库/publisher连接
 		if (LogRepWorkerWalRcvConn == NULL)
 			ereport(ERROR,
 					(errcode(ERRCODE_CONNECTION_FAILURE),
@@ -4619,7 +4619,7 @@ ApplyWorkerMain(Datum main_arg)
 		 * We don't really use the output identify_system for anything but it
 		 * does some initializations on the upstream so let's still call it.
 		 */
-		(void) walrcv_identify_system(LogRepWorkerWalRcvConn, &startpointTLI);
+		(void) walrcv_identify_system(LogRepWorkerWalRcvConn, &startpointTLI); // 主库备库是两个独立的数据库，所以它们的系统标识符肯定不会相等
 
 		set_apply_error_context_origin(originname);
 	}
@@ -4637,7 +4637,7 @@ ApplyWorkerMain(Datum main_arg)
 	options.startpoint = origin_startpos;
 	options.slotname = myslotname;
 
-	server_version = walrcv_server_version(LogRepWorkerWalRcvConn);
+	server_version = walrcv_server_version(LogRepWorkerWalRcvConn); // 调一个回调函数
 	options.proto.logical.proto_version =
 		server_version >= 160000 ? LOGICALREP_PROTO_STREAM_PARALLEL_VERSION_NUM :
 		server_version >= 150000 ? LOGICALREP_PROTO_TWOPHASE_VERSION_NUM :
@@ -4672,7 +4672,7 @@ ApplyWorkerMain(Datum main_arg)
 	options.proto.logical.twophase = false;
 	options.proto.logical.origin = pstrdup(MySubscription->origin);
 
-	if (!am_tablesync_worker())
+	if (!am_tablesync_worker()) // 是worker进程
 	{
 		/*
 		 * Even when the two_phase mode is requested by the user, it remains

@@ -115,7 +115,7 @@ static TimestampTz ApplyLauncherGetWorkerStartTime(Oid subid);
  * each subscription.
  */
 static List *
-get_subscription_list(void)
+get_subscription_list(void) // 查询pg_subscription系统表
 {
 	List	   *res = NIL;
 	Relation	rel;
@@ -137,10 +137,10 @@ get_subscription_list(void)
 	 * not pushed/active does not reliably prevent HOT pruning (->xmin could
 	 * e.g. be cleared when cache invalidations are processed).
 	 */
-	StartTransactionCommand();
-	(void) GetTransactionSnapshot();
+	StartTransactionCommand(); // 开始一个事务
+	(void) GetTransactionSnapshot(); // 获取事务的快照
 
-	rel = table_open(SubscriptionRelationId, AccessShareLock);
+	rel = table_open(SubscriptionRelationId, AccessShareLock); // #define SubscriptionRelationId 6100
 	scan = table_beginscan_catalog(rel, 0, NULL);
 
 	while (HeapTupleIsValid(tup = heap_getnext(scan, ForwardScanDirection)))
@@ -172,7 +172,7 @@ get_subscription_list(void)
 	table_endscan(scan);
 	table_close(rel, AccessShareLock);
 
-	CommitTransactionCommand();
+	CommitTransactionCommand(); // 提交这个事务
 
 	return res;
 }
@@ -245,7 +245,7 @@ WaitForReplicationWorkerAttach(LogicalRepWorker *worker,
  *
  * We are only interested in the leader apply worker or table sync worker.
  */
-LogicalRepWorker *
+LogicalRepWorker *  // 根据subscription的ID和表的ID找到worker进程
 logicalrep_worker_find(Oid subid, Oid relid, bool only_running)
 {
 	int			i;
@@ -254,18 +254,18 @@ logicalrep_worker_find(Oid subid, Oid relid, bool only_running)
 	Assert(LWLockHeldByMe(LogicalRepWorkerLock));
 
 	/* Search for attached worker for a given subscription id. */
-	for (i = 0; i < max_logical_replication_workers; i++)
+	for (i = 0; i < max_logical_replication_workers; i++) // 这是一个数组，扫描它
 	{
 		LogicalRepWorker *w = &LogicalRepCtx->workers[i];
 
 		/* Skip parallel apply workers. */
-		if (isParallelApplyWorker(w))
+		if (isParallelApplyWorker(w)) // 判断条件：((worker)->leader_pid != InvalidPid)
 			continue;
 
 		if (w->in_use && w->subid == subid && w->relid == relid &&
 			(!only_running || w->proc))
 		{
-			res = w;
+			res = w; // 找到了就返回
 			break;
 		}
 	}
@@ -302,7 +302,7 @@ logicalrep_workers_find(Oid subid, bool only_running)
  *
  * Returns true on success, false on failure.
  */
-bool
+bool // 为某一个subscription启动一个worker进程
 logicalrep_worker_launch(Oid dbid, Oid subid, const char *subname, Oid userid,
 						 Oid relid, dsm_handle subworker_dsm)
 {
@@ -325,7 +325,7 @@ logicalrep_worker_launch(Oid dbid, Oid subid, const char *subname, Oid userid,
 							 subname)));
 
 	/* Report this after the initial starting message for consistency. */
-	if (max_replication_slots == 0)
+	if (max_replication_slots == 0) // 复制槽的个数不够了，就报错退出
 		ereport(ERROR,
 				(errcode(ERRCODE_CONFIGURATION_LIMIT_EXCEEDED),
 				 errmsg("cannot start logical replication workers when max_replication_slots = 0")));
@@ -338,7 +338,7 @@ logicalrep_worker_launch(Oid dbid, Oid subid, const char *subname, Oid userid,
 
 retry:
 	/* Find unused worker slot. */
-	for (i = 0; i < max_logical_replication_workers; i++)
+	for (i = 0; i < max_logical_replication_workers; i++) // 依次扫描数组，拿到一个没有使用的空槽
 	{
 		LogicalRepWorker *w = &LogicalRepCtx->workers[i];
 
@@ -666,7 +666,7 @@ logicalrep_worker_wakeup(Oid subid, Oid relid)
 
 	worker = logicalrep_worker_find(subid, relid, true);
 
-	if (worker)
+	if (worker) // 找到了worker进程，就发消息给它
 		logicalrep_worker_wakeup_ptr(worker);
 
 	LWLockRelease(LogicalRepWorkerLock);
@@ -682,7 +682,7 @@ logicalrep_worker_wakeup_ptr(LogicalRepWorker *worker)
 {
 	Assert(LWLockHeldByMe(LogicalRepWorkerLock));
 
-	SetLatch(&worker->proc->procLatch);
+	SetLatch(&worker->proc->procLatch); // SetLatch是唤醒某个进程
 }
 
 /*
@@ -1096,7 +1096,7 @@ ApplyLauncherWakeup(void)
  * Main loop for the apply launcher process.
  */
 void
-ApplyLauncherMain(Datum main_arg)
+ApplyLauncherMain(Datum main_arg) // AL进程的主要入口
 {
 	ereport(DEBUG1,
 			(errmsg_internal("logical replication launcher started")));
@@ -1118,7 +1118,7 @@ ApplyLauncherMain(Datum main_arg)
 	BackgroundWorkerInitializeConnection(NULL, NULL, 0);
 
 	/* Enter main loop */
-	for (;;)
+	for (;;) // 进入主循环
 	{
 		int			rc;
 		List	   *sublist;
@@ -1136,7 +1136,7 @@ ApplyLauncherMain(Datum main_arg)
 		oldctx = MemoryContextSwitchTo(subctx);
 
 		/* Start any missing workers for enabled subscriptions. */
-		sublist = get_subscription_list();
+		sublist = get_subscription_list(); // 通过查询pg_subscription这个系统表来获得subscription的列表
 		foreach(lc, sublist)
 		{
 			Subscription *sub = (Subscription *) lfirst(lc);
@@ -1145,14 +1145,14 @@ ApplyLauncherMain(Datum main_arg)
 			TimestampTz now;
 			long		elapsed;
 
-			if (!sub->enabled)
+			if (!sub->enabled) // 如果subscription没有enable，就跳过
 				continue;
 
 			LWLockAcquire(LogicalRepWorkerLock, LW_SHARED);
 			w = logicalrep_worker_find(sub->oid, InvalidOid, false);
 			LWLockRelease(LogicalRepWorkerLock);
 
-			if (w != NULL)
+			if (w != NULL) // 这个subscription的worker进程已经启动
 				continue;		/* worker is running already */
 
 			/*
@@ -1171,7 +1171,7 @@ ApplyLauncherMain(Datum main_arg)
 			last_start = ApplyLauncherGetWorkerStartTime(sub->oid);
 			now = GetCurrentTimestamp();
 			if (last_start == 0 ||
-				(elapsed = TimestampDifferenceMilliseconds(last_start, now)) >= wal_retrieve_retry_interval)
+				(elapsed = TimestampDifferenceMilliseconds(last_start, now)) >= wal_retrieve_retry_interval) // 超过了超时时间，就启动worker进程
 			{
 				ApplyLauncherSetWorkerStartTime(sub->oid, now);
 				logicalrep_worker_launch(sub->dbid, sub->oid, sub->name,
@@ -1202,7 +1202,7 @@ ApplyLauncherMain(Datum main_arg)
 			CHECK_FOR_INTERRUPTS();
 		}
 
-		if (ConfigReloadPending)
+		if (ConfigReloadPending) // 如果配置文件变化了，pg_reload_conf()让我们重新加载参数
 		{
 			ConfigReloadPending = false;
 			ProcessConfigFile(PGC_SIGHUP);
