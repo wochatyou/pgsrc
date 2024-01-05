@@ -118,7 +118,7 @@ static PGconn * pglogical_connect_base(const char *connstr,
  * can have up to 8 characters.
  */
 char *
-shorten_hash(const char *str, int maxlen)
+shorten_hash(const char *str, int maxlen) // maxlen的最小值是8
 {
 	char   *ret;
 	int		len = strlen(str);
@@ -265,7 +265,7 @@ get_pglogical_table_oid(const char *table)
 
 #define CONN_PARAM_ARRAY_SIZE 9
 
-static PGconn *
+static PGconn *  // 和远端建立连接，返回连接的描述符
 pglogical_connect_base(const char *connstr, const char *appname,
 					   const char *suffix, bool replication)
 {
@@ -311,7 +311,7 @@ pglogical_connect_base(const char *connstr, const char *appname,
 	keys[i] = "keepalives_count";
 	vals[i] = "5";
 	i++;
-	keys[i] = "replication";
+	keys[i] = "replication"; // 这个参数确保我们使用的是流复制协议
 	vals[i] = replication ? "database" : NULL;
 	i++;
 	keys[i] = NULL;
@@ -356,7 +356,7 @@ PGconn *
 pglogical_connect_replica(const char *connstring, const char *connname,
 						  const char *suffix)
 {
-	return pglogical_connect_base(connstring, connname, suffix, true);
+	return pglogical_connect_base(connstring, connname, suffix, true); // 最后一个参数true表示使用流复制协议连接
 }
 
 /*
@@ -427,11 +427,11 @@ pglogical_manage_extension(void)
 void
 pglogical_identify_system(PGconn *streamConn, uint64* sysid,
 							TimeLineID *timeline, XLogRecPtr *xlogpos,
-							Name *dbname)
+							Name *dbname) // 返回结果放在后4个参数中。 IDENTIFY_SYSTEM返回4列数据，对应后面4个返回参数
 {
 	PGresult	   *res;
 
-	res = PQexec(streamConn, "IDENTIFY_SYSTEM");
+	res = PQexec(streamConn, "IDENTIFY_SYSTEM"); // 向源端执行IDENTIFY_SYSTEM命令
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		elog(ERROR, "could not send replication command \"%s\": %s",
@@ -482,7 +482,7 @@ pglogical_identify_system(PGconn *streamConn, uint64* sysid,
 	PQclear(res);
 }
 
-void
+void // 就是i执行START_REPLICATION命令
 pglogical_start_replication(PGconn *streamConn, const char *slot_name,
 							XLogRecPtr start_pos, const char *forward_origins,
 							const char *replication_sets,
@@ -601,7 +601,7 @@ pglogical_start_replication(PGconn *streamConn, const char *slot_name,
  * Must be run inside a transaction.
  */
 static void
-start_manager_workers(void)
+start_manager_workers(void) // 启动manager进程，每个数据库一个进程
 {
 	Relation	rel;
 	TableScanDesc scan;
@@ -644,7 +644,7 @@ start_manager_workers(void)
 		worker.worker_type = PGLOGICAL_WORKER_MANAGER;
 		worker.dboid = dboid;
 
-		pglogical_worker_register(&worker);
+		pglogical_worker_register(&worker); // 注册worker进程
 	}
 
 	table_endscan(scan);
@@ -655,7 +655,7 @@ start_manager_workers(void)
  * Static bgworker used for initialization and management (our main process).
  */
 void
-pglogical_supervisor_main(Datum main_arg)
+pglogical_supervisor_main(Datum main_arg) // 总管进程的主函数
 {
 	/* Establish signal handlers. */
 	pqsignal(SIGTERM, handle_sigterm);
@@ -768,7 +768,7 @@ pglogical_temp_directory_assing_hook(const char *newval, void *extra)
  * Entry point for this module.
  */
 void
-_PG_init(void)
+_PG_init(void) // 任何插件都要执行的初始化的函数
 {
 	BackgroundWorker bgw;
 

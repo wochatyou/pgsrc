@@ -91,7 +91,7 @@ static void pglReorderBufferCleanSerializedTXNs(const char *slotname);
 
 /* specify output plugin callbacks */
 void
-_PG_output_plugin_init(OutputPluginCallbacks *cb)
+_PG_output_plugin_init(OutputPluginCallbacks *cb) // 只使用了6个回调函数
 {
 	AssertVariableIsOfType(&_PG_output_plugin_init, LogicalOutputPluginInit);
 

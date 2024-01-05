@@ -22,7 +22,7 @@ PG_MODULE_MAGIC;
 extern void		_PG_output_plugin_init(OutputPluginCallbacks *cb);
 
 void
-_PG_output_plugin_init(OutputPluginCallbacks *cb)
+_PG_output_plugin_init(OutputPluginCallbacks *cb) // 插件的初始化函数
 {
 	LogicalOutputPluginInit plugin_init;
 
