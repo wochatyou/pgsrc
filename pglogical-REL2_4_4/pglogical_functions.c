@@ -170,11 +170,16 @@ check_local_node(bool for_update)
 /*
  * Create new node
  */
+// SELECT pglogical.create_node(
+//    node_name := 'analytics_db',
+//    dsn := 'host=10.20.0.205 port=5432 dbname=onshift user=pglogical_user password=xxxxxxxxxx'
+// ); 语法示例
+
 Datum
-pglogical_create_node(PG_FUNCTION_ARGS)
+pglogical_create_node(PG_FUNCTION_ARGS) // 创建一个节点
 {
-	char			   *node_name = NameStr(*PG_GETARG_NAME(0));
-	char			   *node_dsn = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	char			   *node_name = NameStr(*PG_GETARG_NAME(0)); // 第一个参数是node的名称
+	char			   *node_dsn = text_to_cstring(PG_GETARG_TEXT_PP(1)); // 第二个参数是DSN
 	PGLogicalNode		node;
 	PGlogicalInterface	nodeif;
 	PGLogicalRepSet		repset;

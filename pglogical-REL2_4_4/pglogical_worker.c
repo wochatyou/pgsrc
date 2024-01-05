@@ -59,9 +59,14 @@ static void wait_for_worker_startup(PGLogicalWorker *worker,
 									BackgroundWorkerHandle *handle);
 static void signal_worker_xact_callback(XactEvent event, void *arg);
 
+// pglogical有三种进程， 如下所示
+// postgres@ScheduleDB-Analytics-Prod:~$ ps -ef | grep pglogical
+// postgres 1002385 1126411  0  2023 ?        00:00:00 postgres: bgworker: pglogical supervisor   
+// postgres 1002400 1126411  0  2023 ?        00:00:02 postgres: bgworker: pglogical manager 23272   
+// postgres 1002402 1126411  4  2023 ?        1-00:55:29 postgres: bgworker: pglogical apply 23272:3754719408   
 
 void
-handle_sigterm(SIGNAL_ARGS)
+handle_sigterm(SIGNAL_ARGS) 
 {
 	int			save_errno = errno;
 
@@ -79,7 +84,7 @@ handle_sigterm(SIGNAL_ARGS)
  * The caller is responsible for locking.
  */
 static int
-find_empty_worker_slot(Oid dboid)
+find_empty_worker_slot(Oid dboid) // 扫描数组，寻找空槽位
 {
 	int	i;
 
@@ -116,7 +121,7 @@ pglogical_worker_register(PGLogicalWorker *worker)
 	LWLockAcquire(PGLogicalCtx->lock, LW_EXCLUSIVE);
 
 	slot = find_empty_worker_slot(worker->dboid);
-	if (slot == -1)
+	if (slot == -1) // 如果没有发现，就报错
 	{
 		LWLockRelease(PGLogicalCtx->lock);
 		elog(ERROR, "could not register pglogical worker: all background worker slots are already used");
