@@ -814,7 +814,7 @@ TrimCLOG(void)
  * Perform a checkpoint --- either during shutdown, or on-the-fly
  */
 void
-CheckPointCLOG(void)
+CheckPointCLOG(void) // 把CLOG的页面都写入到磁盘文件上
 {
 	/*
 	 * Write dirty CLOG pages to disk.  This may result in sync requests

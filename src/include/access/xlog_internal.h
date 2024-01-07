@@ -49,7 +49,7 @@ typedef struct XLogPageHeaderData
 	uint32		xlp_rem_len;	/* total len of remaining data for record */
 } XLogPageHeaderData;
 
-#define SizeOfXLogShortPHD	MAXALIGN(sizeof(XLogPageHeaderData))
+#define SizeOfXLogShortPHD	MAXALIGN(sizeof(XLogPageHeaderData)) // 每个WAL数据页的页头的大小，按8字节对齐，共计24个字节
 
 typedef XLogPageHeaderData *XLogPageHeader;
 
@@ -66,7 +66,7 @@ typedef struct XLogLongPageHeaderData
 	uint32		xlp_xlog_blcksz;	/* just as a cross-check */
 } XLogLongPageHeaderData;
 
-#define SizeOfXLogLongPHD	MAXALIGN(sizeof(XLogLongPageHeaderData))
+#define SizeOfXLogLongPHD	MAXALIGN(sizeof(XLogLongPageHeaderData)) // WAL文件中长页头的大小，按8字节对齐，共计40个字节
 
 typedef XLogLongPageHeaderData *XLogLongPageHeader;
 
@@ -309,7 +309,7 @@ typedef struct xl_end_of_recovery
  * The functions in xloginsert.c construct a chain of XLogRecData structs
  * to represent the final WAL record.
  */
-typedef struct XLogRecData
+typedef struct XLogRecData // 这是一个WAL数据的单向链表，为了提高写的速度，批量把一捆WAL记录写到WAL文件中
 {
 	struct XLogRecData *next;	/* next struct in chain, or NULL */
 	char	   *data;			/* start of rmgr data to include */

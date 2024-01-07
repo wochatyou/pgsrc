@@ -58,7 +58,7 @@ typedef enum ReplicationSlotInvalidationCause
 typedef struct ReplicationSlotPersistentData
 {
 	/* The slot's identifier */
-	NameData	name;
+	NameData	name; // 复制槽的名字
 
 	/* database the slot is active on */
 	Oid			database;

@@ -147,20 +147,20 @@ static bool XLogCompressBackupBlock(char *page, uint16 hole_offset,
  * XLogRegister* functions and XLogInsert().
  */
 void
-XLogBeginInsert(void)
+XLogBeginInsert(void) // 就是设置一下状态，没有什么具体的逻辑
 {
 	Assert(max_registered_block_id == 0);
 	Assert(mainrdata_last == (XLogRecData *) &mainrdata_head);
 	Assert(mainrdata_len == 0);
 
 	/* cross-check on whether we should be here or not */
-	if (!XLogInsertAllowed())
+	if (!XLogInsertAllowed()) // 就是判断数据库是否处于恢复状态，处于恢复状态就不能插入WAL记录
 		elog(ERROR, "cannot make new WAL entries during recovery");
 
 	if (begininsert_called)
 		elog(ERROR, "XLogBeginInsert was already called");
 
-	begininsert_called = true;
+	begininsert_called = true; // 设置一下状态变量，表示本函数已经被调用过了
 }
 
 /*
@@ -348,11 +348,11 @@ XLogRegisterBlock(uint8 block_id, RelFileLocator *rlocator, ForkNumber forknum,
  * XLogRecGetData().
  */
 void
-XLogRegisterData(char *data, uint32 len)
+XLogRegisterData(char *data, uint32 len) // 把WAL记录的数据形成一条WAL记录
 {
 	XLogRecData *rdata;
 
-	Assert(begininsert_called);
+	Assert(begininsert_called); // XLogBeginInsert()执行后，这个变量会变成true
 
 	if (num_rdatas >= max_rdatas)
 		ereport(ERROR,
@@ -362,7 +362,7 @@ XLogRegisterData(char *data, uint32 len)
 	rdata = &rdatas[num_rdatas++];
 
 	rdata->data = data;
-	rdata->len = len;
+	rdata->len = len; // 很多WAL数据要批量写入，所以构建一个数组
 
 	/*
 	 * we use the mainrdata_last pointer to track the end of the chain, so no
@@ -458,13 +458,13 @@ XLogSetRecordFlags(uint8 flags)
  * WAL rule "write the log before the data".)
  */
 XLogRecPtr
-XLogInsert(RmgrId rmid, uint8 info)
+XLogInsert(RmgrId rmid, uint8 info) 
 {
 	XLogRecPtr	EndPos;
 
 	/* XLogBeginInsert() must have been called. */
 	if (!begininsert_called)
-		elog(ERROR, "XLogBeginInsert was not called");
+		elog(ERROR, "XLogBeginInsert was not called"); // 在调用本函数之前，必须先执行XLogBeginInsert()函数
 
 	/*
 	 * The caller can set rmgr bits, XLR_SPECIAL_REL_UPDATE and

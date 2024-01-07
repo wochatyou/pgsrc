@@ -35,7 +35,7 @@
 #include "utils/pg_lsn.h"
 #include "utils/tuplestore.h"
 
-PG_MODULE_MAGIC;
+PG_MODULE_MAGIC;  // 这是一个动态库libpqwalreceiver.so 在$PGHOME/lib/postgresql目录下可以找到
 
 struct WalReceiverConn
 {
@@ -112,7 +112,7 @@ static char *stringlist_to_identifierstr(PGconn *conn, List *strings);
 void  // 这个函数会在加载时自动执行
 _PG_init(void)
 {
-	if (WalReceiverFunctions != NULL)
+	if (WalReceiverFunctions != NULL) // 这个变量是在walreceiver.c中定义的，在本模块加载之前，它应该是NULL，因为模块只加载一次
 		elog(ERROR, "libpqwalreceiver already loaded");
 	WalReceiverFunctions = &PQWalReceiverFunctions;
 }
@@ -144,7 +144,7 @@ libpqrcv_connect(const char *conninfo, bool logical, bool must_use_password,
 	keys[i] = "dbname";
 	vals[i] = conninfo;
 	keys[++i] = "replication";
-	vals[i] = logical ? "database" : "true";
+	vals[i] = logical ? "database" : "true"; // 确保是使用流复制协议进行连接
 	if (!logical)
 	{
 		/*
@@ -371,7 +371,7 @@ libpqrcv_identify_system(WalReceiverConn *conn, TimeLineID *primary_tli)
 	 * Get the system identifier and timeline ID as a DataRow message from the
 	 * primary server.
 	 */
-	res = libpqrcv_PQexec(conn->streamConn, "IDENTIFY_SYSTEM");
+	res = libpqrcv_PQexec(conn->streamConn, "IDENTIFY_SYSTEM"); // 执行IDENTIFY_SYSTEM命令
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		PQclear(res);

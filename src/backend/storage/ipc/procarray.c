@@ -2873,10 +2873,10 @@ GetRunningTransactionData(void)
  * that bookkeeping.
  */
 TransactionId
-GetOldestActiveTransactionId(void)
+GetOldestActiveTransactionId(void) // 获得最老的活跃事务的事务号，就是扫描ProcGlobal->xids数组
 {
 	ProcArrayStruct *arrayP = procArray;
-	TransactionId *other_xids = ProcGlobal->xids;
+	TransactionId *other_xids = ProcGlobal->xids; // 这是一个事务号的数组
 	TransactionId oldestRunningXid;
 	int			index;
 
@@ -2897,17 +2897,17 @@ GetOldestActiveTransactionId(void)
 	 * Spin over procArray collecting all xids and subxids.
 	 */
 	LWLockAcquire(ProcArrayLock, LW_SHARED);
-	for (index = 0; index < arrayP->numProcs; index++)
+	for (index = 0; index < arrayP->numProcs; index++) // 从头开始依次扫描procArray数组
 	{
 		TransactionId xid;
 
 		/* Fetch xid just once - see GetNewTransactionId */
 		xid = UINT32_ACCESS_ONCE(other_xids[index]);
 
-		if (!TransactionIdIsNormal(xid))
+		if (!TransactionIdIsNormal(xid)) // 如果不是正常的事务号，就跳过
 			continue;
 
-		if (TransactionIdPrecedes(xid, oldestRunningXid))
+		if (TransactionIdPrecedes(xid, oldestRunningXid)) // 如果xid更老，就取xid
 			oldestRunningXid = xid;
 
 		/*

@@ -1174,7 +1174,7 @@ pglogical_sync_worker_finish(void)
 }
 
 void
-pglogical_sync_main(Datum main_arg)
+pglogical_sync_main(Datum main_arg) // 同步进程的主入口函数
 {
 	int				slot = DatumGetInt32(main_arg);
 	PGconn		   *streamConn;

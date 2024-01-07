@@ -139,7 +139,7 @@ validate_subscription_name(const char *name)
  * Add new node to catalog.
  */
 void
-create_node(PGLogicalNode *node)
+create_node(PGLogicalNode *node) // 根据node的名字，哈希出Oid，往表里插入一条记录
 {
 	RangeVar   *rv;
 	Relation	rel;
@@ -153,7 +153,7 @@ create_node(PGLogicalNode *node)
 		elog(ERROR, "node %s already exists", node->name);
 
 	/* Generate new id unless one was already specified. */
-	if (node->id == InvalidOid)
+	if (node->id == InvalidOid) // 根据名字进行哈希，得到一个Oid
 		node->id =
 			DatumGetUInt32(hash_any((const unsigned char *) node->name,
 									strlen(node->name)));
@@ -317,8 +317,8 @@ get_node_by_name(const char *name, bool missing_ok)
 /*
  * Add local node record to catalog.
  */
-void
-create_local_node(Oid nodeid, Oid ifid)
+void // local node就是nodeid和ifid的一对？
+create_local_node(Oid nodeid, Oid ifid) // 就是把node的id和node interface的id插入到表中
 {
 	RangeVar   *rv;
 	Relation	rel;
@@ -470,7 +470,7 @@ create_node_interface(PGlogicalInterface *nodeif)
 	NameData	nodeif_name;
 
 	/* Generate new id unless one was already specified. */
-	if (nodeif->id == InvalidOid)
+	if (nodeif->id == InvalidOid) // 根据名字生成Oid，插入一条记录到表里面
 	{
 		uint32	hashinput[2];
 
@@ -683,7 +683,7 @@ get_node_interface_by_name(Oid nodeid, const char *name, bool missing_ok)
  * Add new subscription to catalog.
  */
 void
-create_subscription(PGLogicalSubscription *sub)
+create_subscription(PGLogicalSubscription *sub) // 就是往表里插入记录
 {
 	RangeVar   *rv;
 	Relation	rel;

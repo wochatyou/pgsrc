@@ -185,15 +185,16 @@ pglogical_create_node(PG_FUNCTION_ARGS) // 创建一个节点
 	PGLogicalRepSet		repset;
 
 	node.id = InvalidOid;
-	node.name = node_name;
-	create_node(&node);
+	node.name = node_name; // 调用下面的函数时只输入了节点的名字
+	create_node(&node); // 产生node.id，往表里插入一条记录
 
 	nodeif.id = InvalidOid;
 	nodeif.name = node.name;
 	nodeif.nodeid = node.id;
 	nodeif.dsn = node_dsn;
-	create_node_interface(&nodeif);
+	create_node_interface(&nodeif); // 创建和node同名的node interface，其逻辑也是生成Oid，
 
+	// 下面三个动作是创建缺省的replication set
 	/* Create predefined repsets. */
 	repset.id = InvalidOid;
 	repset.nodeid = node.id;
@@ -222,7 +223,7 @@ pglogical_create_node(PG_FUNCTION_ARGS) // 创建一个节点
 	repset.replicate_truncate = false;
 	create_replication_set(&repset);
 
-	create_local_node(node.id, nodeif.id);
+	create_local_node(node.id, nodeif.id); // 根据node和node interface创建local node
 
 	PG_RETURN_OID(node.id);
 }
@@ -391,8 +392,13 @@ pglogical_alter_node_drop_interface(PG_FUNCTION_ARGS)
 /*
  * Connect two existing nodes.
  */
+// 语法示例：
+//SELECT pglogical.create_subscription(subscription_name := 'analytics_replset',
+//        provider_dsn := 'host=scheduledb-qa-0.route53.osstage.net port=5432 dbname=onshift user=pglogical_user password=xxxxxx',
+//        replication_sets := '{analytics_replset}');
+
 Datum
-pglogical_create_subscription(PG_FUNCTION_ARGS)
+pglogical_create_subscription(PG_FUNCTION_ARGS) // 创建订阅
 {
 	char				   *sub_name = NameStr(*PG_GETARG_NAME(0));
 	char				   *provider_dsn = text_to_cstring(PG_GETARG_TEXT_PP(1));
@@ -419,16 +425,16 @@ pglogical_create_subscription(PG_FUNCTION_ARGS)
 	localnode = get_local_node(true, false);
 
 	/* Now, fetch info about remote node. */
-	conn = pglogical_connect(provider_dsn, sub_name, "create");
+	conn = pglogical_connect(provider_dsn, sub_name, "create"); // 以libq协议连接
 	pglogical_remote_node_info(conn, &origin.id, &origin.name, NULL, NULL, NULL);
 	PQfinish(conn);
 
 	/* Check that we can connect remotely also in replication mode. */
-	conn = pglogical_connect_replica(provider_dsn, sub_name, "create");
+	conn = pglogical_connect_replica(provider_dsn, sub_name, "create"); // 以replication协议连接
 	PQfinish(conn);
 
 	/* Check that local connection works. */
-	conn = pglogical_connect(localnode->node_if->dsn, sub_name, "create");
+	conn = pglogical_connect(localnode->node_if->dsn, sub_name, "create"); // 还要和本地的node进行连接，做三次连接测试
 	PQfinish(conn);
 
 	/*
@@ -518,7 +524,7 @@ pglogical_create_subscription(PG_FUNCTION_ARGS)
 	sub.apply_delay = apply_delay;
 	sub.force_text_transfer = force_text_transfer;
 
-	create_subscription(&sub);
+	create_subscription(&sub); // 往表里插入记录
 
 	/* Create synchronization status for the subscription. */
 	memset(&sync, 0, sizeof(PGLogicalSyncStatus));

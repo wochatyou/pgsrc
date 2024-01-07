@@ -927,7 +927,7 @@ CheckpointerShmemInit(void)
  *		(This affects logging, and in particular enables CheckPointWarning.)
  */
 void
-RequestCheckpoint(int flags)
+RequestCheckpoint(int flags) // 别的子进程调用这个函数，请求执行一个检查点操作
 {
 	int			ntries;
 	int			old_failed,
@@ -936,7 +936,7 @@ RequestCheckpoint(int flags)
 	/*
 	 * If in a standalone backend, just do it ourselves.
 	 */
-	if (!IsPostmasterEnvironment)
+	if (!IsPostmasterEnvironment) //这种情况跳过去
 	{
 		/*
 		 * There's no point in doing slow checkpoints in a standalone backend,
@@ -966,7 +966,7 @@ RequestCheckpoint(int flags)
 
 	old_failed = CheckpointerShmem->ckpt_failed;
 	old_started = CheckpointerShmem->ckpt_started;
-	CheckpointerShmem->ckpt_flags |= (flags | CHECKPOINT_REQUESTED);
+	CheckpointerShmem->ckpt_flags |= (flags | CHECKPOINT_REQUESTED); // 设置一下共享内存的标志位
 
 	SpinLockRelease(&CheckpointerShmem->ckpt_lck);
 
@@ -983,7 +983,7 @@ RequestCheckpoint(int flags)
 #define MAX_SIGNAL_TRIES 600	/* max wait 60.0 sec */
 	for (ntries = 0;; ntries++)
 	{
-		if (CheckpointerShmem->checkpointer_pid == 0)
+		if (CheckpointerShmem->checkpointer_pid == 0) // 这个时候检查点进程还没有启动
 		{
 			if (ntries >= MAX_SIGNAL_TRIES || !(flags & CHECKPOINT_WAIT))
 			{
@@ -992,7 +992,7 @@ RequestCheckpoint(int flags)
 				break;
 			}
 		}
-		else if (kill(CheckpointerShmem->checkpointer_pid, SIGINT) != 0)
+		else if (kill(CheckpointerShmem->checkpointer_pid, SIGINT) != 0) // 向检查点进程发送一个信号
 		{
 			if (ntries >= MAX_SIGNAL_TRIES || !(flags & CHECKPOINT_WAIT))
 			{

@@ -112,9 +112,9 @@ XLogReaderAllocate(int wal_segment_size, const char *waldir,
 
 	state = (XLogReaderState *)
 		palloc_extended(sizeof(XLogReaderState),
-						MCXT_ALLOC_NO_OOM | MCXT_ALLOC_ZERO);
+						MCXT_ALLOC_NO_OOM | MCXT_ALLOC_ZERO); // 根据后面的flag申请内存
 	if (!state)
-		return NULL;
+		return NULL; // 分配失败，就返回NULL
 
 	/* initialize caller-provided support functions */
 	state->routine = *routine;
@@ -127,7 +127,7 @@ XLogReaderAllocate(int wal_segment_size, const char *waldir,
 	 * palloc_extended() will provide MAXALIGN'd storage.
 	 */
 	state->readBuf = (char *) palloc_extended(XLOG_BLCKSZ,
-											  MCXT_ALLOC_NO_OOM);
+											  MCXT_ALLOC_NO_OOM); // MCXT_ALLOC_NO_OOM表示分配失败了不报错，直接返回NULL
 	if (!state->readBuf)
 	{
 		pfree(state);

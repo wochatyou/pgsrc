@@ -1319,7 +1319,7 @@ palloc_extended(Size size, int flags)
 
 	VALGRIND_MEMPOOL_ALLOC(context, ret, size);
 
-	if ((flags & MCXT_ALLOC_ZERO) != 0)
+	if ((flags & MCXT_ALLOC_ZERO) != 0) // 如果这个标志位为1，就把分配的内存清零
 		MemSetAligned(ret, 0, size);
 
 	return ret;

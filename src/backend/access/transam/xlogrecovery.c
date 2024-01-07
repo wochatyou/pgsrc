@@ -590,7 +590,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 				(errcode(ERRCODE_OUT_OF_MEMORY),
 				 errmsg("out of memory"),
 				 errdetail("Failed while allocating a WAL reading processor.")));
-	xlogreader->system_identifier = ControlFile->system_identifier;
+	xlogreader->system_identifier = ControlFile->system_identifier; // 设置系统标识符
 
 	/*
 	 * Set the WAL decode buffer size.  This limits how far ahead we can read
@@ -612,7 +612,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	primary_image_masked = (char *) palloc(BLCKSZ);
 
 	if (read_backup_label(&CheckPointLoc, &CheckPointTLI, &backupEndRequired,
-						  &backupFromStandby))
+						  &backupFromStandby)) // 读取backup_label文件的内容，放在四个传入参数中
 	{
 		List	   *tablespaces = NIL;
 
@@ -621,7 +621,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		 * file, we know how far we need to replay to reach consistency. Enter
 		 * archive recovery directly.
 		 */
-		InArchiveRecovery = true;
+		InArchiveRecovery = true; // 表示是备份恢复模式
 		if (StandbyModeRequested)
 			EnableStandbyMode();
 
@@ -630,11 +630,11 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		 * the checkpoint it identifies, rather than using pg_control.
 		 */
 		record = ReadCheckpointRecord(xlogprefetcher, CheckPointLoc,
-									  CheckPointTLI);
-		if (record != NULL)
+									  CheckPointTLI); // 因为backup_label文件的存在，我们以它里面的检查点为恢复的起点，而不是控制文件里面的内容
+		if (record != NULL) // record如果不是NULL，就指向了一个合法的检查点WAL记录
 		{
-			memcpy(&checkPoint, XLogRecGetData(xlogreader), sizeof(CheckPoint));
-			wasShutdown = ((record->xl_info & ~XLR_INFO_MASK) == XLOG_CHECKPOINT_SHUTDOWN);
+			memcpy(&checkPoint, XLogRecGetData(xlogreader), sizeof(CheckPoint)); // 把检查点WAL记录拷贝到checkPoint中
+			wasShutdown = ((record->xl_info & ~XLR_INFO_MASK) == XLOG_CHECKPOINT_SHUTDOWN); // 如果是shutdown类型的检查点
 			ereport(DEBUG1,
 					(errmsg_internal("checkpoint record is at %X/%X",
 									 LSN_FORMAT_ARGS(CheckPointLoc))));
@@ -659,7 +659,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 									 DataDir, DataDir, DataDir)));
 			}
 		}
-		else
+		else // 从backup_label中获取的检查点的LSN无效，我们读不到WAL记录
 		{
 			ereport(FATAL,
 					(errmsg("could not locate required checkpoint record"),
@@ -706,7 +706,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		/* tell the caller to delete it later */
 		haveBackupLabel = true;
 	}
-	else
+	else // 这里是不存在backup_label文件的情况
 	{
 		/*
 		 * If tablespace_map file is present without backup_label file, there
@@ -769,8 +769,8 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		RedoStartLSN = ControlFile->checkPointCopy.redo;
 		RedoStartTLI = ControlFile->checkPointCopy.ThisTimeLineID;
 		record = ReadCheckpointRecord(xlogprefetcher, CheckPointLoc,
-									  CheckPointTLI);
-		if (record != NULL)
+									  CheckPointTLI); // 从控制文件中获取检查点的LSN，试图读取WAL记录
+		if (record != NULL) // 是合法的检查点WAL记录
 		{
 			ereport(DEBUG1,
 					(errmsg_internal("checkpoint record is at %X/%X",
@@ -788,7 +788,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 					(errmsg("could not locate a valid checkpoint record")));
 		}
 		memcpy(&checkPoint, XLogRecGetData(xlogreader), sizeof(CheckPoint));
-		wasShutdown = ((record->xl_info & ~XLR_INFO_MASK) == XLOG_CHECKPOINT_SHUTDOWN);
+		wasShutdown = ((record->xl_info & ~XLR_INFO_MASK) == XLOG_CHECKPOINT_SHUTDOWN); // 检查点的类型是XLOG_CHECKPOINT_SHUTDOWN？
 	}
 
 	/*
@@ -856,7 +856,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 				(errmsg("invalid next transaction ID")));
 
 	/* sanity check */
-	if (checkPoint.redo > CheckPointLoc)
+	if (checkPoint.redo > CheckPointLoc) // 重做点的位置绝对不能超过检查点
 		ereport(PANIC,
 				(errmsg("invalid redo in checkpoint record")));
 
@@ -867,7 +867,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	 */
 	if (checkPoint.redo < CheckPointLoc)
 	{
-		if (wasShutdown)
+		if (wasShutdown) // 对于SHUTDOWN类型的检查点，重做点和检查点的LSN一定相等
 			ereport(PANIC,
 					(errmsg("invalid redo record in shutdown checkpoint")));
 		InRecovery = true;
@@ -937,11 +937,12 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		 */
 		if (haveBackupLabel)
 		{
-			ControlFile->backupStartPoint = checkPoint.redo;
-			ControlFile->backupEndRequired = backupEndRequired;
+			ControlFile->backupStartPoint = checkPoint.redo; // 从重做点开始恢复
+			ControlFile->backupEndRequired = backupEndRequired; // 如果backup_label中的备份类型是stream， 则backupEndRequired = true
 
-			if (backupFromStandby)
+			if (backupFromStandby) // 在备库上完成的备份， 检查控制文件里面的状态一定是DB_IN_ARCHIVE_RECOVERY或者DB_SHUTDOWNED_IN_RECOVERY
 			{
+				// Database cluster state:               in archive recovery 这个就是运行中的备库的控制文件里面的状态
 				if (dbstate_at_startup != DB_IN_ARCHIVE_RECOVERY &&
 					dbstate_at_startup != DB_SHUTDOWNED_IN_RECOVERY)
 					ereport(FATAL,
@@ -954,7 +955,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	}
 
 	/* remember these, so that we know when we have reached consistency */
-	backupStartPoint = ControlFile->backupStartPoint;
+	backupStartPoint = ControlFile->backupStartPoint; // 判断恢复到一致状态的三个变量，备份的起点，备份的终点，是否需要备份结束
 	backupEndRequired = ControlFile->backupEndRequired;
 	backupEndPoint = ControlFile->backupEndPoint;
 	if (InArchiveRecovery)
@@ -962,7 +963,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		minRecoveryPoint = ControlFile->minRecoveryPoint;
 		minRecoveryPointTLI = ControlFile->minRecoveryPointTLI;
 	}
-	else
+	else // 这是崩溃恢复的模式
 	{
 		minRecoveryPoint = InvalidXLogRecPtr;
 		minRecoveryPointTLI = 0;
@@ -1167,7 +1168,7 @@ validateRecoveryParameters(void)
  * Also sets the global variables RedoStartLSN and RedoStartTLI with the LSN
  * and TLI read from the backup file.
  */
-static bool // 读取backup_label文件的内容
+static bool // 读取backup_label文件的内容，放入传入的四个指针参数中
 read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 				  bool *backupEndRequired, bool *backupFromStandby)
 {
@@ -1221,7 +1222,7 @@ read_backup_label(XLogRecPtr *checkPointLoc, TimeLineID *backupLabelTLI,
 		ereport(FATAL,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("invalid data in file \"%s\"", BACKUP_LABEL_FILE)));
-	*checkPointLoc = ((uint64) hi) << 32 | lo;
+	*checkPointLoc = ((uint64) hi) << 32 | lo; //
 	*backupLabelTLI = tli_from_walseg;
 
 	/*
@@ -3965,7 +3966,7 @@ emode_for_corrupt_record(int emode, XLogRecPtr RecPtr)
 /*
  * Subroutine to try to fetch and validate a prior checkpoint record.
  */
-static XLogRecord *
+static XLogRecord *  // 读取LSN指定的检查点的WAL记录，这条记录应该是检查点记录。读入后做一系列的检查
 ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 					 TimeLineID replayTLI)
 {
@@ -3998,13 +3999,13 @@ ReadCheckpointRecord(XLogPrefetcher *xlogprefetcher, XLogRecPtr RecPtr,
 	}
 	info = record->xl_info & ~XLR_INFO_MASK;
 	if (info != XLOG_CHECKPOINT_SHUTDOWN &&
-		info != XLOG_CHECKPOINT_ONLINE)
+		info != XLOG_CHECKPOINT_ONLINE) // 不是检查点的WAL记录
 	{
 		ereport(LOG,
 				(errmsg("invalid xl_info in checkpoint record")));
 		return NULL;
 	}
-	if (record->xl_tot_len != SizeOfXLogRecord + SizeOfXLogRecordDataHeaderShort + sizeof(CheckPoint))
+	if (record->xl_tot_len != SizeOfXLogRecord + SizeOfXLogRecordDataHeaderShort + sizeof(CheckPoint)) // 检查WAL记录的尺寸
 	{
 		ereport(LOG,
 				(errmsg("invalid length of checkpoint record")));
