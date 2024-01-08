@@ -475,7 +475,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 	 * synchronous_standby_names, but we've protected them against it so far,
 	 * so let's continue to do so unless specifically requested.
 	 */
-	if (stream->replication_slot != NULL)
+	if (stream->replication_slot != NULL) // 复制槽的名字不为0
 	{
 		reportFlushPosition = true;
 		sprintf(slotcmd, "SLOT \"%s\" ", stream->replication_slot);
@@ -489,7 +489,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		slotcmd[0] = 0;
 	}
 
-	if (stream->sysidentifier != NULL)
+	if (stream->sysidentifier != NULL) // 如果我手里的系统标识符不为空
 	{
 		char	   *sysidentifier = NULL;
 		TimeLineID	servertli;
@@ -503,7 +503,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 			return false;
 		}
 
-		if (strcmp(stream->sysidentifier, sysidentifier) != 0)
+		if (strcmp(stream->sysidentifier, sysidentifier) != 0) // 对比我手里的和从服务器取得的系统标识符，如果不一致就报错返回
 		{
 			pg_log_error("system identifier does not match between base backup and streaming connection");
 			pg_free(sysidentifier);
@@ -511,7 +511,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		}
 		pg_free(sysidentifier);
 
-		if (stream->timeline > servertli)
+		if (stream->timeline > servertli) // 我索求的时间线比服务器目前的时间线更大，没办法
 		{
 			pg_log_error("starting timeline %u is not present in the server",
 						 stream->timeline);
@@ -525,7 +525,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 	 */
 	lastFlushPosition = stream->startpos;
 
-	while (1)
+	while (1) // 无限循环
 	{
 		/*
 		 * Fetch the timeline history file for this timeline, if we don't have
@@ -533,7 +533,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		 * false, as we are never streaming into an existing file and
 		 * therefore there can be no pre-existing timeline history file.
 		 */
-		if (!existsTimeLineHistoryFile(stream))
+		if (!existsTimeLineHistoryFile(stream)) //索取时间线历史文件
 		{
 			snprintf(query, sizeof(query), "TIMELINE_HISTORY %u", stream->timeline);
 			res = PQexec(conn, query);
@@ -576,8 +576,8 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 				 slotcmd,
 				 LSN_FORMAT_ARGS(stream->startpos),
 				 stream->timeline);
-		res = PQexec(conn, query);
-		if (PQresultStatus(res) != PGRES_COPY_BOTH)
+		res = PQexec(conn, query); // 执行START_REPLICATION命令
+		if (PQresultStatus(res) != PGRES_COPY_BOTH) // 正确的返回结果是PGRES_COPY_BOTH
 		{
 			pg_log_error("could not send replication command \"%s\": %s",
 						 "START_REPLICATION", PQresultErrorMessage(res));
@@ -587,7 +587,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		PQclear(res);
 
 		/* Stream the WAL */
-		res = HandleCopyStream(conn, stream, &stoppos);
+		res = HandleCopyStream(conn, stream, &stoppos); // 开始接受来自服务器的WAL记录
 		if (res == NULL)
 			goto error;
 
@@ -751,7 +751,7 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 
 	still_sending = true;
 
-	while (1)
+	while (1) // 无限循环
 	{
 		int			r;
 		TimestampTz now;
@@ -804,7 +804,7 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 		sleeptime = CalculateCopyStreamSleeptime(now, stream->standby_message_timeout,
 												 last_status);
 
-		r = CopyStreamReceive(conn, sleeptime, stream->stop_socket, &copybuf);
+		r = CopyStreamReceive(conn, sleeptime, stream->stop_socket, &copybuf); // 接受来自服务器的消息包
 		while (r != 0)
 		{
 			if (r == -1)
@@ -820,13 +820,13 @@ HandleCopyStream(PGconn *conn, StreamCtl *stream,
 			}
 
 			/* Check the message type. */
-			if (copybuf[0] == 'k')
+			if (copybuf[0] == 'k')  // 检查消息包的第一个字节，k表示keep alive
 			{
 				if (!ProcessKeepaliveMsg(conn, stream, copybuf, r, blockpos,
 										 &last_status))
 					goto error;
 			}
-			else if (copybuf[0] == 'w')
+			else if (copybuf[0] == 'w') // w表示真正的WAL数据
 			{
 				if (!ProcessXLogDataMsg(conn, stream, copybuf, r, &blockpos))
 					goto error;
@@ -1036,7 +1036,7 @@ ProcessKeepaliveMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 /*
  * Process XLogData message.
  */
-static bool
+static bool // 处理消息包，数据放在copybuf中，长度是len
 ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 				   XLogRecPtr *blockpos)
 {
@@ -1060,8 +1060,8 @@ ProcessXLogDataMsg(PGconn *conn, StreamCtl *stream, char *copybuf, int len,
 	hdr_len = 1;				/* msgtype 'w' */
 	hdr_len += 8;				/* dataStart */
 	hdr_len += 8;				/* walEnd */
-	hdr_len += 8;				/* sendTime */
-	if (len < hdr_len)
+	hdr_len += 8;				/* sendTime */ // 头25个字节是4个域
+	if (len < hdr_len) // 长度不够25个字节
 	{
 		pg_log_error("streaming header too small: %d", len);
 		return false;

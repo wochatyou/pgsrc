@@ -344,7 +344,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 	 */
 	for (;;)
 	{
-		bool		do_checkpoint = false; // 这个标志变量表明要不要做checkpoint
+		bool		do_checkpoint = false; // 这个标志变量表明要不要做checkpoint，在每次循环中它的初始值都是false
 		int			flags = 0;
 		pg_time_t	now;
 		int			elapsed_secs;
@@ -364,7 +364,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 		 * word in shared memory is nonzero.  We shouldn't need to acquire the
 		 * ckpt_lck for this.
 		 */
-		if (((volatile CheckpointerShmemStruct *) CheckpointerShmem)->ckpt_flags)
+		if (((volatile CheckpointerShmemStruct *) CheckpointerShmem)->ckpt_flags) // ckpt_flags非0，就是有人请求做检查点
 		{
 			do_checkpoint = true;
 			PendingCheckpointerStats.requested_checkpoints++; // 因为请求而发生的检查点
@@ -395,7 +395,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 			bool		do_restartpoint;
 
 			/* Check if we should perform a checkpoint or a restartpoint. */
-			do_restartpoint = RecoveryInProgress();
+			do_restartpoint = RecoveryInProgress(); // 在备库上做restartpoint，而不是检查点
 
 			/*
 			 * Atomically fetch the request flags to figure out what kind of a
@@ -404,7 +404,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 			 */
 			SpinLockAcquire(&CheckpointerShmem->ckpt_lck);
 			flags |= CheckpointerShmem->ckpt_flags;
-			CheckpointerShmem->ckpt_flags = 0;
+			CheckpointerShmem->ckpt_flags = 0; // 把共享内存中的标志位清空
 			CheckpointerShmem->ckpt_started++;
 			SpinLockRelease(&CheckpointerShmem->ckpt_lck);
 
@@ -440,7 +440,7 @@ CheckpointerMain(void) // 检查点进程的入口函数
 			 */
 			ckpt_active = true;
 			if (do_restartpoint)
-				ckpt_start_recptr = GetXLogReplayRecPtr(NULL);
+				ckpt_start_recptr = GetXLogReplayRecPtr(NULL); // 就是读取XLogRecoveryCtl->lastReplayedEndRecPtr
 			else
 				ckpt_start_recptr = GetInsertRecPtr();
 			ckpt_start_time = now;
@@ -449,13 +449,13 @@ CheckpointerMain(void) // 检查点进程的入口函数
 			/*
 			 * Do the checkpoint.
 			 */
-			if (!do_restartpoint)
+			if (!do_restartpoint) // 主库上就是做检查点
 			{
 				CreateCheckPoint(flags);
 				ckpt_performed = true;
 			}
 			else
-				ckpt_performed = CreateRestartPoint(flags);
+				ckpt_performed = CreateRestartPoint(flags); // 备库上做restart point
 
 			/*
 			 * After any checkpoint, close all smgr files.  This is so we

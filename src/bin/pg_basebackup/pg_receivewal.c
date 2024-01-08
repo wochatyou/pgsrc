@@ -65,7 +65,7 @@ static bool stop_streaming(XLogRecPtr xlogpos, uint32 timeline,
 						   bool segment_finished);
 
 static void
-disconnect_atexit(void)
+disconnect_atexit(void) // 本程序退出之前的回调函数，就是把网络连接断开
 {
 	if (conn != NULL)
 		PQfinish(conn);
@@ -112,28 +112,28 @@ usage(void)
  * Check if the filename looks like a WAL file, letting caller know if this
  * WAL segment is partial and/or compressed.
  */
-static bool
+static bool // 判断一个指定的文件名是不是WAL文件，是不是partial的，是不是压缩的。压缩是指整个WAL文件被压缩
 is_xlogfilename(const char *filename, bool *ispartial,
-				pg_compress_algorithm *wal_compression_algorithm)
+				pg_compress_algorithm *wal_compression_algorithm) // 第一个参数是入参，后面两个参数是出参
 {
 	size_t		fname_len = strlen(filename);
 	size_t		xlog_pattern_len = strspn(filename, "0123456789ABCDEF");
 
 	/* File does not look like a WAL file */
-	if (xlog_pattern_len != XLOG_FNAME_LEN)
+	if (xlog_pattern_len != XLOG_FNAME_LEN) // XLOG_FNAME_LEN就是24，因为正常的WAL文件的文件名是24个字节
 		return false;
 
 	/* File looks like a completed uncompressed WAL file */
-	if (fname_len == XLOG_FNAME_LEN)
+	if (fname_len == XLOG_FNAME_LEN) // 如果文件名是24个字节，就是正常的WAL文件
 	{
-		*ispartial = false;
-		*wal_compression_algorithm = PG_COMPRESSION_NONE;
+		*ispartial = false; // partial就是false了
+		*wal_compression_algorithm = PG_COMPRESSION_NONE; // WAL文件没有被压缩
 		return true;
 	}
 
 	/* File looks like a completed gzip-compressed WAL file */
 	if (fname_len == XLOG_FNAME_LEN + strlen(".gz") &&
-		strcmp(filename + XLOG_FNAME_LEN, ".gz") == 0)
+		strcmp(filename + XLOG_FNAME_LEN, ".gz") == 0) //如果是.gz结尾，就是压缩的
 	{
 		*ispartial = false;
 		*wal_compression_algorithm = PG_COMPRESSION_GZIP;
@@ -142,7 +142,7 @@ is_xlogfilename(const char *filename, bool *ispartial,
 
 	/* File looks like a completed LZ4-compressed WAL file */
 	if (fname_len == XLOG_FNAME_LEN + strlen(".lz4") &&
-		strcmp(filename + XLOG_FNAME_LEN, ".lz4") == 0)
+		strcmp(filename + XLOG_FNAME_LEN, ".lz4") == 0) // 如果是.lz4结尾，就是lz4压缩
 	{
 		*ispartial = false;
 		*wal_compression_algorithm = PG_COMPRESSION_LZ4;
@@ -151,7 +151,7 @@ is_xlogfilename(const char *filename, bool *ispartial,
 
 	/* File looks like a partial uncompressed WAL file */
 	if (fname_len == XLOG_FNAME_LEN + strlen(".partial") &&
-		strcmp(filename + XLOG_FNAME_LEN, ".partial") == 0)
+		strcmp(filename + XLOG_FNAME_LEN, ".partial") == 0) // 如果WAL文件后面带.partial，就是部分WAL文件
 	{
 		*ispartial = true;
 		*wal_compression_algorithm = PG_COMPRESSION_NONE;
@@ -180,7 +180,7 @@ is_xlogfilename(const char *filename, bool *ispartial,
 	return false;
 }
 
-static bool
+static bool // 停止流复制
 stop_streaming(XLogRecPtr xlogpos, uint32 timeline, bool segment_finished)
 {
 	static uint32 prevtimeline = 0;
@@ -232,7 +232,7 @@ stop_streaming(XLogRecPtr xlogpos, uint32 timeline, bool segment_finished)
  * Get destination directory.
  */
 static DIR *
-get_destination_dir(char *dest_folder)
+get_destination_dir(char *dest_folder) // 打开指定的目录，返回句柄
 {
 	DIR		   *dir;
 
@@ -508,7 +508,7 @@ StreamLog(void)
 	 * Connect in replication mode to the server
 	 */
 	if (conn == NULL)
-		conn = GetConnection();
+		conn = GetConnection(); // 如果此时还没有建立网络连接，在这里连接后台服务器
 	if (!conn)
 		/* Error message already written in GetConnection() */
 		return;
@@ -528,7 +528,7 @@ StreamLog(void)
 	 * at the same time, necessary if not valid data can be found in the
 	 * existing output directory.
 	 */
-	if (!RunIdentifySystem(conn, &sysidentifier, &servertli, &serverpos, NULL))
+	if (!RunIdentifySystem(conn, &sysidentifier, &servertli, &serverpos, NULL)) //获得系统标识符
 		exit(1);
 
 	/*

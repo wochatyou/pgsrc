@@ -26,7 +26,7 @@ typedef bool (*stream_stop_callback) (XLogRecPtr segendpos, uint32 timeline, boo
  * Global parameters when receiving xlog stream. For details about the individual fields,
  * see the function comment for ReceiveXlogStream().
  */
-typedef struct StreamCtl
+typedef struct StreamCtl // 流复制的总控数据结构
 {
 	XLogRecPtr	startpos;		/* Start position for streaming */
 	TimeLineID	timeline;		/* Timeline to stream data from */

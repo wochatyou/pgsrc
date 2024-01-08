@@ -87,7 +87,7 @@
 void
 pq_beginmessage(StringInfo buf, char msgtype)
 {
-	initStringInfo(buf);
+	initStringInfo(buf); // 为buf分配1KB的内存
 
 	/*
 	 * We stash the message type into the buffer's cursor field, expecting

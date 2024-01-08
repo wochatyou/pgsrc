@@ -38,7 +38,7 @@ typedef enum
 /*
  * Table of callbacks for a WalWriteMethod.
  */
-typedef struct WalWriteMethodOps
+typedef struct WalWriteMethodOps // 一捆回调函数的集合体
 {
 	/*
 	 * Open a target file. Returns Walfile, or NULL if open failed. If a temp

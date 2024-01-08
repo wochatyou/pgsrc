@@ -17,7 +17,7 @@
 #include "access/xlogdefs.h"
 #include "nodes/pg_list.h"
 
-typedef enum ReplicationKind
+typedef enum ReplicationKind // 复制的类型，只有物理复制和逻辑复制两种
 {
 	REPLICATION_KIND_PHYSICAL,
 	REPLICATION_KIND_LOGICAL
@@ -79,11 +79,11 @@ typedef struct DropReplicationSlotCmd
 typedef struct StartReplicationCmd
 {
 	NodeTag		type;
-	ReplicationKind kind;
-	char	   *slotname;
-	TimeLineID	timeline;
-	XLogRecPtr	startpoint;
-	List	   *options;
+	ReplicationKind kind;  // 复制类型：物理复制，逻辑复制？
+	char	   *slotname;  // 复制槽的名称
+	TimeLineID	timeline;  // 时间线
+	XLogRecPtr	startpoint;  // 从哪个LSN开始？
+	List	   *options;   // 一系列的参数
 } StartReplicationCmd;
 
 

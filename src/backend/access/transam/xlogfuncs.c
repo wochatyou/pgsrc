@@ -64,7 +64,7 @@ pg_backup_start(PG_FUNCTION_ARGS)
 	text	   *backupid = PG_GETARG_TEXT_PP(0); //第一列的参数是一个字符串，只是一个标记而已
 	bool		fast = PG_GETARG_BOOL(1);        //第二列的参数是否进行快速的检查点操作
 	char	   *backupidstr;
-	SessionBackupState status = get_backup_status();
+	SessionBackupState status = get_backup_status(); // 就是读取sessionBackupState的值，这是一个状态变量
 	MemoryContext oldcontext;
 
 	backupidstr = text_to_cstring(backupid);
@@ -85,17 +85,17 @@ pg_backup_start(PG_FUNCTION_ARGS)
 	{
 		backupcontext = AllocSetContextCreate(TopMemoryContext,
 											  "on-line backup context",
-											  ALLOCSET_START_SMALL_SIZES);
+											  ALLOCSET_START_SMALL_SIZES); // 这个内存池pg_backup_stop也会使用
 	}
 	else
 	{
 		backup_state = NULL;
 		tablespace_map = NULL;
-		MemoryContextReset(backupcontext);
+		MemoryContextReset(backupcontext); // 把内存池reset一下，变成初始状态
 	}
 
 	oldcontext = MemoryContextSwitchTo(backupcontext);
-	backup_state = (BackupState *) palloc0(sizeof(BackupState));
+	backup_state = (BackupState *) palloc0(sizeof(BackupState)); //backup_state和tablespace_map的内存也在backupcontext这个内存池中
 	tablespace_map = makeStringInfo();
 	MemoryContextSwitchTo(oldcontext);
 

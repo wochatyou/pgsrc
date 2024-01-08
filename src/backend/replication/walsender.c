@@ -666,6 +666,8 @@ SendTimeLineHistory(TimeLineHistoryCmd *cmd)
  * At the moment, this never returns, but an ereport(ERROR) will take us back
  * to the main loop.
  */
+// 复制指令的格式： START_REPLICATION [ SLOT slot_name ] [ PHYSICAL ] XXX/XXX [ TIMELINE tli ] 
+// 逻辑复制： START_REPLICATION SLOT slot_name LOGICAL XXX/XXX [ ( option_name [ option_value ] [, ...] ) ] #
 static void // 这条命令是核心指令，开始进行复制了
 StartReplication(StartReplicationCmd *cmd)
 {
@@ -674,13 +676,13 @@ StartReplication(StartReplicationCmd *cmd)
 	TimeLineID	FlushTLI;
 
 	/* create xlogreader for physical replication */
-	xlogreader =
+	xlogreader =    // 为物理复制创建一个WAL记录的reader结构
 		XLogReaderAllocate(wal_segment_size, NULL,
 						   XL_ROUTINE(.segment_open = WalSndSegmentOpen,
 									  .segment_close = wal_segment_close),
 						   NULL);
 
-	if (!xlogreader)
+	if (!xlogreader) // 创建失败就退出了
 		ereport(ERROR,
 				(errcode(ERRCODE_OUT_OF_MEMORY),
 				 errmsg("out of memory"),
@@ -695,9 +697,9 @@ StartReplication(StartReplicationCmd *cmd)
 	 * written at wal_level='minimal'.
 	 */
 
-	if (cmd->slotname)
+	if (cmd->slotname) // 复制槽的名称
 	{
-		ReplicationSlotAcquire(cmd->slotname, true);
+		ReplicationSlotAcquire(cmd->slotname, true); // 锁住这个复制槽，这个函数执行后MyReplicationSlot就有值了
 		if (SlotIsLogical(MyReplicationSlot))
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
@@ -714,18 +716,18 @@ StartReplication(StartReplicationCmd *cmd)
 	 * Select the timeline. If it was given explicitly by the client, use
 	 * that. Otherwise use the timeline of the last replayed record.
 	 */
-	am_cascading_walsender = RecoveryInProgress();
+	am_cascading_walsender = RecoveryInProgress(); // walsender是运行在备库上，是级联模式
 	if (am_cascading_walsender)
-		FlushPtr = GetStandbyFlushRecPtr(&FlushTLI);
+		FlushPtr = GetStandbyFlushRecPtr(&FlushTLI); // 备库的情况，获得时间线
 	else
-		FlushPtr = GetFlushRecPtr(&FlushTLI);
+		FlushPtr = GetFlushRecPtr(&FlushTLI); // 主库的情况
 
-	if (cmd->timeline != 0)
+	if (cmd->timeline != 0) // 如果客户指定了复制开始的时间线
 	{
 		XLogRecPtr	switchpoint;
 
 		sendTimeLine = cmd->timeline;
-		if (sendTimeLine == FlushTLI)
+		if (sendTimeLine == FlushTLI) 
 		{
 			sendTimeLineIsHistoric = false;
 			sendTimeLineValidUpto = InvalidXLogRecPtr;
@@ -777,7 +779,7 @@ StartReplication(StartReplicationCmd *cmd)
 			sendTimeLineValidUpto = switchpoint;
 		}
 	}
-	else
+	else // 客户没有指定时间线，就以我的时间线为准
 	{
 		sendTimeLine = FlushTLI;
 		sendTimeLineValidUpto = InvalidXLogRecPtr;
@@ -798,7 +800,7 @@ StartReplication(StartReplicationCmd *cmd)
 		 * exactly why we want to be able to monitor whether or not we are
 		 * still here.
 		 */
-		WalSndSetState(WALSNDSTATE_CATCHUP);
+		WalSndSetState(WALSNDSTATE_CATCHUP); // 把我的状态设置为CATCHUP
 
 		/* Send a CopyBothResponse message, and start streaming */
 		pq_beginmessage(&buf, 'W');
@@ -820,7 +822,7 @@ StartReplication(StartReplicationCmd *cmd)
 		}
 
 		/* Start streaming from the requested point */
-		sentPtr = cmd->startpoint;
+		sentPtr = cmd->startpoint; // 从客户指定的起点开始传输
 
 		/* Initialize shared memory status, too */
 		SpinLockAcquire(&MyWalSnd->mutex);
@@ -832,7 +834,7 @@ StartReplication(StartReplicationCmd *cmd)
 		/* Main loop of walsender */
 		replication_active = true;
 
-		WalSndLoop(XLogSendPhysical);
+		WalSndLoop(XLogSendPhysical); // walsender的主循环
 
 		replication_active = false;
 		if (got_STOPPING)

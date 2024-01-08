@@ -456,7 +456,7 @@ typedef struct XLogCtlInsert
 /*
  * Total shared-memory state for XLOG.
  */
-typedef struct XLogCtlData
+typedef struct XLogCtlData // XLOG在共享内存中的数据结构
 {
 	XLogCtlInsert Insert;
 
@@ -818,7 +818,7 @@ XLogInsertRecord(XLogRecData *rdata,
 		Assert(RedoRecPtr < Insert->RedoRecPtr);
 		RedoRecPtr = Insert->RedoRecPtr;
 	}
-	doPageWrites = (Insert->fullPageWrites || Insert->runningBackups > 0);
+	doPageWrites = (Insert->fullPageWrites || Insert->runningBackups > 0); // 如果runningBackups > 0就要强制FPW
 
 	if (doPageWrites &&
 		(!prevDoPageWrites ||
@@ -7094,7 +7094,7 @@ RecoveryRestartPoint(const CheckPoint *checkPoint, XLogReaderState *record)
  * a restartpoint if we have replayed a safe checkpoint record since last
  * restartpoint.
  */
-bool
+bool // 备库会执行这个函数，主库执行正常的检查点
 CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点往后恢复
 {
 	XLogRecPtr	lastCheckPointRecPtr;
@@ -7122,7 +7122,7 @@ CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点�
 	 * Check that we're still in recovery mode. It's ok if we exit recovery
 	 * mode after this check, the restart point is valid anyway.
 	 */
-	if (!RecoveryInProgress())
+	if (!RecoveryInProgress()) // 如果没有处于恢复状态，就啥也不做
 	{
 		ereport(DEBUG2,
 				(errmsg_internal("skipping restartpoint, recovery has already ended")));
@@ -7195,7 +7195,7 @@ CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点�
 	/* Update the process title */
 	update_checkpoint_display(flags, true, false);
 
-	CheckPointGuts(lastCheckPoint.redo, flags);
+	CheckPointGuts(lastCheckPoint.redo, flags); // 做的工作和检查点一样
 
 	/*
 	 * Remember the prior checkpoint's redo ptr for
@@ -7233,7 +7233,7 @@ CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点�
 		 * earlier than this anyway, because redo will begin just after the
 		 * checkpoint record.
 		 */
-		if (ControlFile->state == DB_IN_ARCHIVE_RECOVERY)
+		if (ControlFile->state == DB_IN_ARCHIVE_RECOVERY) // 正常情况下，备库是这个状态： Database cluster state: in archive recovery
 		{
 			if (ControlFile->minRecoveryPoint < lastCheckPointEndPtr)
 			{
@@ -7247,7 +7247,7 @@ CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点�
 			if (flags & CHECKPOINT_IS_SHUTDOWN)
 				ControlFile->state = DB_SHUTDOWNED_IN_RECOVERY;
 		}
-		UpdateControlFile();
+		UpdateControlFile(); // 更新控制文件
 	}
 	LWLockRelease(ControlFileLock);
 
@@ -7650,7 +7650,7 @@ XLogReportParameters(void)
  * concurrently that could update it.
  */
 void
-UpdateFullPageWrites(void)
+UpdateFullPageWrites(void) // 根据fullPageWrites的值更新共享内存中的值
 {
 	XLogCtlInsert *Insert = &XLogCtl->Insert;
 	bool		recoveryInProgress;
@@ -8318,7 +8318,7 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 	 * XLogInsertRecord().
 	 */
 	WALInsertLockAcquireExclusive();
-	XLogCtl->Insert.runningBackups++;
+	XLogCtl->Insert.runningBackups++; // runningBackups如果大于0，就强制FPW
 	WALInsertLockRelease();
 
 	/*
@@ -8625,7 +8625,7 @@ do_pg_backup_stop(BackupState *state, bool waitforarchive) // 备份停止的函
 	 * exactly one do_pg_backup_stop() call.
 	 */
 	Assert(XLogCtl->Insert.runningBackups > 0);
-	XLogCtl->Insert.runningBackups--;
+	XLogCtl->Insert.runningBackups--; // 这是一个计数器，大于0，就要强制FPW，可以允许同时多个备份在进行中
 
 	/*
 	 * Clean up session-level lock.
@@ -8644,7 +8644,7 @@ do_pg_backup_stop(BackupState *state, bool waitforarchive) // 备份停止的函
 	 * If we are taking an online backup from the standby, we confirm that the
 	 * standby has not been promoted during the backup.
 	 */
-	if (state->started_in_recovery && !backup_stopped_in_recovery) // 考虑备份在备库升级的情况下
+	if (state->started_in_recovery && !backup_stopped_in_recovery) // 考虑备份在备库promote的情况下
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("the standby was promoted during online backup"),
