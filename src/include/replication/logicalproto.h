@@ -124,14 +124,14 @@ typedef struct LogicalRepTyp
 } LogicalRepTyp;
 
 /* Transaction info */
-typedef struct LogicalRepBeginData
+typedef struct LogicalRepBeginData // 逻辑复制的BEGIN的结构，一共20个字节
 {
 	XLogRecPtr	final_lsn;
 	TimestampTz committime;
 	TransactionId xid;
 } LogicalRepBeginData;
 
-typedef struct LogicalRepCommitData
+typedef struct LogicalRepCommitData // COMMIT的结构，一共24个字节，两个LSN，一个时间戳
 {
 	XLogRecPtr	commit_lsn;
 	XLogRecPtr	end_lsn;

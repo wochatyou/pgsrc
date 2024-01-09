@@ -199,7 +199,7 @@ UInt16GetDatum(uint16 X)
  *		Returns 32-bit integer value of a datum.
  */
 static inline int32
-DatumGetInt32(Datum X)
+DatumGetInt32(Datum X) // 就是把Datum强制转换成int32
 {
 	return (int32) X;
 }

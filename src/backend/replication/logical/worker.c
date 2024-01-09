@@ -487,7 +487,7 @@ ReplicationOriginNameForLogicalRep(Oid suboid, Oid relid,
 static bool
 should_apply_changes_for_rel(LogicalRepRelMapEntry *rel)
 {
-	if (am_tablesync_worker())
+	if (am_tablesync_worker()) // 逻辑是： OidIsValid(MyLogicalRepWorker->relid); 非零就是sync worker
 		return MyLogicalRepWorker->relid == rel->localreloid;
 	else if (am_parallel_apply_worker())
 	{
@@ -566,8 +566,8 @@ end_replication_step(void)
  * or LOGICAL_REP_MSG_TYPE, return false even if the message needs to be sent
  * to a parallel apply worker.
  */
-static bool
-handle_streamed_transaction(LogicalRepMsgType action, StringInfo s)
+static bool // 根据动作action处理s中的数据
+handle_streamed_transaction(LogicalRepMsgType action, StringInfo s) // LogicalRepMsgType是枚举类型，表示动作：插入？修改？删除？
 {
 	TransactionId current_xid;
 	ParallelApplyWorkerInfo *winfo;
@@ -588,15 +588,15 @@ handle_streamed_transaction(LogicalRepMsgType action, StringInfo s)
 	 * not moved the cursor after the xid. We will serialize this message to a
 	 * file in PARTIAL_SERIALIZE mode.
 	 */
-	original_msg = *s;
+	original_msg = *s; // 把s中的数据拷贝到original_msg
 
 	/*
 	 * We should have received XID of the subxact as the first part of the
 	 * message, so extract it.
 	 */
-	current_xid = pq_getmsgint(s, 4);
+	current_xid = pq_getmsgint(s, 4); // 读取头4个字节，是事务号
 
-	if (!TransactionIdIsValid(current_xid))
+	if (!TransactionIdIsValid(current_xid)) // 如果current_xid是0
 		ereport(ERROR,
 				(errcode(ERRCODE_PROTOCOL_VIOLATION),
 				 errmsg_internal("invalid transaction ID in streamed replication transaction")));
@@ -999,14 +999,14 @@ slot_modify_data(TupleTableSlot *slot, TupleTableSlot *srcslot,
  * Handle BEGIN message.
  */
 static void
-apply_handle_begin(StringInfo s)
+apply_handle_begin(StringInfo s) // 处理BEGIN的逻辑
 {
 	LogicalRepBeginData begin_data;
 
 	/* There must not be an active streaming transaction. */
 	Assert(!TransactionIdIsValid(stream_xid));
 
-	logicalrep_read_begin(s, &begin_data);
+	logicalrep_read_begin(s, &begin_data); // 把s中的数据填入到begin_data的数据结构中，一共20个字节
 	set_apply_error_context_xact(begin_data.xid, begin_data.final_lsn);
 
 	remote_final_lsn = begin_data.final_lsn;
@@ -1028,16 +1028,16 @@ apply_handle_commit(StringInfo s)
 {
 	LogicalRepCommitData commit_data;
 
-	logicalrep_read_commit(s, &commit_data);
+	logicalrep_read_commit(s, &commit_data); // 一共25个字节，填充到commit_data里
 
-	if (commit_data.commit_lsn != remote_final_lsn)
+	if (commit_data.commit_lsn != remote_final_lsn) // remote_final_lsn在处理BEGIN的时候设置，和COMMIT必须配对
 		ereport(ERROR,
 				(errcode(ERRCODE_PROTOCOL_VIOLATION),
 				 errmsg_internal("incorrect commit LSN %X/%X in commit message (expected %X/%X)",
 								 LSN_FORMAT_ARGS(commit_data.commit_lsn),
 								 LSN_FORMAT_ARGS(remote_final_lsn))));
 
-	apply_handle_commit_internal(&commit_data);
+	apply_handle_commit_internal(&commit_data); // 处理提交事务
 
 	/* Process any tables that are being synchronized in parallel. */
 	process_syncing_tables(commit_data.end_lsn);
@@ -2261,7 +2261,7 @@ apply_handle_commit_internal(LogicalRepCommitData *commit_data)
 		 * Start a new transaction to clear the subskiplsn, if not started
 		 * yet.
 		 */
-		if (!IsTransactionState())
+		if (!IsTransactionState()) // 如果我们不处于一个事务中，就启动一个事务
 			StartTransactionCommand();
 	}
 
@@ -2277,7 +2277,7 @@ apply_handle_commit_internal(LogicalRepCommitData *commit_data)
 		 * Update origin state so we can restart streaming from correct
 		 * position in case of crash.
 		 */
-		replorigin_session_origin_lsn = commit_data->end_lsn;
+		replorigin_session_origin_lsn = commit_data->end_lsn;  // 记录一下位置，崩溃的时候知道从哪里恢复
 		replorigin_session_origin_timestamp = commit_data->committime;
 
 		CommitTransactionCommand();
@@ -3282,7 +3282,7 @@ apply_handle_truncate(StringInfo s)
  * Logical replication protocol message dispatcher.
  */
 void
-apply_dispatch(StringInfo s)
+apply_dispatch(StringInfo s) // 根据s中的第一个字节来决定执行何种动作
 {
 	LogicalRepMsgType action = pq_getmsgbyte(s); // 读取第二个字节
 	LogicalRepMsgType saved_command;
@@ -3575,7 +3575,7 @@ LogicalRepApplyLoop(XLogRecPtr last_received)
 					/* Ensure we are reading the data into our memory context. */
 					MemoryContextSwitchTo(ApplyMessageContext);
 
-					s.data = buf;
+					s.data = buf; // 把buf挂到s中，进行处理
 					s.len = len;
 					s.cursor = 0;
 					s.maxlen = -1;
@@ -4412,7 +4412,7 @@ start_table_sync(XLogRecPtr *origin_startpos, char **myslotname)
  * of system resource error and are not repeatable.
  */
 static void
-start_apply(XLogRecPtr origin_startpos)
+start_apply(XLogRecPtr origin_startpos) // 不断地循环，从上游拿到数据，进行解析，按照不同类型的数据包进行处理
 {
 	PG_TRY();
 	{
@@ -4445,7 +4445,7 @@ start_apply(XLogRecPtr origin_startpos)
  * config options.
  */
 void
-InitializeApplyWorker(void)
+InitializeApplyWorker(void) // 对所有worker进程的通用的初始化函数
 {
 	MemoryContext oldctx;
 
@@ -4481,7 +4481,7 @@ InitializeApplyWorker(void)
 		/* Ensure we remove no-longer-useful entry for worker's start time */
 		if (!am_tablesync_worker() && !am_parallel_apply_worker())
 			ApplyLauncherForgetWorkerStartTime(MyLogicalRepWorker->subid);
-		proc_exit(0);
+		proc_exit(0); // 本worker进程直接退出了
 	}
 
 	MySubscriptionValid = true;
@@ -4520,9 +4520,9 @@ InitializeApplyWorker(void)
 
 /* Logical Replication Apply worker entry point */
 void
-ApplyWorkerMain(Datum main_arg) // worker进程的入口函数
+ApplyWorkerMain(Datum main_arg) // worker进程的入口函数, 输入参数是槽的下标
 {
-	int			worker_slot = DatumGetInt32(main_arg);
+	int			worker_slot = DatumGetInt32(main_arg); // 就是把Datum强制转换成int32
 	char		originname[NAMEDATALEN];
 	XLogRecPtr	origin_startpos = InvalidXLogRecPtr;
 	char	   *myslotname = NULL;
@@ -4532,7 +4532,7 @@ ApplyWorkerMain(Datum main_arg) // worker进程的入口函数
 	InitializingApplyWorker = true;
 
 	/* Attach to slot */
-	logicalrep_worker_attach(worker_slot);
+	logicalrep_worker_attach(worker_slot); // 就是把我的进程号放在这个槽里
 
 	/* Setup signal handling */
 	pqsignal(SIGHUP, SignalHandlerForConfigReload);
@@ -4546,18 +4546,18 @@ ApplyWorkerMain(Datum main_arg) // worker进程的入口函数
 
 	/* Initialise stats to a sanish value */
 	MyLogicalRepWorker->last_send_time = MyLogicalRepWorker->last_recv_time =
-		MyLogicalRepWorker->reply_time = GetCurrentTimestamp();
+		MyLogicalRepWorker->reply_time = GetCurrentTimestamp(); // 更新一下时间戳
 
 	/* Load the libpq-specific functions */
 	load_file("libpqwalreceiver", false); // 加载网络链接库，会设置好各种回调函数
 
-	InitializeApplyWorker();
+	InitializeApplyWorker(); // 做一些通用化的初始化工作
 
 	InitializingApplyWorker = false; // 这个变量表示正在初始化，现在初始化完了，它就是false
 
 	/* Connect to the origin and start the replication. */
 	elog(DEBUG1, "connecting to publisher using connection string \"%s\"",
-		 MySubscription->conninfo);
+		 MySubscription->conninfo); // 在日志中显示连接字符串
 
 	if (am_tablesync_worker()) // 是表同步进程，每张表一个同步进程， 判断条件：OidIsValid(MyLogicalRepWorker->relid)
 	{
@@ -4715,9 +4715,9 @@ ApplyWorkerMain(Datum main_arg) // worker进程的入口函数
 	}
 
 	/* Run the main loop. */
-	start_apply(origin_startpos);
+	start_apply(origin_startpos); // 这个是主循环，不停地接受数据包，进行处理
 
-	proc_exit(0);
+	proc_exit(0); // 退出worker进程了
 }
 
 /*

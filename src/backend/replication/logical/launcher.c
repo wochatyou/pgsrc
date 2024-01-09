@@ -688,8 +688,8 @@ logicalrep_worker_wakeup_ptr(LogicalRepWorker *worker)
 /*
  * Attach to a slot.
  */
-void
-logicalrep_worker_attach(int slot)
+void 
+logicalrep_worker_attach(int slot) // 贴到一个槽上，slot是槽的编号。这个函数由worker进程调用
 {
 	/* Block concurrent access. */
 	LWLockAcquire(LogicalRepWorkerLock, LW_EXCLUSIVE);
@@ -697,7 +697,7 @@ logicalrep_worker_attach(int slot)
 	Assert(slot >= 0 && slot < max_logical_replication_workers);
 	MyLogicalRepWorker = &LogicalRepCtx->workers[slot];
 
-	if (!MyLogicalRepWorker->in_use)
+	if (!MyLogicalRepWorker->in_use) // 如果这个槽被使用了，很显然是不对的
 	{
 		LWLockRelease(LogicalRepWorkerLock);
 		ereport(ERROR,
@@ -706,7 +706,7 @@ logicalrep_worker_attach(int slot)
 						slot)));
 	}
 
-	if (MyLogicalRepWorker->proc)
+	if (MyLogicalRepWorker->proc) // 这个槽的进程号非0，表示别人占用了这个槽
 	{
 		LWLockRelease(LogicalRepWorkerLock);
 		ereport(ERROR,
@@ -714,8 +714,8 @@ logicalrep_worker_attach(int slot)
 				 errmsg("logical replication worker slot %d is already used by "
 						"another worker, cannot attach", slot)));
 	}
-
-	MyLogicalRepWorker->proc = MyProc;
+	// 经过上面的检查，没有问题，就把自己的进程号加入这个槽
+	MyLogicalRepWorker->proc = MyProc; 
 	before_shmem_exit(logicalrep_worker_onexit, (Datum) 0);
 
 	LWLockRelease(LogicalRepWorkerLock);

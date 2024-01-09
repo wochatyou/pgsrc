@@ -70,11 +70,11 @@ logicalrep_write_begin(StringInfo out, ReorderBufferTXN *txn)
 /*
  * Read transaction BEGIN from the stream.
  */
-void
+void // 就是把in里面的数据填充到begin_data的数据结构里
 logicalrep_read_begin(StringInfo in, LogicalRepBeginData *begin_data)
 {
 	/* read fields */
-	begin_data->final_lsn = pq_getmsgint64(in);
+	begin_data->final_lsn = pq_getmsgint64(in); // 8 + 8 + 4的结构， LSN， 时间戳，事务号
 	if (begin_data->final_lsn == InvalidXLogRecPtr)
 		elog(ERROR, "final_lsn not set in begin message");
 	begin_data->committime = pq_getmsgint64(in);
@@ -106,10 +106,10 @@ logicalrep_write_commit(StringInfo out, ReorderBufferTXN *txn,
  * Read transaction COMMIT from the stream.
  */
 void
-logicalrep_read_commit(StringInfo in, LogicalRepCommitData *commit_data)
+logicalrep_read_commit(StringInfo in, LogicalRepCommitData *commit_data) // 一共1 + 8 + 8 + 8 = 25个字节
 {
 	/* read flags (unused for now) */
-	uint8		flags = pq_getmsgbyte(in);
+	uint8		flags = pq_getmsgbyte(in); // 第一个字节恒定为0
 
 	if (flags != 0)
 		elog(ERROR, "unrecognized flags %u in commit message", flags);

@@ -374,7 +374,7 @@ static const char *TransStateAsString(TransState state);
  *	This returns true if we are inside a valid transaction; that is,
  *	it is safe to initiate database access, take heavyweight locks, etc.
  */
-bool // 判断我们是否处于一个事务中
+bool // 判断我们是否处于一个事务中， 就是判断CurrentTransactionState的状态是不是TRANS_INPROGRESS
 IsTransactionState(void)
 {
 	TransactionState s = CurrentTransactionState;
@@ -2944,7 +2944,7 @@ StartTransactionCommand(void)
 			 * if we aren't in a transaction block, we just do our usual start
 			 * transaction.
 			 */
-		case TBLOCK_DEFAULT:
+		case TBLOCK_DEFAULT: // 还没有开始一个事务
 			StartTransaction();
 			s->blockState = TBLOCK_STARTED;
 			break;
