@@ -248,7 +248,7 @@ SnapMgrInit(void)
  * used very long.
  */
 Snapshot
-GetTransactionSnapshot(void)
+GetTransactionSnapshot(void) // 获取事务的快照
 {
 	/*
 	 * Return historic snapshot if doing logical decoding. We'll never need a
@@ -256,7 +256,7 @@ GetTransactionSnapshot(void)
 	 * no need to be careful to set one up for later calls to
 	 * GetTransactionSnapshot().
 	 */
-	if (HistoricSnapshotActive())
+	if (HistoricSnapshotActive()) // 逻辑： return HistoricSnapshot != NULL;
 	{
 		Assert(!FirstSnapshotSet);
 		return HistoricSnapshot;
@@ -288,12 +288,12 @@ GetTransactionSnapshot(void)
 		if (IsolationUsesXactSnapshot())
 		{
 			/* First, create the snapshot in CurrentSnapshotData */
-			if (IsolationIsSerializable())
+			if (IsolationIsSerializable()) // 逻辑是： (XactIsoLevel == XACT_SERIALIZABLE)
 				CurrentSnapshot = GetSerializableTransactionSnapshot(&CurrentSnapshotData);
 			else
-				CurrentSnapshot = GetSnapshotData(&CurrentSnapshotData);
+				CurrentSnapshot = GetSnapshotData(&CurrentSnapshotData); // 获得快照，CurrentSnapshot指向了CurrentSnapshotData
 			/* Make a saved copy */
-			CurrentSnapshot = CopySnapshot(CurrentSnapshot);
+			CurrentSnapshot = CopySnapshot(CurrentSnapshot); // CurrentSnapshotData里面的内存是用malloc分配的
 			FirstXactSnapshot = CurrentSnapshot;
 			/* Mark it as "registered" in FirstXactSnapshot */
 			FirstXactSnapshot->regd_count++;
@@ -384,7 +384,7 @@ GetOldestSnapshot(void)
  *		system catalog with the specified OID.
  */
 Snapshot
-GetCatalogSnapshot(Oid relid)
+GetCatalogSnapshot(Oid relid) // 获得一张表的快照
 {
 	/*
 	 * Return historic snapshot while we're doing logical decoding, so we can
@@ -393,7 +393,7 @@ GetCatalogSnapshot(Oid relid)
 	 * This is the primary reason for needing to reset the system caches after
 	 * finishing decoding.
 	 */
-	if (HistoricSnapshotActive())
+	if (HistoricSnapshotActive()) // 就是HistoricSnapshot != NULL
 		return HistoricSnapshot;
 
 	return GetNonHistoricCatalogSnapshot(relid);
@@ -606,7 +606,7 @@ SetTransactionSnapshot(Snapshot sourcesnap, VirtualTransactionId *sourcevxid,
  * to 0.  The returned snapshot has the copied flag set.
  */
 static Snapshot
-CopySnapshot(Snapshot snapshot)
+CopySnapshot(Snapshot snapshot) // 拷贝一个指定的事务快照，拷贝是在TopTransactionContext这个内存池中存放的
 {
 	Snapshot	newsnap;
 	Size		subxipoff;
@@ -828,7 +828,7 @@ ActiveSnapshotSet(void)
 Snapshot
 RegisterSnapshot(Snapshot snapshot)
 {
-	if (snapshot == InvalidSnapshot)
+	if (snapshot == InvalidSnapshot) // 定义： InvalidSnapshot		((Snapshot) NULL)
 		return InvalidSnapshot;
 
 	return RegisterSnapshotOnOwner(snapshot, CurrentResourceOwner);

@@ -1775,9 +1775,9 @@ OidSendFunctionCall(Oid functionId, Datum val)
 #ifndef USE_FLOAT8_BYVAL		/* controls int8 too */
 
 Datum
-Int64GetDatum(int64 X)
+Int64GetDatum(int64 X) // 把X的值存放在一个8字节的内存中，返回它的指针
 {
-	int64	   *retval = (int64 *) palloc(sizeof(int64));
+	int64	   *retval = (int64 *) palloc(sizeof(int64)); // 分配一个8字节的缓冲区
 
 	*retval = X;
 	return PointerGetDatum(retval);

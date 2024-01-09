@@ -147,7 +147,7 @@ typedef struct ReplicationStateOnDisk
 typedef struct ReplicationStateCtl
 {
 	/* Tranche to use for per-origin LWLocks */
-	int			tranche_id;
+	int			tranche_id; // 这个是下面这个数组的长度？
 	/* Array of length max_replication_slots */
 	ReplicationState states[FLEXIBLE_ARRAY_MEMBER];
 } ReplicationStateCtl;
@@ -249,7 +249,7 @@ replorigin_by_name(const char *roname, bool missing_ok)
  * Needs to be called in a transaction.
  */
 RepOriginId
-replorigin_create(const char *roname)
+replorigin_create(const char *roname) // 创建一个replication origin
 {
 	Oid			roident;
 	HeapTuple	tuple = NULL;

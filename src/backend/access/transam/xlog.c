@@ -7122,7 +7122,7 @@ CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点�
 	 * Check that we're still in recovery mode. It's ok if we exit recovery
 	 * mode after this check, the restart point is valid anyway.
 	 */
-	if (!RecoveryInProgress()) // 如果没有处于恢复状态，就啥也不做
+	if (!RecoveryInProgress()) // 如果没有处于恢复状态，就啥也不做,因为这个函数只在备库上做
 	{
 		ereport(DEBUG2,
 				(errmsg_internal("skipping restartpoint, recovery has already ended")));
@@ -8318,7 +8318,7 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 	 * XLogInsertRecord().
 	 */
 	WALInsertLockAcquireExclusive();
-	XLogCtl->Insert.runningBackups++; // runningBackups如果大于0，就强制FPW
+	XLogCtl->Insert.runningBackups++; // runningBackups如果大于0，就强制FPW，对于备库，必须在主库上设置全页写
 	WALInsertLockRelease();
 
 	/*

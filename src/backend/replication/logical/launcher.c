@@ -143,7 +143,7 @@ get_subscription_list(void) // 查询pg_subscription系统表
 	rel = table_open(SubscriptionRelationId, AccessShareLock); // #define SubscriptionRelationId 6100
 	scan = table_beginscan_catalog(rel, 0, NULL);
 
-	while (HeapTupleIsValid(tup = heap_getnext(scan, ForwardScanDirection)))
+	while (HeapTupleIsValid(tup = heap_getnext(scan, ForwardScanDirection))) // ForwardScanDirection = 1 向前扫描
 	{
 		Form_pg_subscription subform = (Form_pg_subscription) GETSTRUCT(tup);
 		Subscription *sub;
@@ -880,7 +880,7 @@ logicalrep_pa_worker_count(Oid subid)
  *		Compute space needed for replication launcher shared memory
  */
 Size
-ApplyLauncherShmemSize(void)
+ApplyLauncherShmemSize(void) // 计算launcher进程所需要的共享内存的尺寸
 {
 	Size		size;
 
@@ -898,12 +898,12 @@ ApplyLauncherShmemSize(void)
  * ApplyLauncherRegister
  *		Register a background worker running the logical replication launcher.
  */
-void
+void 
 ApplyLauncherRegister(void)
 {
 	BackgroundWorker bgw;
 
-	if (max_logical_replication_workers == 0)
+	if (max_logical_replication_workers == 0) // max_logical_replication_workers这个参数可以用户设置
 		return;
 
 	memset(&bgw, 0, sizeof(bgw));
@@ -928,26 +928,26 @@ ApplyLauncherRegister(void)
  *		Allocate and initialize replication launcher shared memory
  */
 void
-ApplyLauncherShmemInit(void)
+ApplyLauncherShmemInit(void) // launcher进程的共享内存初始化，只在第一次调用的时候有意义，后面的调用就是查主哈希表，找到了啥也不做就返回了
 {
 	bool		found;
 
 	LogicalRepCtx = (LogicalRepCtxStruct *)
 		ShmemInitStruct("Logical Replication Launcher Data",
 						ApplyLauncherShmemSize(),
-						&found);
+						&found);  // 在主哈希表中插入一条记录，并且分配ApplyLauncherShmemSize()计算出来的尺寸的共享内存
 
-	if (!found)
+	if (!found) // 第一次创建
 	{
 		int			slot;
 
-		memset(LogicalRepCtx, 0, ApplyLauncherShmemSize());
+		memset(LogicalRepCtx, 0, ApplyLauncherShmemSize()); // 把这块共享内存清零
 
 		LogicalRepCtx->last_start_dsa = DSA_HANDLE_INVALID;
 		LogicalRepCtx->last_start_dsh = DSHASH_HANDLE_INVALID;
 
 		/* Initialize memory and spin locks for each worker slot. */
-		for (slot = 0; slot < max_logical_replication_workers; slot++)
+		for (slot = 0; slot < max_logical_replication_workers; slot++) // 把每个槽的自旋锁初始化一下
 		{
 			LogicalRepWorker *worker = &LogicalRepCtx->workers[slot];
 
@@ -1096,7 +1096,7 @@ ApplyLauncherWakeup(void)
  * Main loop for the apply launcher process.
  */
 void
-ApplyLauncherMain(Datum main_arg) // AL进程的主要入口
+ApplyLauncherMain(Datum main_arg) // AL进程的主要入口，就是反复查询pg_subscription这张系统表，发现有新的subscription就启动worker进程
 {
 	ereport(DEBUG1,
 			(errmsg_internal("logical replication launcher started")));
@@ -1188,7 +1188,7 @@ ApplyLauncherMain(Datum main_arg) // AL进程的主要入口
 		/* Switch back to original memory context. */
 		MemoryContextSwitchTo(oldctx);
 		/* Clean the temporary memory. */
-		MemoryContextDelete(subctx);
+		MemoryContextDelete(subctx); // 把前面申请的内存池删除掉
 
 		/* Wait for more work. */
 		rc = WaitLatch(MyLatch,

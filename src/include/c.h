@@ -667,7 +667,7 @@ typedef uint32 CommandId;
  * See postgres.h for details of the TOASTed form.
  * ----------------
  */
-struct varlena
+struct varlena // 头四个字节是长度，后面就是真正的数据了
 {
 	char		vl_len_[4];		/* Do not touch this field directly! */
 	char		vl_dat[FLEXIBLE_ARRAY_MEMBER];	/* Data content is here */

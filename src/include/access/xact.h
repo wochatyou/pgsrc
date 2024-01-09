@@ -43,8 +43,8 @@ extern PGDLLIMPORT int XactIsoLevel;
 
 /*
  * We implement three isolation levels internally.
- * The two stronger ones use one snapshot per database transaction;
- * the others use one snapshot per statement.
+ * The two stronger ones use one snapshot per database transaction; // 每个事务一个快照
+ * the others use one snapshot per statement.  // 每个语句一个快照
  * Serializable uses predicate locks in addition to snapshots.
  * These macros should be used to check which isolation level is selected.
  */

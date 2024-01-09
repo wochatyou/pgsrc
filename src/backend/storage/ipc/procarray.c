@@ -2187,10 +2187,10 @@ GetSnapshotDataReuse(Snapshot snapshot)
  * not statically allocated (see xip allocation below).
  */
 Snapshot
-GetSnapshotData(Snapshot snapshot)
+GetSnapshotData(Snapshot snapshot) // snapshot是一个指针
 {
 	ProcArrayStruct *arrayP = procArray;
-	TransactionId *other_xids = ProcGlobal->xids;
+	TransactionId *other_xids = ProcGlobal->xids; // 这是一个事务号的数组
 	TransactionId xmin;
 	TransactionId xmax;
 	int			count = 0;
@@ -2202,7 +2202,7 @@ GetSnapshotData(Snapshot snapshot)
 	TransactionId myxid;
 	uint64		curXactCompletionCount;
 
-	TransactionId replication_slot_xmin = InvalidTransactionId;
+	TransactionId replication_slot_xmin = InvalidTransactionId; // 定义： #define InvalidTransactionId		((TransactionId) 0)
 	TransactionId replication_slot_catalog_xmin = InvalidTransactionId;
 
 	Assert(snapshot != NULL);
@@ -2224,15 +2224,16 @@ GetSnapshotData(Snapshot snapshot)
 		 * First call for this snapshot. Snapshot is same size whether or not
 		 * we are in recovery, see later comments.
 		 */
+		// 这里为啥直接用malloc，不用内存池的分配函数呢？
 		snapshot->xip = (TransactionId *)
-			malloc(GetMaxSnapshotXidCount() * sizeof(TransactionId));
+			malloc(GetMaxSnapshotXidCount() * sizeof(TransactionId)); // GetMaxSnapshotXidCount()的定义是：procArray->maxProcs;
 		if (snapshot->xip == NULL)
 			ereport(ERROR,
 					(errcode(ERRCODE_OUT_OF_MEMORY),
 					 errmsg("out of memory")));
 		Assert(snapshot->subxip == NULL);
 		snapshot->subxip = (TransactionId *)
-			malloc(GetMaxSnapshotSubxidCount() * sizeof(TransactionId));
+			malloc(GetMaxSnapshotSubxidCount() * sizeof(TransactionId)); // GetMaxSnapshotSubxidCount返回一个常值
 		if (snapshot->subxip == NULL)
 			ereport(ERROR,
 					(errcode(ERRCODE_OUT_OF_MEMORY),
@@ -2332,11 +2333,11 @@ GetSnapshotData(Snapshot snapshot)
 			if (statusFlags & (PROC_IN_LOGICAL_DECODING | PROC_IN_VACUUM))
 				continue;
 
-			if (NormalTransactionIdPrecedes(xid, xmin))
+			if (NormalTransactionIdPrecedes(xid, xmin)) // 如果xid比xmin更古老，就更新xmin，使得xmin始终是最小值
 				xmin = xid;
 
 			/* Add XID to snapshot. */
-			xip[count++] = xid;
+			xip[count++] = xid; // 往数组里面加入这个事务
 
 			/*
 			 * Save subtransaction XIDs if possible (if we've already

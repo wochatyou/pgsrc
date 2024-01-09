@@ -61,7 +61,7 @@
  * convert between a Datum and the appropriate C type.
  */
 
-typedef uintptr_t Datum;
+typedef uintptr_t Datum; // 就是一个8字节的无符号整数，可以存放指针
 
 /*
  * A NullableDatum is used in places where both a Datum and its nullness needs

@@ -402,7 +402,7 @@ AutovacuumLauncherIAm(void)
  * postmaster.
  */
 int
-StartAutoVacLauncher(void)
+StartAutoVacLauncher(void) // 启动AVW进程，返回结果是AVW进程的进程号
 {
 	pid_t		AutoVacPID;
 

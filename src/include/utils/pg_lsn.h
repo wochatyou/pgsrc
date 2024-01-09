@@ -27,7 +27,7 @@ DatumGetLSN(Datum X)
 static inline Datum
 LSNGetDatum(XLogRecPtr X)
 {
-	return Int64GetDatum((int64) X);
+	return Int64GetDatum((int64) X); // 先在当前内存池中分配一个8字节的缓冲区，把X的值放进去，然后返回指针
 }
 
 #define PG_GETARG_LSN(n)	 DatumGetLSN(PG_GETARG_DATUM(n))

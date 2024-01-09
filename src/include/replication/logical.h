@@ -68,7 +68,7 @@ typedef struct LogicalDecodingContext
 	/*
 	 * Output buffer.
 	 */
-	StringInfo	out;
+	StringInfo	out;  // 这个是对外输出的数据缓冲区
 
 	/*
 	 * Private data pointer of the output plugin.

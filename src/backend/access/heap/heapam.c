@@ -1090,7 +1090,7 @@ heap_endscan(TableScanDesc sscan)
 }
 
 HeapTuple
-heap_getnext(TableScanDesc sscan, ScanDirection direction)
+heap_getnext(TableScanDesc sscan, ScanDirection direction) // ScanDirection是一个枚举型，表示向前向后扫描
 {
 	HeapScanDesc scan = (HeapScanDesc) sscan;
 

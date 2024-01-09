@@ -52,11 +52,11 @@ typedef struct DecodingOutputState
 /*
  * Prepare for an output plugin write.
  */
-static void
+static void // 把ctx的缓冲区位置归零，供未来的输出使用
 LogicalOutputPrepareWrite(LogicalDecodingContext *ctx, XLogRecPtr lsn, TransactionId xid,
 						  bool last_write)
 {
-	resetStringInfo(ctx->out);
+	resetStringInfo(ctx->out); // 就是把位置信息归零而已
 }
 
 /*
@@ -71,14 +71,14 @@ LogicalOutputWrite(LogicalDecodingContext *ctx, XLogRecPtr lsn, TransactionId xi
 	DecodingOutputState *p;
 
 	/* SQL Datums can only be of a limited length... */
-	if (ctx->out->len > MaxAllocSize - VARHDRSZ)
+	if (ctx->out->len > MaxAllocSize - VARHDRSZ)  // MaxAllocSize是1GB - 1， VARHDRSZ是4
 		elog(ERROR, "too much output for sql interface");
 
 	p = (DecodingOutputState *) ctx->output_writer_private;
 
 	memset(nulls, 0, sizeof(nulls));
-	values[0] = LSNGetDatum(lsn);
-	values[1] = TransactionIdGetDatum(xid);
+	values[0] = LSNGetDatum(lsn); // values[0]存放指向一个内存，8个字节，里面的内容是lsn
+	values[1] = TransactionIdGetDatum(xid); // 直接把xid的值存放在values[1]中
 
 	/*
 	 * Assert ctx->out is in database encoding when we're writing textual

@@ -128,9 +128,9 @@ typedef struct ControlFileData
 	 */
 	DBState		state;			/* see enum above */
 	pg_time_t	time;			/* time stamp of last pg_control update */
-	XLogRecPtr	checkPoint;		/* last check point record ptr */
+	XLogRecPtr	checkPoint;		/* last check point record ptr */ // 最后一次检查点的LSN。拿到这个位置，就可以在WAL文件中获取具体数据了
 
-	CheckPoint	checkPointCopy; /* copy of last check point record */
+	CheckPoint	checkPointCopy; /* copy of last check point record */ //最后一次检查点WAL记录的拷贝
 
 	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */
 
