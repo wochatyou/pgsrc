@@ -30,30 +30,30 @@
 typedef struct LogicalRepWorker
 {
 	/* Time at which this worker was launched. */
-	TimestampTz launch_time;
+	TimestampTz launch_time; // 本进程的启动时间
 
 	/* Indicates if this slot is used or free. */
-	bool		in_use;
+	bool		in_use; // 这个槽是否被使用
 
 	/* Increased every time the slot is taken by new worker. */
-	uint16		generation;
+	uint16		generation; // 世代计数器，每次被新的worker进程占用，就加一
 
 	/* Pointer to proc array. NULL if not running. */
-	PGPROC	   *proc;
+	PGPROC	   *proc;  // 指向proc array的指针，描述进程的信息
 
 	/* Database id to connect to. */
-	Oid			dbid;
+	Oid			dbid; // 数据库的Oid
 
 	/* User to use for connection (will be same as owner of subscription). */
-	Oid			userid;
+	Oid			userid; // 用户名，哪个用户连接到这个数据库的
 
 	/* Subscription id for the worker. */
-	Oid			subid;
+	Oid			subid; // subscription的标识符
 
 	/* Used for initial table synchronization. */
-	Oid			relid;
-	char		relstate;
-	XLogRecPtr	relstate_lsn;
+	Oid			relid;      // sync进程使用这个来表示哪张表
+	char		relstate;    // sync的状态，用单个字符来表示
+	XLogRecPtr	relstate_lsn;  // 设定的达到LSN
 	slock_t		relmutex;
 
 	/*
@@ -71,10 +71,10 @@ typedef struct LogicalRepWorker
 	 * PID of leader apply worker if this slot is used for a parallel apply
 	 * worker, InvalidPid otherwise.
 	 */
-	pid_t		leader_pid;
+	pid_t		leader_pid; // 领头的worker进程的进程号
 
 	/* Indicates whether apply can be performed in parallel. */
-	bool		parallel_apply;
+	bool		parallel_apply; // 并发更新
 
 	/* Stats. */
 	XLogRecPtr	last_lsn;

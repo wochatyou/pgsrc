@@ -302,7 +302,7 @@ logicalrep_workers_find(Oid subid, bool only_running)
  *
  * Returns true on success, false on failure.
  */
-bool // 为某一个subscription启动一个worker进程
+bool // 为某一个subscription启动一个worker进程， 可以是worker进程为某一张表启动一个sync进程
 logicalrep_worker_launch(Oid dbid, Oid subid, const char *subname, Oid userid,
 						 Oid relid, dsm_handle subworker_dsm)
 {
@@ -658,7 +658,7 @@ logicalrep_pa_worker_stop(ParallelApplyWorkerInfo *winfo)
  * Wake up (using latch) any logical replication worker for specified sub/rel.
  */
 void
-logicalrep_worker_wakeup(Oid subid, Oid relid)
+logicalrep_worker_wakeup(Oid subid, Oid relid) // 由sync进程进行调用
 {
 	LogicalRepWorker *worker;
 
@@ -829,7 +829,7 @@ logicalrep_worker_onexit(int code, Datum arg)
  * for a subscription.
  */
 int
-logicalrep_sync_worker_count(Oid subid)
+logicalrep_sync_worker_count(Oid subid) // 计算有多少个应该运行的sync进程
 {
 	int			i;
 	int			res = 0;

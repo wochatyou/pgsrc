@@ -440,13 +440,13 @@ static TransApplyAction get_transaction_apply_action(TransactionId xid,
  * Form the origin name for the subscription.
  *
  * This is a common function for tablesync and other workers. Tablesync workers
- * must pass a valid relid. Other callers must pass relid = InvalidOid.
+ * must pass a valid relid. Other callers must pass relid = InvalidOid. // 这里说明了sync进程和其它进程的不同，在于有没有表的Oid
  *
  * Return the name in the supplied buffer.
  */
 void
 ReplicationOriginNameForLogicalRep(Oid suboid, Oid relid,
-								   char *originname, Size szoriginname)
+								   char *originname, Size szoriginname) // 按照一定的规则计算orgin name，放在orginname这个字符串中
 {
 	if (OidIsValid(relid))
 	{
@@ -1040,7 +1040,7 @@ apply_handle_commit(StringInfo s)
 	apply_handle_commit_internal(&commit_data); // 处理提交事务
 
 	/* Process any tables that are being synchronized in parallel. */
-	process_syncing_tables(commit_data.end_lsn);
+	process_syncing_tables(commit_data.end_lsn); // sync进程会也会执行
 
 	pgstat_report_activity(STATE_IDLE, NULL);
 	reset_apply_error_context_info();
@@ -4378,11 +4378,11 @@ start_table_sync(XLogRecPtr *origin_startpos, char **myslotname)
 	PG_TRY();
 	{
 		/* Call initial sync. */
-		syncslotname = LogicalRepSyncTableStart(origin_startpos);
+		syncslotname = LogicalRepSyncTableStart(origin_startpos); // 拷贝数据，完成初始化的工作
 	}
 	PG_CATCH();
 	{
-		if (MySubscription->disableonerr)
+		if (MySubscription->disableonerr) // 如果出错就disable这个subscription 
 			DisableSubscriptionAndExit();
 		else
 		{
@@ -4400,7 +4400,7 @@ start_table_sync(XLogRecPtr *origin_startpos, char **myslotname)
 	PG_END_TRY();
 
 	/* allocate slot name in long-lived context */
-	*myslotname = MemoryContextStrdup(ApplyContext, syncslotname);
+	*myslotname = MemoryContextStrdup(ApplyContext, syncslotname); // 在长生命周期的内存池中保留复制槽
 	pfree(syncslotname);
 }
 
@@ -4519,7 +4519,7 @@ InitializeApplyWorker(void) // 对所有worker进程的通用的初始化函数
 }
 
 /* Logical Replication Apply worker entry point */
-void
+void // typedef uintptr_t Datum; // 就是一个8字节的无符号整数，可以存放指针
 ApplyWorkerMain(Datum main_arg) // worker进程的入口函数, 输入参数是槽的下标
 {
 	int			worker_slot = DatumGetInt32(main_arg); // 就是把Datum强制转换成int32
@@ -4725,7 +4725,7 @@ ApplyWorkerMain(Datum main_arg) // worker进程的入口函数, 输入参数是�
  * and exit cleanly.
  */
 static void
-DisableSubscriptionAndExit(void)
+DisableSubscriptionAndExit(void) // 禁止一个subscription，退出本进程
 {
 	/*
 	 * Emit the error message, and recover from the error state to an idle

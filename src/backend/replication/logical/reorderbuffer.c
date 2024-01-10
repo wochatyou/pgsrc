@@ -315,7 +315,7 @@ ReorderBufferAllocate(void)
 									ALLOCSET_DEFAULT_SIZES);
 
 	buffer =
-		(ReorderBuffer *) MemoryContextAlloc(new_ctx, sizeof(ReorderBuffer));
+		(ReorderBuffer *) MemoryContextAlloc(new_ctx, sizeof(ReorderBuffer)); // 在新建的内存池中分配一块内存
 
 	memset(&hash_ctl, 0, sizeof(hash_ctl));
 
@@ -342,12 +342,12 @@ ReorderBufferAllocate(void)
 												  SLAB_LARGE_BLOCK_SIZE,
 												  SLAB_LARGE_BLOCK_SIZE);
 
-	hash_ctl.keysize = sizeof(TransactionId);
-	hash_ctl.entrysize = sizeof(ReorderBufferTXNByIdEnt);
+	hash_ctl.keysize = sizeof(TransactionId); // 哈希表的K是事务号
+	hash_ctl.entrysize = sizeof(ReorderBufferTXNByIdEnt); // 哈希表的V是指向ReorderBufferTXN的一个指针
 	hash_ctl.hcxt = buffer->context;
 
 	buffer->by_txn = hash_create("ReorderBufferByXid", 1000, &hash_ctl,
-								 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+								 HASH_ELEM | HASH_BLOBS | HASH_CONTEXT); // 创建一个动态哈希表
 
 	buffer->by_txn_last_xid = InvalidTransactionId;
 	buffer->by_txn_last_txn = NULL;
@@ -387,13 +387,13 @@ ReorderBufferAllocate(void)
 void
 ReorderBufferFree(ReorderBuffer *rb)
 {
-	MemoryContext context = rb->context;
+	MemoryContext context = rb->context; // 从rb中拿到内存池的指针
 
 	/*
 	 * We free separately allocated data by entirely scrapping reorderbuffer's
 	 * memory context.
 	 */
-	MemoryContextDelete(context);
+	MemoryContextDelete(context); // 销毁内存池就销毁了rb的所有东西
 
 	/* Free disk space used by unconsumed reorder buffers */
 	ReorderBufferCleanupSerializedTXNs(NameStr(MyReplicationSlot->data.name));
@@ -466,7 +466,7 @@ ReorderBufferReturnTXN(ReorderBuffer *rb, ReorderBufferTXN *txn)
  * Get a fresh ReorderBufferChange.
  */
 ReorderBufferChange *
-ReorderBufferGetChange(ReorderBuffer *rb)
+ReorderBufferGetChange(ReorderBuffer *rb) // 在rb所在的内存池中分配一块内存给ReorderBufferChange
 {
 	ReorderBufferChange *change;
 
@@ -587,7 +587,7 @@ ReorderBufferReturnTupleBuf(ReorderBuffer *rb, ReorderBufferTupleBuf *tuple)
  * not particularly common operation, so it does not seem worth it.
  */
 Oid *
-ReorderBufferGetRelids(ReorderBuffer *rb, int nrelids)
+ReorderBufferGetRelids(ReorderBuffer *rb, int nrelids) // 在rb所在的内存池中分配nrelids个Oid，组成的数组，返回
 {
 	Oid		   *relids;
 	Size		alloc_len;
@@ -603,7 +603,7 @@ ReorderBufferGetRelids(ReorderBuffer *rb, int nrelids)
  * Free an array of relids.
  */
 void
-ReorderBufferReturnRelids(ReorderBuffer *rb, Oid *relids)
+ReorderBufferReturnRelids(ReorderBuffer *rb, Oid *relids) // 直接释放reldis的数组
 {
 	pfree(relids);
 }
@@ -655,7 +655,7 @@ ReorderBufferTXNByXid(ReorderBuffer *rb, TransactionId xid, bool create,
 	 */
 
 	/* search the lookup table */
-	ent = (ReorderBufferTXNByIdEnt *)
+	ent = (ReorderBufferTXNByIdEnt *) // 在哈希表中查找
 		hash_search(rb->by_txn,
 					&xid,
 					create ? HASH_ENTER : HASH_FIND,

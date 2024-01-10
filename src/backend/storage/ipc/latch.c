@@ -478,7 +478,7 @@ DisownLatch(Latch *latch)
  * The "timeout" is given in milliseconds. It must be >= 0 if WL_TIMEOUT flag
  * is given.  Although it is declared as "long", we don't actually support
  * timeouts longer than INT_MAX milliseconds.  Note that some extra overhead
- * is incurred when WL_TIMEOUT is given, so avoid using a timeout if possible.
+ * is incurred when WL_TIMEOUT is given, so avoid using a timeout if possible. // 1000 milliseconds是一秒
  *
  * The latch must be owned by the current process, ie. it must be a
  * process-local latch initialized with InitLatch, or a shared latch

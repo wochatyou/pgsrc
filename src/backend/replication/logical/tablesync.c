@@ -126,7 +126,7 @@ static bool table_states_valid = false;
 static List *table_states_not_ready = NIL;
 static bool FetchTableStates(bool *started_tx);
 
-static StringInfo copybuf = NULL; // 使用StringInfo数据结构来表示拷贝的数据？
+static StringInfo copybuf = NULL; // 使用StringInfo数据结构来表示拷贝的数据
 
 /*
  * Exit routine for synchronization worker.
@@ -139,9 +139,9 @@ finish_sync_worker(void) // 退出本进程的扫尾函数
 	 * Commit any outstanding transaction. This is the usual case, unless
 	 * there was nothing to do for the table.
 	 */
-	if (IsTransactionState())
+	if (IsTransactionState()) // 如果还处于事务状态
 	{
-		CommitTransactionCommand();
+		CommitTransactionCommand(); // 提交这个事务
 		pgstat_report_stat(true);
 	}
 
@@ -156,7 +156,7 @@ finish_sync_worker(void) // 退出本进程的扫尾函数
 	CommitTransactionCommand();
 
 	/* Find the leader apply worker and signal it. */
-	logicalrep_worker_wakeup(MyLogicalRepWorker->subid, InvalidOid);
+	logicalrep_worker_wakeup(MyLogicalRepWorker->subid, InvalidOid); // 给worker进程发信号
 
 	/* Stop gracefully */
 	proc_exit(0);
@@ -172,12 +172,12 @@ finish_sync_worker(void) // 退出本进程的扫尾函数
  * Currently, this is used in the apply worker when transitioning from
  * CATCHUP state to SYNCDONE.
  */
-static bool
-wait_for_relation_state_change(Oid relid, char expected_state)
+static bool // 由worker进程调用
+wait_for_relation_state_change(Oid relid, char expected_state) // 等待指定的表的状态变成期望的状态
 {
 	char		state;
 
-	for (;;)
+	for (;;) // 无限循环
 	{
 		LogicalRepWorker *worker;
 		XLogRecPtr	statelsn;
@@ -191,20 +191,20 @@ wait_for_relation_state_change(Oid relid, char expected_state)
 		if (state == SUBREL_STATE_UNKNOWN)
 			break;
 
-		if (state == expected_state)
+		if (state == expected_state) // 如果是期望的状态就返回true
 			return true;
 
 		/* Check if the sync worker is still running and bail if not. */
 		LWLockAcquire(LogicalRepWorkerLock, LW_SHARED);
 		worker = logicalrep_worker_find(MyLogicalRepWorker->subid, relid,
-										false);
+										false); // 检查sync进程是否还活着
 		LWLockRelease(LogicalRepWorkerLock);
-		if (!worker)
+		if (!worker) // 如果sync进程死了，就没有必要等了。
 			break;
 
 		(void) WaitLatch(MyLatch,
 						 WL_LATCH_SET | WL_TIMEOUT | WL_EXIT_ON_PM_DEATH,
-						 1000L, WAIT_EVENT_LOGICAL_SYNC_STATE_CHANGE);
+						 1000L, WAIT_EVENT_LOGICAL_SYNC_STATE_CHANGE); // 休眠1秒钟
 
 		ResetLatch(MyLatch);
 	}
@@ -220,8 +220,8 @@ wait_for_relation_state_change(Oid relid, char expected_state)
  *
  * Returns false if the apply worker has disappeared.
  */
-static bool
-wait_for_worker_state_change(char expected_state)
+static bool // 同步进程等待worker进程把状态从SYNCWAIT 变成CATCHUP
+wait_for_worker_state_change(char expected_state) // 期望的状态
 {
 	int			rc;
 
@@ -235,7 +235,7 @@ wait_for_worker_state_change(char expected_state)
 		 * Done if already in correct state.  (We assume this fetch is atomic
 		 * enough to not give a misleading answer if we do it with no lock.)
 		 */
-		if (MyLogicalRepWorker->relstate == expected_state)
+		if (MyLogicalRepWorker->relstate == expected_state) // 如果我的状态已经变成了期望的状态，就返回
 			return true;
 
 		/*
@@ -244,11 +244,11 @@ wait_for_worker_state_change(char expected_state)
 		 */
 		LWLockAcquire(LogicalRepWorkerLock, LW_SHARED);
 		worker = logicalrep_worker_find(MyLogicalRepWorker->subid,
-										InvalidOid, false);
+										InvalidOid, false); // worker进程的表的Oid是InvalidOid
 		if (worker && worker->proc)
 			logicalrep_worker_wakeup_ptr(worker);
 		LWLockRelease(LogicalRepWorkerLock);
-		if (!worker)
+		if (!worker) // 如果worker进程死了，就返回
 			break;
 
 		/*
@@ -289,13 +289,13 @@ process_syncing_tables_for_sync(XLogRecPtr current_lsn)
 	SpinLockAcquire(&MyLogicalRepWorker->relmutex);
 
 	if (MyLogicalRepWorker->relstate == SUBREL_STATE_CATCHUP &&
-		current_lsn >= MyLogicalRepWorker->relstate_lsn)
+		current_lsn >= MyLogicalRepWorker->relstate_lsn) // current_lsn当前位置， relstate_lsn ： 预设的位置
 	{
 		TimeLineID	tli;
 		char		syncslotname[NAMEDATALEN] = {0};
 		char		originname[NAMEDATALEN] = {0};
 
-		MyLogicalRepWorker->relstate = SUBREL_STATE_SYNCDONE;
+		MyLogicalRepWorker->relstate = SUBREL_STATE_SYNCDONE; // 把我的状态设置为SYNCDONE
 		MyLogicalRepWorker->relstate_lsn = current_lsn;
 
 		SpinLockRelease(&MyLogicalRepWorker->relmutex);
@@ -407,14 +407,14 @@ process_syncing_tables_for_sync(XLogRecPtr current_lsn)
  * be marked as READY and is no longer tracked.
  */
 static void
-process_syncing_tables_for_apply(XLogRecPtr current_lsn)
+process_syncing_tables_for_apply(XLogRecPtr current_lsn) // current_lsn是COMMIT提交的LSN
 {
-	struct tablesync_start_time_mapping
+	struct tablesync_start_time_mapping // 哈希表，K是Oid，V是sync进程的启动时间
 	{
 		Oid			relid;
 		TimestampTz last_start_time;
 	};
-	static HTAB *last_start_times = NULL;
+	static HTAB *last_start_times = NULL; // 注意是static类型的变量
 	ListCell   *lc;
 	bool		started_tx = false;
 	bool		should_exit = false;
@@ -452,7 +452,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 	/*
 	 * Process all tables that are being synchronized.
 	 */
-	foreach(lc, table_states_not_ready)
+	foreach(lc, table_states_not_ready) // 对于subscription里面的每一张表进行循环处理
 	{
 		SubscriptionRelState *rstate = (SubscriptionRelState *) lfirst(lc);
 
@@ -467,7 +467,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 			{
 				char		originname[NAMEDATALEN];
 
-				rstate->state = SUBREL_STATE_READY;
+				rstate->state = SUBREL_STATE_READY; // 这张表同步完成了，把状态设置为READY
 				rstate->lsn = current_lsn;
 				if (!started_tx)
 				{
@@ -512,7 +512,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 			syncworker = logicalrep_worker_find(MyLogicalRepWorker->subid,
 												rstate->relid, false);
 
-			if (syncworker)
+			if (syncworker) // 如果找到了这个sync进程
 			{
 				/* Found one, update our copy of its state */
 				SpinLockAcquire(&syncworker->relmutex);
@@ -524,9 +524,9 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 					 * Sync worker is waiting for apply.  Tell sync worker it
 					 * can catchup now.
 					 */
-					syncworker->relstate = SUBREL_STATE_CATCHUP;
+					syncworker->relstate = SUBREL_STATE_CATCHUP; // sync进程在等待，就把它的状态变成CATCHUP
 					syncworker->relstate_lsn =
-						Max(syncworker->relstate_lsn, current_lsn);
+						Max(syncworker->relstate_lsn, current_lsn); // 这个位置很重要，为什么要这样计算？
 				}
 				SpinLockRelease(&syncworker->relmutex);
 
@@ -535,7 +535,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 				{
 					/* Signal the sync worker, as it may be waiting for us. */
 					if (syncworker->proc)
-						logicalrep_worker_wakeup_ptr(syncworker);
+						logicalrep_worker_wakeup_ptr(syncworker); // 唤醒sync进程
 
 					/* Now safe to release the LWLock */
 					LWLockRelease(LogicalRepWorkerLock);
@@ -551,7 +551,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 					}
 
 					wait_for_relation_state_change(rstate->relid,
-												   SUBREL_STATE_SYNCDONE);
+												   SUBREL_STATE_SYNCDONE); // 就等这张表的状态变成SUBREL_STATE_SYNCDONE
 				}
 				else
 					LWLockRelease(LogicalRepWorkerLock);
@@ -564,7 +564,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 				 * the lock.
 				 */
 				int			nsyncworkers =
-					logicalrep_sync_worker_count(MyLogicalRepWorker->subid);
+					logicalrep_sync_worker_count(MyLogicalRepWorker->subid); // 根据槽来计算有多少个应该运行的sync进程
 
 				/* Now safe to release the LWLock */
 				LWLockRelease(LogicalRepWorkerLock);
@@ -573,14 +573,14 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 				 * If there are free sync worker slot(s), start a new sync
 				 * worker for the table.
 				 */
-				if (nsyncworkers < max_sync_workers_per_subscription)
+				if (nsyncworkers < max_sync_workers_per_subscription) // 有空槽
 				{
 					TimestampTz now = GetCurrentTimestamp();
 					struct tablesync_start_time_mapping *hentry;
 					bool		found;
 
 					hentry = hash_search(last_start_times, &rstate->relid,
-										 HASH_ENTER, &found);
+										 HASH_ENTER, &found); // 在哈希表中搜查，如果没有就插入
 
 					if (!found ||
 						TimestampDifferenceExceeds(hentry->last_start_time, now,
@@ -591,7 +591,7 @@ process_syncing_tables_for_apply(XLogRecPtr current_lsn)
 												 MySubscription->name,
 												 MyLogicalRepWorker->userid,
 												 rstate->relid,
-												 DSM_HANDLE_INVALID);
+												 DSM_HANDLE_INVALID); // 启动sync进程
 						hentry->last_start_time = now;
 					}
 				}
@@ -652,10 +652,10 @@ process_syncing_tables(XLogRecPtr current_lsn)
 	 * that are in a READY state. See pa_can_start() and
 	 * should_apply_changes_for_rel().
 	 */
-	if (am_parallel_apply_worker())
+	if (am_parallel_apply_worker()) // 并发更新进程实在READY状态以后才开始的
 		return;
 
-	if (am_tablesync_worker())
+	if (am_tablesync_worker()) // 如果我是sync进程
 		process_syncing_tables_for_sync(current_lsn);
 	else
 		process_syncing_tables_for_apply(current_lsn);
@@ -762,7 +762,7 @@ copy_read_data(void *outbuf, int minread, int maxread) // COPY命令获取数据
  */
 static void
 fetch_remote_table_info(char *nspname, char *relname,
-						LogicalRepRelation *lrel, List **qual)
+						LogicalRepRelation *lrel, List **qual) // 获取远端表的信息， 哪个schema，哪个表
 {
 	WalRcvExecResult *res;
 	StringInfoData cmd;
@@ -1096,7 +1096,7 @@ copy_table(Relation rel) // 从publisher端拷贝数据
 
 	/* Get the publisher relation info. */
 	fetch_remote_table_info(get_namespace_name(RelationGetNamespace(rel)),
-							RelationGetRelationName(rel), &lrel, &qual);
+							RelationGetRelationName(rel), &lrel, &qual); // 从publisher出获得表的信息
 
 	/* Put the relation into relmap. */
 	logicalrep_relmap_update(&lrel);
@@ -1230,7 +1230,7 @@ ReplicationSlotNameForTablesync(Oid suboid, Oid relid,
 								char *syncslotname, Size szslot)
 {
 	snprintf(syncslotname, szslot, "pg_%u_sync_%u_" UINT64_FORMAT, suboid,
-			 relid, GetSystemIdentifier());
+			 relid, GetSystemIdentifier()); // 按照一定的规则确定sync进程使用的slot的名字
 }
 
 /*
@@ -1261,7 +1261,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	StartTransactionCommand();
 	relstate = GetSubscriptionRelState(MyLogicalRepWorker->subid,
 									   MyLogicalRepWorker->relid,
-									   &relstate_lsn);
+									   &relstate_lsn); // relstate是这个表的状态，就是一个字符，s, r, i等等
 
 	/* Is the use of a password mandatory? */
 	must_use_password = MySubscription->passwordrequired &&
@@ -1281,18 +1281,18 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	 */
 	switch (relstate)
 	{
-		case SUBREL_STATE_SYNCDONE:
-		case SUBREL_STATE_READY:
+		case SUBREL_STATE_SYNCDONE: // SUBREL_STATE_SYNCDONE 就是 's'
+		case SUBREL_STATE_READY:    // SUBREL_STATE_READY就是 'r'
 		case SUBREL_STATE_UNKNOWN:
 			finish_sync_worker();	/* doesn't return */
 	}
 
 	/* Calculate the name of the tablesync slot. */
-	slotname = (char *) palloc(NAMEDATALEN);
+	slotname = (char *) palloc(NAMEDATALEN); // 在当前内存池中分配一个复制槽的名字缓冲区
 	ReplicationSlotNameForTablesync(MySubscription->oid,
 									MyLogicalRepWorker->relid,
 									slotname,
-									NAMEDATALEN);
+									NAMEDATALEN); // 按照一定规则计算sync进程所使用的复制槽的名字，放在slotname中
 
 	/*
 	 * Here we use the slot name instead of the subscription name as the
@@ -1354,9 +1354,9 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 
 		goto copy_table_done;
 	}
-
+	// 下面的逻辑是COPY表
 	SpinLockAcquire(&MyLogicalRepWorker->relmutex);
-	MyLogicalRepWorker->relstate = SUBREL_STATE_DATASYNC;
+	MyLogicalRepWorker->relstate = SUBREL_STATE_DATASYNC; // 设置一下状态
 	MyLogicalRepWorker->relstate_lsn = InvalidXLogRecPtr;
 	SpinLockRelease(&MyLogicalRepWorker->relmutex);
 
@@ -1366,7 +1366,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 							   MyLogicalRepWorker->relid,
 							   MyLogicalRepWorker->relstate,
 							   MyLogicalRepWorker->relstate_lsn);
-	CommitTransactionCommand();
+	CommitTransactionCommand(); // 提交一个事务，让状态被别人能够看见
 	pgstat_report_stat(true);
 
 	StartTransactionCommand();
@@ -1377,7 +1377,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	 * the main apply process from working and it has to open the relation in
 	 * RowExclusiveLock when remapping remote relation id to local one.
 	 */
-	rel = table_open(MyLogicalRepWorker->relid, RowExclusiveLock);
+	rel = table_open(MyLogicalRepWorker->relid, RowExclusiveLock); // 独占式锁住这张表
 
 	/*
 	 * Start a transaction in the remote node in REPEATABLE READ mode.  This
@@ -1386,7 +1386,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	 */
 	res = walrcv_exec(LogRepWorkerWalRcvConn,
 					  "BEGIN READ ONLY ISOLATION LEVEL REPEATABLE READ",
-					  0, NULL);                                         // 在源端执行REPEATABLE READ
+					  0, NULL);                                         // 在源端执行REPEATABLE READ，在拷贝期间始终只能看见一个快照
 	if (res->status != WALRCV_OK_COMMAND)
 		ereport(ERROR,
 				(errcode(ERRCODE_CONNECTION_FAILURE),
@@ -1401,7 +1401,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	 */
 	walrcv_create_slot(LogRepWorkerWalRcvConn,
 					   slotname, false /* permanent */ , false /* two_phase */ ,
-					   CRS_USE_SNAPSHOT, origin_startpos); // 在源端创建一个永久性的复制槽
+					   CRS_USE_SNAPSHOT, origin_startpos); // 在源端创建一个临时性的复制槽
 
 	/*
 	 * Setup replication origin tracking. The purpose of doing this before the
@@ -1449,7 +1449,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	 * target table.
 	 */
 	aclresult = pg_class_aclcheck(RelationGetRelid(rel), GetUserId(),
-								  ACL_INSERT);
+								  ACL_INSERT); // 检查本进程是否有插入的权限
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult,
 					   get_relkind_objtype(rel->rd_rel->relkind),
@@ -1497,7 +1497,7 @@ LogicalRepSyncTableStart(XLogRecPtr *origin_startpos) // 从某一个LSN开始�
 	UpdateSubscriptionRelState(MyLogicalRepWorker->subid,
 							   MyLogicalRepWorker->relid,
 							   SUBREL_STATE_FINISHEDCOPY,
-							   MyLogicalRepWorker->relstate_lsn);
+							   MyLogicalRepWorker->relstate_lsn); // 表示已经完成了拷贝任务
 
 	CommitTransactionCommand();
 
@@ -1511,15 +1511,15 @@ copy_table_done:
 	 * We are done with the initial data synchronization, update the state.
 	 */
 	SpinLockAcquire(&MyLogicalRepWorker->relmutex);
-	MyLogicalRepWorker->relstate = SUBREL_STATE_SYNCWAIT;
+	MyLogicalRepWorker->relstate = SUBREL_STATE_SYNCWAIT; // 状态从SUBREL_STATE_FINISHEDCOPY变成了SUBREL_STATE_SYNCWAIT
 	MyLogicalRepWorker->relstate_lsn = *origin_startpos;
-	SpinLockRelease(&MyLogicalRepWorker->relmutex);
+	SpinLockRelease(&MyLogicalRepWorker->relmutex); 
 
 	/*
 	 * Finally, wait until the leader apply worker tells us to catch up and
 	 * then return to let LogicalRepApplyLoop do it.
 	 */
-	wait_for_worker_state_change(SUBREL_STATE_CATCHUP);
+	wait_for_worker_state_change(SUBREL_STATE_CATCHUP); // 等待worker进程通知我们catchup
 	return slotname;
 }
 
@@ -1556,7 +1556,7 @@ FetchTableStates(bool *started_tx)
 		}
 
 		/* Fetch all non-ready tables. */
-		rstates = GetSubscriptionRelations(MySubscription->oid, true);
+		rstates = GetSubscriptionRelations(MySubscription->oid, true); // 提取所有状态不是READY的表
 
 		/* Allocate the tracking info in a permanent memory context. */
 		oldctx = MemoryContextSwitchTo(CacheMemoryContext);
@@ -1576,7 +1576,7 @@ FetchTableStates(bool *started_tx)
 		 * see if there are 0 tables.
 		 */
 		has_subrels = (table_states_not_ready != NIL) ||
-			HasSubscriptionRelations(MySubscription->oid);
+			HasSubscriptionRelations(MySubscription->oid); // table_states_not_ready非空表示有没有READY的表
 
 		table_states_valid = true;
 	}
@@ -1593,7 +1593,7 @@ FetchTableStates(bool *started_tx)
  * tablesync workers because MySubscription needs to be already initialized.
  */
 bool
-AllTablesyncsReady(void)
+AllTablesyncsReady(void) // 所有的表都是READY状态吗？
 {
 	bool		started_tx = false;
 	bool		has_subrels = false;

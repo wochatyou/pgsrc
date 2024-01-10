@@ -164,7 +164,7 @@ FreeSubscription(Subscription *sub)
  * Disable the given subscription.
  */
 void
-DisableSubscription(Oid subid)
+DisableSubscription(Oid subid) // 禁止指定的subscription，就是更新磁盘上的catalog的表
 {
 	Relation	rel;
 	bool		nulls[Natts_pg_subscription];
@@ -324,7 +324,7 @@ UpdateSubscriptionRelState(Oid subid, Oid relid, char state,
  * Returns SUBREL_STATE_UNKNOWN when the table is not in the subscription.
  */
 char
-GetSubscriptionRelState(Oid subid, Oid relid, XLogRecPtr *sublsn)
+GetSubscriptionRelState(Oid subid, Oid relid, XLogRecPtr *sublsn) // 获得一个subscription的表的同步状态
 {
 	HeapTuple	tup;
 	char		substate;
@@ -341,7 +341,7 @@ GetSubscriptionRelState(Oid subid, Oid relid, XLogRecPtr *sublsn)
 	/* Try finding the mapping. */
 	tup = SearchSysCache2(SUBSCRIPTIONRELMAP,
 						  ObjectIdGetDatum(relid),
-						  ObjectIdGetDatum(subid));
+						  ObjectIdGetDatum(subid)); // ObjectIdGetDatum就是强制把输入参数转换成Datum类型
 
 	if (!HeapTupleIsValid(tup))
 	{
@@ -449,7 +449,7 @@ RemoveSubscriptionRel(Oid subid, Oid relid)
  * List returned by GetSubscriptionRelations.
  */
 bool
-HasSubscriptionRelations(Oid subid)
+HasSubscriptionRelations(Oid subid) // 这个subscription有表吗？如果有就返回true，否则是false
 {
 	Relation	rel;
 	ScanKeyData skey[1];
@@ -484,7 +484,7 @@ HasSubscriptionRelations(Oid subid)
  * returned list is palloc'ed in the current memory context.
  */
 List *
-GetSubscriptionRelations(Oid subid, bool not_ready)
+GetSubscriptionRelations(Oid subid, bool not_ready) // 如果not_ready是true，就返回所有状态不是READY的表
 {
 	List	   *res = NIL;
 	Relation	rel;
@@ -504,7 +504,7 @@ GetSubscriptionRelations(Oid subid, bool not_ready)
 		ScanKeyInit(&skey[nkeys++],
 					Anum_pg_subscription_rel_srsubstate,
 					BTEqualStrategyNumber, F_CHARNE,
-					CharGetDatum(SUBREL_STATE_READY));
+					CharGetDatum(SUBREL_STATE_READY)); // CharGetDatum就是把一个字符强制转换为Datum类型
 
 	scan = systable_beginscan(rel, InvalidOid, false,
 							  NULL, nkeys, skey);
