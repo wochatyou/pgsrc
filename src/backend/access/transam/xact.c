@@ -395,7 +395,7 @@ IsTransactionState(void)
  *	This returns true if we are within an aborted transaction block.
  */
 bool
-IsAbortedTransactionBlockState(void)
+IsAbortedTransactionBlockState(void) // 就是检查CurrentTransactionState里面的状态
 {
 	TransactionState s = CurrentTransactionState;
 

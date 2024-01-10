@@ -107,7 +107,7 @@ static void LoadOutputPlugin(OutputPluginCallbacks *callbacks, const char *plugi
 void // 检查服务器的配置是否满足逻辑解码的要求。如果不满足，就直接退出了。
 CheckLogicalDecodingRequirements(void)
 {
-	CheckSlotRequirements(); // 检查复制槽是否满足要求
+	CheckSlotRequirements(); // 检查复制槽是否满足要求，就是检查max_replication_slots和wal_level两个参数
 
 	/*
 	 * NB: Adding a new requirement likely means that RestoreSlotFromDisk()
@@ -124,7 +124,7 @@ CheckLogicalDecodingRequirements(void)
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("logical decoding requires a database connection")));
 
-	if (RecoveryInProgress()) // 判断是否处于恢复状态
+	if (RecoveryInProgress()) // 判断是否处于恢复状态，PG16支持从备库开始逻辑复制
 	{
 		/*
 		 * This check may have race conditions, but whenever
@@ -134,7 +134,7 @@ CheckLogicalDecodingRequirements(void)
 		 * CheckLogicalDecodingRequirements() is called once before creating
 		 * the slot, and once when logical decoding is initially starting up.
 		 */
-		if (GetActiveWalLevelOnStandby() < WAL_LEVEL_LOGICAL)
+		if (GetActiveWalLevelOnStandby() < WAL_LEVEL_LOGICAL) // GetActiveWalLevelOnStandby()就是读取备库的控制文件
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 					 errmsg("logical decoding on standby requires wal_level >= logical on the primary")));
@@ -674,7 +674,7 @@ DecodingContextFindStartpoint(LogicalDecodingContext *ctx)
 void
 FreeDecodingContext(LogicalDecodingContext *ctx)
 {
-	if (ctx->callbacks.shutdown_cb != NULL)
+	if (ctx->callbacks.shutdown_cb != NULL) // 如果这个回调函数不为NULL，就执行它
 		shutdown_cb_wrapper(ctx);
 
 	ReorderBufferFree(ctx->reorder);

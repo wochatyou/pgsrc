@@ -4475,7 +4475,7 @@ LocalProcessControlFile(bool reset) // 调用这个函数时，共享内存还�
  * was originally configured on standby.
  */
 WalLevel
-GetActiveWalLevelOnStandby(void)
+GetActiveWalLevelOnStandby(void) // 从备库的控制文件中获得wal_level
 {
 	return ControlFile->wal_level;
 }

@@ -55,7 +55,7 @@ typedef struct WalSnd
 	 */
 	XLogRecPtr	write;
 	XLogRecPtr	flush;
-	XLogRecPtr	apply;
+	XLogRecPtr	apply; // 这三个指标来自备库
 
 	/* Measured lag times, or -1 for unknown/none. */
 	TimeOffset	writeLag;
@@ -100,7 +100,7 @@ typedef struct
 	 * Current location of the head of the queue. All waiters should have a
 	 * waitLSN that follows this value. Protected by SyncRepLock.
 	 */
-	XLogRecPtr	lsn[NUM_SYNC_REP_WAIT_MODE];
+	XLogRecPtr	lsn[NUM_SYNC_REP_WAIT_MODE]; // NUM_SYNC_REP_WAIT_MODE的值是3
 
 	/*
 	 * Are any sync standbys defined?  Waiting backends can't reload the

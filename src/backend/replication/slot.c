@@ -1132,7 +1132,7 @@ restart:
  * slots.
  */
 void
-CheckSlotRequirements(void)
+CheckSlotRequirements(void) // 两点检查，一个是max_replication_slots > 0，一个是wal_level是logical
 {
 	/*
 	 * NB: Adding a new requirement likely means that RestoreSlotFromDisk()

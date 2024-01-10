@@ -1061,7 +1061,7 @@ MemoryContextAlloc(MemoryContext context, Size size)
  *	is a very common combination, so we provide the combined operation.
  */
 void *
-MemoryContextAllocZero(MemoryContext context, Size size)
+MemoryContextAllocZero(MemoryContext context, Size size) // 在指定的内存池中分配size大小的内存，并且清零
 {
 	void	   *ret;
 

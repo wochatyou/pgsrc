@@ -104,13 +104,13 @@
  * because signals are checked only between messages.  128kB (with
  * default 8k blocks) seems like a reasonable guess for now.
  */
-#define MAX_SEND_SIZE (XLOG_BLCKSZ * 16)
+#define MAX_SEND_SIZE (XLOG_BLCKSZ * 16) // 最大128KB
 
 /* Array of WalSnds in shared memory */
-WalSndCtlData *WalSndCtl = NULL;
+WalSndCtlData *WalSndCtl = NULL; // 这个数据结构是总控数据结构，主要的内容在共享内存中形成一个数组
 
 /* My slot in the shared memory array */
-WalSnd	   *MyWalSnd = NULL;
+WalSnd	   *MyWalSnd = NULL; // 本进程在共享内存中的位置
 
 /* Global state */
 bool		am_walsender = false;	/* Am I a walsender process? */
@@ -283,7 +283,7 @@ InitWalSender(void)
 	 * there's no going back, and we mustn't write any WAL records after this.
 	 */
 	MarkPostmasterChildWalSender();
-	SendPostmasterSignal(PMSIGNAL_ADVANCE_STATE_MACHINE);
+	SendPostmasterSignal(PMSIGNAL_ADVANCE_STATE_MACHINE); // 给主进程发送信号
 
 	/*
 	 * If the client didn't specify a database to connect to, show in PGPROC
@@ -834,7 +834,7 @@ StartReplication(StartReplicationCmd *cmd)
 		/* Main loop of walsender */
 		replication_active = true;
 
-		WalSndLoop(XLogSendPhysical); // walsender的主循环
+		WalSndLoop(XLogSendPhysical); // walsender的主循环, 复制就是在这里执行的 ==================!!!!!!!!!!!!!!!!!!!!!!!!!
 
 		replication_active = false;
 		if (got_STOPPING)
@@ -1265,14 +1265,14 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 
 	Assert(!MyReplicationSlot);
 
-	ReplicationSlotAcquire(cmd->slotname, true);
+	ReplicationSlotAcquire(cmd->slotname, true); // 根据复制槽的名称找到复制槽，赋予MyReplicationSlot
 
 	/*
 	 * Force a disconnect, so that the decoding code doesn't need to care
 	 * about an eventual switch from running in recovery, to running in a
 	 * normal environment. Client code is expected to handle reconnects.
 	 */
-	if (am_cascading_walsender && !RecoveryInProgress())
+	if (am_cascading_walsender && !RecoveryInProgress()) // 如果我是备库，但是现在备库promote到主库了
 	{
 		ereport(LOG,
 				(errmsg("terminating walsender process after promotion")));
@@ -1286,16 +1286,16 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 	 * Do this before sending a CopyBothResponse message, so that any errors
 	 * are reported early.
 	 */
-	logical_decoding_ctx =
+	logical_decoding_ctx = // logical_decoding_ctx是一个全局变量
 		CreateDecodingContext(cmd->startpoint, cmd->options, false,
 							  XL_ROUTINE(.page_read = logical_read_xlog_page,
 										 .segment_open = WalSndSegmentOpen,
 										 .segment_close = wal_segment_close),
 							  WalSndPrepareWrite, WalSndWriteData,
-							  WalSndUpdateProgress);
+							  WalSndUpdateProgress); // 创建一个解码上下文
 	xlogreader = logical_decoding_ctx->reader;
 
-	WalSndSetState(WALSNDSTATE_CATCHUP);
+	WalSndSetState(WALSNDSTATE_CATCHUP); // 把我的状态修改为CATCHUP
 
 	/* Send a CopyBothResponse message, and start streaming */
 	pq_beginmessage(&buf, 'W');
@@ -1306,7 +1306,7 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 
 	/* Start reading WAL from the oldest required WAL. */
 	XLogBeginRead(logical_decoding_ctx->reader,
-				  MyReplicationSlot->data.restart_lsn);
+				  MyReplicationSlot->data.restart_lsn); // 开始读取WAL记录
 
 	/*
 	 * Report the location after which we'll send out further commits as the
@@ -1326,7 +1326,7 @@ StartLogicalReplication(StartReplicationCmd *cmd)
 	/* Main loop of walsender */
 	WalSndLoop(XLogSendLogical); // 主要的循环在这里
 
-	FreeDecodingContext(logical_decoding_ctx);
+	FreeDecodingContext(logical_decoding_ctx); // 释放各种资源
 	ReplicationSlotRelease();
 
 	replication_active = false;
@@ -1673,7 +1673,7 @@ WalSndWaitForWal(XLogRecPtr loc)
  * if not.
  */
 bool
-exec_replication_command(const char *cmd_string)
+exec_replication_command(const char *cmd_string) // 执行复制命令，cmd_string是一个字符串
 {
 	int			parse_rc;
 	Node	   *cmd_node;
@@ -1686,7 +1686,7 @@ exec_replication_command(const char *cmd_string)
 	 * status accordingly to handle the next replication commands correctly.
 	 */
 	if (got_STOPPING)
-		WalSndSetState(WALSNDSTATE_STOPPING);
+		WalSndSetState(WALSNDSTATE_STOPPING); // 就是修改一下共享内存中的变量
 
 	/*
 	 * Throw error if in stopping mode.  We need prevent commands that could
@@ -1712,14 +1712,14 @@ exec_replication_command(const char *cmd_string)
 	cmd_context = AllocSetContextCreate(CurrentMemoryContext,
 										"Replication command context",
 										ALLOCSET_DEFAULT_SIZES);
-	old_context = MemoryContextSwitchTo(cmd_context);
+	old_context = MemoryContextSwitchTo(cmd_context); // 为执行这条命令单独分配一个内存池
 
 	replication_scanner_init(cmd_string);
 
 	/*
 	 * Is it a WalSender command?
 	 */
-	if (!replication_scanner_is_replication_command())
+	if (!replication_scanner_is_replication_command()) // 如果不是复制命令
 	{
 		/* Nope; clean up and get out. */
 		replication_scanner_finish();
@@ -1740,7 +1740,7 @@ exec_replication_command(const char *cmd_string)
 	/*
 	 * Looks like a WalSender command, so parse it.
 	 */
-	parse_rc = replication_yyparse();
+	parse_rc = replication_yyparse(); // 解析这条命令，解析成功后返回0
 	if (parse_rc != 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
@@ -1781,11 +1781,11 @@ exec_replication_command(const char *cmd_string)
 	 * Allocate buffers that will be used for each outgoing and incoming
 	 * message.  We do this just once per command to reduce palloc overhead.
 	 */
-	initStringInfo(&output_message);
+	initStringInfo(&output_message); // 初始化这三个缓冲区，每个分配1KB的内存
 	initStringInfo(&reply_message);
 	initStringInfo(&tmpbuf);
 
-	switch (cmd_node->type)
+	switch (cmd_node->type) // 根据解析的类型
 	{
 		case T_IdentifySystemCmd:
 			cmdtag = "IDENTIFY_SYSTEM";
@@ -1823,7 +1823,7 @@ exec_replication_command(const char *cmd_string)
 			EndReplicationCommand(cmdtag);
 			break;
 
-		case T_StartReplicationCmd:
+		case T_StartReplicationCmd: // 这个是复制的核心指令
 			{
 				StartReplicationCmd *cmd = (StartReplicationCmd *) cmd_node;
 
@@ -1874,7 +1874,7 @@ exec_replication_command(const char *cmd_string)
 
 	/* done */
 	MemoryContextSwitchTo(old_context);
-	MemoryContextDelete(cmd_context);
+	MemoryContextDelete(cmd_context); // 删除专门执行这个命令的内存池
 
 	/*
 	 * We need not update ps display or pg_stat_activity, because PostgresMain
@@ -2447,7 +2447,7 @@ WalSndCheckTimeOut(void)
 
 /* Main loop of walsender process that streams the WAL over Copy messages. */
 static void // walsender的主循环
-WalSndLoop(WalSndSendDataCallback send_data)
+WalSndLoop(WalSndSendDataCallback send_data) // send_data是一个回调函数
 {
 	/*
 	 * Initialize the last reply timestamp. That enables timeout processing
@@ -3046,7 +3046,7 @@ retry:
  * Stream out logically decoded data.
  */
 static void
-XLogSendLogical(void)
+XLogSendLogical(void) // 发送逻辑解码的数据
 {
 	XLogRecord *record;
 	char	   *errm;
@@ -3057,7 +3057,7 @@ XLogSendLogical(void)
 	 * helpful because GetFlushRecPtr() needs to acquire a heavily-contended
 	 * spinlock.
 	 */
-	static XLogRecPtr flushPtr = InvalidXLogRecPtr;
+	static XLogRecPtr flushPtr = InvalidXLogRecPtr; // 注意是static变量
 
 	/*
 	 * Don't know whether we've caught up yet. We'll set WalSndCaughtUp to
@@ -3074,7 +3074,7 @@ XLogSendLogical(void)
 		elog(ERROR, "could not find record while sending logically-decoded data: %s",
 			 errm);
 
-	if (record != NULL)
+	if (record != NULL) // 读到了一条WAL记录
 	{
 		/*
 		 * Note the lack of any call to LagTrackerWrite() which is handled by
@@ -3091,7 +3091,7 @@ XLogSendLogical(void)
 	 * we only need to update flushPtr if EndRecPtr is past it.
 	 */
 	if (flushPtr == InvalidXLogRecPtr ||
-		logical_decoding_ctx->reader->EndRecPtr >= flushPtr)
+		logical_decoding_ctx->reader->EndRecPtr >= flushPtr) // 如果是第一次
 	{
 		if (am_cascading_walsender)
 			flushPtr = GetStandbyFlushRecPtr(NULL);

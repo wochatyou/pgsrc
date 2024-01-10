@@ -87,8 +87,8 @@ static bool DecodeTXNNeedSkip(LogicalDecodingContext *ctx,
  * We also support the ability to fast forward thru records, skipping some
  * record types completely - see individual record types for details.
  */
-void
-LogicalDecodingProcessRecord(LogicalDecodingContext *ctx, XLogReaderState *record)
+void // 这个函数是walsender调用的
+LogicalDecodingProcessRecord(LogicalDecodingContext *ctx, XLogReaderState *record) // 这个是解码处理WAL记录的函数入口
 {
 	XLogRecordBuffer buf;
 	TransactionId txid;

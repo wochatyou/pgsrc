@@ -305,7 +305,7 @@ extern void pa_decr_and_wait_stream_block(void);
 extern void pa_xact_finish(ParallelApplyWorkerInfo *winfo,
 						   XLogRecPtr remote_lsn);
 
-#define isParallelApplyWorker(worker) ((worker)->leader_pid != InvalidPid)
+#define isParallelApplyWorker(worker) ((worker)->leader_pid != InvalidPid) // 如果领头的pid, leader_pid是0，就是并发进程， InvalidPid的值是-1
 
 static inline bool
 am_tablesync_worker(void) // 表同步进程对应一张表，根本这个来判断是表同步进程，还是apply worker进程

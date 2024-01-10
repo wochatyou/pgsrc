@@ -186,7 +186,7 @@ SendPostmasterSignal(PMSignalReason reason)
 	/* Atomically set the proper flag */
 	PMSignalState->PMSignalFlags[reason] = true; // 是不是每个子进程发给主进程的都是独一无二的信号，所以不需要加锁？
 	/* Send signal to postmaster */
-	kill(PostmasterPid, SIGUSR1);
+	kill(PostmasterPid, SIGUSR1); //通过kill系统调用发送信号
 }
 
 /*
