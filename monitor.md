@@ -196,4 +196,125 @@ oracle-# WHERE sd.xact_commit+sd.xact_rollback<>0;
         99.95 | postgres | postgres
 (2 rows)
 
+检查数据库的大小
+SELECT pg_database_size(d.oid) AS dsize,
+  pg_size_pretty(pg_database_size(d.oid)) AS pdsize,
+  datname,
+  r.rolname AS rolname
+FROM pg_database d
+LEFT JOIN pg_roles r ON (r.oid=d.datdba);
+
+oracle=# SELECT pg_database_size(d.oid) AS dsize,
+oracle-#   pg_size_pretty(pg_database_size(d.oid)) AS pdsize,
+oracle-#   datname,
+oracle-#   r.rolname AS rolname
+oracle-# FROM pg_database d
+oracle-# LEFT JOIN pg_roles r ON (r.oid=d.datdba);
+  dsize  | pdsize  |  datname  | rolname  
+---------+---------+-----------+----------
+ 7275023 | 7105 kB | template0 | postgres
+ 7340559 | 7169 kB | template1 | postgres
+ 7533027 | 7356 kB | oracle    | postgres
+ 7434723 | 7260 kB | postgres  | postgres
+(4 rows)
+
+
+## Check the hitratio of one or more databases
+SELECT
+  round(100.*sd.blks_hit/(sd.blks_read+sd.blks_hit), 2) AS dhitratio,
+  d.datname,
+  r.rolname AS rolname
+FROM pg_stat_database sd
+JOIN pg_database d ON (d.oid=sd.datid)
+JOIN pg_roles r ON (r.oid=d.datdba)
+WHERE sd.blks_read+sd.blks_hit<>0;
+
+onshift=# SELECT
+onshift-#   round(100.*sd.blks_hit/(sd.blks_read+sd.blks_hit), 2) AS dhitratio,
+onshift-#   d.datname,
+onshift-#   r.rolname AS rolname
+onshift-# FROM pg_stat_database sd
+onshift-# JOIN pg_database d ON (d.oid=sd.datid)
+onshift-# JOIN pg_roles r ON (r.oid=d.datdba)
+onshift-# WHERE sd.blks_read+sd.blks_hit<>0;
+ dhitratio |  datname   |   rolname   
+-----------+------------+-------------
+    100.00 | postgres   | postgres
+     99.98 | db_watcher | onshift_dba
+     99.99 | template1  | postgres
+     98.12 | template0  | postgres
+    100.00 | repmgr     | repmgr
+     97.92 | onshift    | onshift
+     99.99 | session    | onshift_app
+(7 rows)
+
+检查复制槽
+       WITH slots AS (SELECT slot_name,
+            slot_type,
+            coalesce(restart_lsn, '0/0'::pg_lsn) AS slot_lsn,
+            coalesce(
+              pg_xlog_location_diff(
+                case when pg_is_in_recovery() then pg_last_xlog_receive_location() else pg_current_xlog_location() end,
+                restart_lsn),
+            0) AS delta,
+            active
+        FROM pg_replication_slots)
+        SELECT *, pg_size_pretty(delta) AS delta_pretty FROM slots;
+
+onshift=#        WITH slots AS (SELECT slot_name,
+onshift(#             slot_type,
+onshift(#             coalesce(restart_lsn, '0/0'::pg_lsn) AS slot_lsn,
+onshift(#             coalesce(
+onshift(#               pg_xlog_location_diff(
+onshift(#                 case when pg_is_in_recovery() then pg_last_xlog_receive_location() else pg_current_xlog_location() end,
+onshift(#                 restart_lsn),
+onshift(#             0) AS delta,
+onshift(#             active
+onshift(#         FROM pg_replication_slots)
+onshift-#         SELECT *, pg_size_pretty(delta) AS delta_pretty FROM slots;
+                slot_name                | slot_type |   slot_lsn    |    delta    | active | delta_pretty 
+-----------------------------------------+-----------+---------------+-------------+--------+--------------
+ pgl_onshift_schedule_db_ski_repl0104c86 | logical   | B6FF/CA2B7B38 | 35240912072 | t      | 33 GB
+ pgl_onshift_schedule_db_analytics_set   | logical   | B6FF/CA2B7B38 | 35240912072 | t      | 33 GB
+ repmgr_slot_3                           | physical  | B707/FE9F6000 |     1163264 | t      | 1136 kB
+ pgl_onshift_schedule_db_ski_repl53526e7 | logical   | B6FF/CA2B7B38 | 35240912072 | t      | 33 GB
+(4 rows)
+
+-- ## Check the last time things were vacuumed or analyzed
+SELECT current_database() AS datname, nspname AS sname, relname AS tname,
+  CASE WHEN v IS NULL THEN -1 ELSE round(extract(epoch FROM now()-v)) END AS ltime,
+  CASE WHEN v IS NULL THEN '?' ELSE TO_CHAR(v, '$SHOWTIME') END AS ptime
+FROM (SELECT nspname, relname, $criteria AS v
+      FROM pg_class c, pg_namespace n
+      WHERE relkind = 'r'
+      AND n.oid = c.relnamespace
+      AND n.nspname <> 'information_schema'
+      ORDER BY 3) AS foo;
+
+-- 检查锁
+SELECT granted, mode, datname FROM pg_locks l RIGHT JOIN pg_database d ON (d.oid=l.database) WHERE d.datallowconn
+
+
+检查日志：
+SELECT name, CASE WHEN length(setting)<1 THEN '?' ELSE setting END AS s
+FROM pg_settings
+WHERE name IN ('log_destination','log_directory','log_filename','redirect_stderr','syslog_facility')
+ORDER BY name;
+
+onshift=# SELECT name, CASE WHEN length(setting)<1 THEN '?' ELSE setting END AS s
+onshift-# FROM pg_settings
+onshift-# WHERE name IN ('log_destination','log_directory','log_filename','redirect_stderr','syslog_facility')
+onshift-# ORDER BY name;
+      name       |       s       
+-----------------+---------------
+ log_destination | csvlog
+ log_directory   | pg_log
+ log_filename    | postgresql-%a
+ syslog_facility | local0
+(4 rows)
+
+## Checks age of prepared transactions
+SELECT database, ROUND(EXTRACT(epoch FROM now()-prepared)) AS age, prepared
+FROM pg_prepared_xacts
+ORDER BY prepared ASC;
 ```
