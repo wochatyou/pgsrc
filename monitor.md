@@ -171,3 +171,29 @@ FROM (
   LEFT JOIN pg_class c2 ON c2.oid = i.indexrelid
 ) AS sml;
 ```
+检查commit的提交比例
+```
+SELECT
+  round(100.*sd.xact_commit/(sd.xact_commit+sd.xact_rollback), 2) AS dcommitratio,
+  d.datname,
+  r.rolname AS rolname
+FROM pg_stat_database sd
+JOIN pg_database d ON (d.oid=sd.datid)
+JOIN pg_roles r ON (r.oid=d.datdba)
+WHERE sd.xact_commit+sd.xact_rollback<>0;
+
+oracle=# SELECT
+oracle-#   round(100.*sd.xact_commit/(sd.xact_commit+sd.xact_rollback), 2) AS dcommitratio,
+oracle-#   d.datname,
+oracle-#   r.rolname AS rolname
+oracle-# FROM pg_stat_database sd
+oracle-# JOIN pg_database d ON (d.oid=sd.datid)
+oracle-# JOIN pg_roles r ON (r.oid=d.datdba)
+oracle-# WHERE sd.xact_commit+sd.xact_rollback<>0;
+ dcommitratio | datname  | rolname  
+--------------+----------+----------
+        90.20 | oracle   | postgres
+        99.95 | postgres | postgres
+(2 rows)
+
+```
