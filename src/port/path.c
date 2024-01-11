@@ -1000,8 +1000,8 @@ trim_directory(char *path)
 	if (path[0] == '\0')
 		return path;
 
-	/* back up over trailing slash(es) */
-	for (p = path + strlen(path) - 1; IS_DIR_SEP(*p) && p > path; p--)
+	/* back up over trailing slash(es) */  // 从后往前寻找第一个/
+	for (p = path + strlen(path) - 1; IS_DIR_SEP(*p) && p > path; p--) // S_DIR_SEP(ch)就是判断字符ch是不是/
 		;
 	/* back up over directory name */
 	for (; !IS_DIR_SEP(*p) && p > path; p--)

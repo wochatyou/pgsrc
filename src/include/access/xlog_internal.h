@@ -98,7 +98,7 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
 	 ((size) >= WalSegMinSize && (size) <= WalSegMaxSize))
 
 #define XLogSegmentsPerXLogId(wal_segsz_bytes)	\
-	(UINT64CONST(0x100000000) / (wal_segsz_bytes))
+	(UINT64CONST(0x100000000) / (wal_segsz_bytes)) // 4GB / WAL size，对于16MB的尺寸来说，这个值就是256
 
 #define XLogSegNoOffsetToRecPtr(segno, offset, wal_segsz_bytes, dest) \
 		(dest) = (segno) * (wal_segsz_bytes) + (offset)
@@ -114,9 +114,9 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
  * for deciding which segment to write given a pointer to a record end,
  * for example.
  */
-// 根据LSN计算它所在的WAL文件的编号，就是直接处于WAL文件的大小
+// 根据LSN计算它所在的WAL文件的编号，就是直接除于WAL文件的大小。这个宏修改logSegNo的值
 #define XLByteToSeg(xlrp, logSegNo, wal_segsz_bytes) \
-	logSegNo = (xlrp) / (wal_segsz_bytes)
+	logSegNo = (xlrp) / (wal_segsz_bytes)  
 
 #define XLByteToPrevSeg(xlrp, logSegNo, wal_segsz_bytes) \
 	logSegNo = ((xlrp) - 1) / (wal_segsz_bytes)
@@ -197,14 +197,14 @@ IsPartialXLogFileName(const char *fname)
 			strcmp(fname + XLOG_FNAME_LEN, ".partial") == 0);
 }
 
-static inline void
+static inline void // 根据WAL的文件名来获得时间线，段号
 XLogFromFileName(const char *fname, TimeLineID *tli, XLogSegNo *logSegNo, int wal_segsz_bytes)
 {
 	uint32		log;
 	uint32		seg;
 
 	sscanf(fname, "%08X%08X%08X", tli, &log, &seg);
-	*logSegNo = (uint64) log * XLogSegmentsPerXLogId(wal_segsz_bytes) + seg;
+	*logSegNo = (uint64) log * XLogSegmentsPerXLogId(wal_segsz_bytes) + seg; // XLogSegmentsPerXLogId就是256，对于16MB来说
 }
 
 static inline void

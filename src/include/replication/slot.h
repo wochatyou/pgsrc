@@ -61,12 +61,12 @@ typedef struct ReplicationSlotPersistentData
 	NameData	name; // 复制槽的名字
 
 	/* database the slot is active on */
-	Oid			database;
+	Oid			database; // 这个复制槽连接哪个数据库
 
 	/*
 	 * The slot's behaviour when being dropped (or restored after a crash).
 	 */
-	ReplicationSlotPersistency persistency;
+	ReplicationSlotPersistency persistency; // 该复制槽的持久性类型，永久的，临时的？
 
 	/*
 	 * xmin horizon for data
@@ -85,7 +85,7 @@ typedef struct ReplicationSlotPersistentData
 	TransactionId catalog_xmin;
 
 	/* oldest LSN that might be required by this replication slot */
-	XLogRecPtr	restart_lsn;
+	XLogRecPtr	restart_lsn; // 这个复制槽所需要的最老的LSN
 
 	/* RS_INVAL_NONE if valid, or the reason for having been invalidated */
 	ReplicationSlotInvalidationCause invalidated;
@@ -155,7 +155,7 @@ typedef struct ReplicationSlot // 一个复制槽在内存中的数据结构
 	 * written to disk, whereas for streaming replication, it's just the same
 	 * as the persistent value (data.xmin).
 	 */
-	TransactionId effective_xmin;
+	TransactionId effective_xmin;   // 
 	TransactionId effective_catalog_xmin;
 
 	/* data surviving shutdowns and crashes */

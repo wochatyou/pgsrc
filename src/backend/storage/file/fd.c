@@ -823,7 +823,7 @@ durable_rename(const char *oldfile, const char *newfile, int elevel)
  * valid upon return.
  */
 int
-durable_unlink(const char *fname, int elevel)
+durable_unlink(const char *fname, int elevel) // 可靠地删除一个文件
 {
 	if (unlink(fname) < 0)
 	{
@@ -838,7 +838,7 @@ durable_unlink(const char *fname, int elevel)
 	 * To guarantee that the removal of the file is persistent, fsync its
 	 * parent directory.
 	 */
-	if (fsync_parent_path(fname, elevel) != 0)
+	if (fsync_parent_path(fname, elevel) != 0) // 要fsync它所在的目录
 		return -1;
 
 	return 0;

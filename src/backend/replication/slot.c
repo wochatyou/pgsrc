@@ -56,7 +56,7 @@
 /*
  * Replication slot on-disk data structure.
  */
-typedef struct ReplicationSlotOnDisk
+typedef struct ReplicationSlotOnDisk // 共享槽在磁盘上的数据
 {
 	/* first part of this struct needs to be version independent */
 
@@ -114,7 +114,7 @@ static void SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel);
 /*
  * Report shared-memory space needed by ReplicationSlotsShmemInit.
  */
-Size // 计算复制槽的共享内存的大小
+Size // 计算复制槽的共享内存的大小， 尺寸取决于max_replication_slots
 ReplicationSlotsShmemSize(void)
 {
 	Size		size = 0;
@@ -133,7 +133,7 @@ ReplicationSlotsShmemSize(void)
  * Allocate and initialize shared memory for replication slots.
  */
 void
-ReplicationSlotsShmemInit(void)
+ReplicationSlotsShmemInit(void) // 在共享内存中初始化复制槽的信息
 {
 	bool		found;
 
@@ -239,7 +239,7 @@ ReplicationSlotValidateName(const char *name, int elevel)
  * Create a new replication slot and mark it as used by this backend.
  *
  * name: Name of the slot
- * db_specific: logical decoding is db specific; if the slot is going to
+ * db_specific: logical decoding is db specific; if the slot is going to  // 逻辑复制槽要指定数据库的
  *	   be used for that pass true, otherwise false.
  * two_phase: Allows decoding of prepared transactions. We allow this option
  *     to be enabled only at the slot creation time. If we allow this option
@@ -639,7 +639,7 @@ restart:
  * Permanently drop replication slot identified by the passed in name.
  */
 void
-ReplicationSlotDrop(const char *name, bool nowait)
+ReplicationSlotDrop(const char *name, bool nowait) // 把指定名字的复制槽永久性删除掉
 {
 	Assert(MyReplicationSlot == NULL);
 
@@ -776,7 +776,7 @@ ReplicationSlotDropPtr(ReplicationSlot *slot)
  * guaranteeing the current state will survive a crash.
  */
 void
-ReplicationSlotSave(void)
+ReplicationSlotSave(void) // 把MyReplicationSlot中的内容保存到磁盘上
 {
 	char		path[MAXPGPATH];
 
@@ -794,7 +794,7 @@ ReplicationSlotSave(void)
  * required for correctness explicitly do a ReplicationSlotSave().
  */
 void
-ReplicationSlotMarkDirty(void)
+ReplicationSlotMarkDirty(void) // 把MyReplicationSlot的状态设置为dirty
 {
 	ReplicationSlot *slot = MyReplicationSlot;
 
@@ -889,7 +889,7 @@ ReplicationSlotsComputeRequiredXmin(bool already_locked)
  * know what to compare against.
  */
 void // 扫描复制槽数组，找到最小的LSN，存放在共享内存中
-ReplicationSlotsComputeRequiredLSN(void)
+ReplicationSlotsComputeRequiredLSN(void) // 下一次检查点操作就会根据这个LSN来确定哪些WAL文件要被删除掉
 {
 	int			i;
 	XLogRecPtr	min_required = InvalidXLogRecPtr;
@@ -1205,8 +1205,8 @@ ReplicationSlotReserveWal(void)
 		 * increases the chance that we have to retry, it's where a base
 		 * backup has to start replay at.
 		 */
-		if (SlotIsPhysical(slot))
-			restart_lsn = GetRedoRecPtr();
+		if (SlotIsPhysical(slot)) // 如果是物理复制槽
+			restart_lsn = GetRedoRecPtr(); // 获得一个redo的LSN
 		else if (RecoveryInProgress())
 			restart_lsn = GetXLogReplayRecPtr(NULL);
 		else
@@ -1217,7 +1217,7 @@ ReplicationSlotReserveWal(void)
 		SpinLockRelease(&slot->mutex);
 
 		/* prevent WAL removal as fast as possible */
-		ReplicationSlotsComputeRequiredLSN();
+		ReplicationSlotsComputeRequiredLSN(); // 计算最小保留的LSN，防止WAL文件被删除
 
 		/*
 		 * If all required WAL is still there, great, otherwise retry. The
@@ -1226,7 +1226,7 @@ ReplicationSlotReserveWal(void)
 		 * the new restart_lsn above, so normally we should never need to loop
 		 * more than twice.
 		 */
-		XLByteToSeg(slot->data.restart_lsn, segno, wal_segment_size);
+		XLByteToSeg(slot->data.restart_lsn, segno, wal_segment_size); // 这里计算segno的值
 		if (XLogGetLastRemovedSegno() < segno)
 			break;
 	}
@@ -1732,8 +1732,8 @@ CreateSlotOnDisk(ReplicationSlot *slot)
 /*
  * Shared functionality between saving and creating a replication slot.
  */
-static void
-SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
+static void // 思路是先写到一个临时文件中，再改名为正式文件
+SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel) // 把复制槽的内容保存在dir指定的磁盘文件上
 {
 	char		tmppath[MAXPGPATH];
 	char		path[MAXPGPATH];
@@ -1748,7 +1748,7 @@ SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
 	SpinLockRelease(&slot->mutex);
 
 	/* and don't do anything if there's nothing to write */
-	if (!was_dirty)
+	if (!was_dirty) // 如果复制槽不是dirty，啥也不做
 		return;
 
 	LWLockAcquire(&slot->io_in_progress_lock, LW_EXCLUSIVE);
@@ -1759,7 +1759,7 @@ SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
 	sprintf(tmppath, "%s/state.tmp", dir);
 	sprintf(path, "%s/state", dir);
 
-	fd = OpenTransientFile(tmppath, O_CREAT | O_EXCL | O_WRONLY | PG_BINARY);
+	fd = OpenTransientFile(tmppath, O_CREAT | O_EXCL | O_WRONLY | PG_BINARY); // 先写入state.tmp这个临时文件
 	if (fd < 0)
 	{
 		/*
@@ -1847,7 +1847,7 @@ SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
 	}
 
 	/* rename to permanent file, fsync file and directory */
-	if (rename(tmppath, path) != 0)
+	if (rename(tmppath, path) != 0) // 把临时文件改名为正式文件
 	{
 		int			save_errno = errno;
 
@@ -1877,7 +1877,7 @@ SaveSlotToPath(ReplicationSlot *slot, const char *dir, int elevel)
 	 */
 	SpinLockAcquire(&slot->mutex);
 	if (!slot->just_dirtied)
-		slot->dirty = false;
+		slot->dirty = false; // 把复制槽的状态改为不dirty了
 	SpinLockRelease(&slot->mutex);
 
 	LWLockRelease(&slot->io_in_progress_lock);

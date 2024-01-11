@@ -802,7 +802,7 @@ PopActiveSnapshot(void)
  *		Return the topmost snapshot in the Active stack.
  */
 Snapshot
-GetActiveSnapshot(void)
+GetActiveSnapshot(void) // 返回活跃的snapshot
 {
 	Assert(ActiveSnapshot != NULL);
 
@@ -1122,7 +1122,7 @@ AtEOXact_Snapshot(bool isCommit, bool resetXmin)
  *		snapshot.
  */
 char *
-ExportSnapshot(Snapshot snapshot)
+ExportSnapshot(Snapshot snapshot) // 把一个快照导出到一个文件中，在pg_snapshots目录中，返回文件名
 {
 	TransactionId topXid;
 	TransactionId *children;
@@ -1177,7 +1177,7 @@ ExportSnapshot(Snapshot snapshot)
 	 * inside the transaction from 1.
 	 */
 	snprintf(path, sizeof(path), SNAPSHOT_EXPORT_DIR "/%08X-%08X-%d",
-			 MyProc->backendId, MyProc->lxid, list_length(exportedSnapshots) + 1);
+			 MyProc->backendId, MyProc->lxid, list_length(exportedSnapshots) + 1); // pg_snapshots目录中的文件，这是一个文本文件
 
 	/*
 	 * Copy the snapshot into TopTransactionContext, add it to the
@@ -1228,7 +1228,7 @@ ExportSnapshot(Snapshot snapshot)
 				 TransactionIdPrecedes(topXid, snapshot->xmax)) ? 1 : 0;
 	appendStringInfo(&buf, "xcnt:%d\n", snapshot->xcnt + addTopXid);
 	for (i = 0; i < snapshot->xcnt; i++)
-		appendStringInfo(&buf, "xip:%u\n", snapshot->xip[i]);
+		appendStringInfo(&buf, "xip:%u\n", snapshot->xip[i]); // 依次导出事务号数组里面的事务号
 	if (addTopXid)
 		appendStringInfo(&buf, "xip:%u\n", topXid);
 
@@ -1248,7 +1248,7 @@ ExportSnapshot(Snapshot snapshot)
 		for (i = 0; i < nchildren; i++)
 			appendStringInfo(&buf, "sxp:%u\n", children[i]);
 	}
-	appendStringInfo(&buf, "rec:%u\n", snapshot->takenDuringRecovery);
+	appendStringInfo(&buf, "rec:%u\n", snapshot->takenDuringRecovery); // 以上这些都是文本类型的数据
 
 	/*
 	 * Now write the text representation into a file.  We first write to a
@@ -1256,7 +1256,7 @@ ExportSnapshot(Snapshot snapshot)
 	 * ensures that no other backend can read an incomplete file
 	 * (ImportSnapshot won't allow it because of its valid-characters check).
 	 */
-	snprintf(pathtmp, sizeof(pathtmp), "%s.tmp", path);
+	snprintf(pathtmp, sizeof(pathtmp), "%s.tmp", path); // 先写入到一个临时文件，再改名，防止别的进程读到不完整的信息
 	if (!(f = AllocateFile(pathtmp, PG_BINARY_W)))
 		ereport(ERROR,
 				(errcode_for_file_access(),

@@ -279,9 +279,9 @@ CreateSharedMemoryAndSemaphores(void)
 	ProcSignalShmemInit();
 	CheckpointerShmemInit();
 	AutoVacuumShmemInit();
-	ReplicationSlotsShmemInit();
+	ReplicationSlotsShmemInit(); // 初始化复制槽的共享内存
 	ReplicationOriginShmemInit();
-	WalSndShmemInit();
+	WalSndShmemInit(); // 初始化walsender的共享内存
 	WalRcvShmemInit(); // 初始化walreceiver进程的共享内存
 	PgArchShmemInit();
 	ApplyLauncherShmemInit();

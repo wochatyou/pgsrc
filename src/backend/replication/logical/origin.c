@@ -104,12 +104,12 @@ typedef struct ReplicationState
 	/*
 	 * Local identifier for the remote node.
 	 */
-	RepOriginId roident;
+	RepOriginId roident; // 2个字节 typedef uint16 RepOriginId;
 
 	/*
 	 * Location of the latest commit from the remote side.
 	 */
-	XLogRecPtr	remote_lsn;
+	XLogRecPtr	remote_lsn; // 最后一个commit的LSN
 
 	/*
 	 * Remember the local lsn of the commit record so we can XLogFlush() to it
@@ -121,7 +121,7 @@ typedef struct ReplicationState
 	/*
 	 * PID of backend that's acquired slot, or 0 if none.
 	 */
-	int			acquired_by;
+	int			acquired_by; // 进程号
 
 	/*
 	 * Condition variable that's signaled when acquired_by changes.
@@ -137,7 +137,7 @@ typedef struct ReplicationState
 /*
  * On disk version of ReplicationState.
  */
-typedef struct ReplicationStateOnDisk
+typedef struct ReplicationStateOnDisk // 在磁盘上保存的，2个字节的id加上远端commit的LSN
 {
 	RepOriginId roident;
 	XLogRecPtr	remote_lsn;
@@ -164,7 +164,7 @@ TimestampTz replorigin_session_origin_timestamp = 0;
  * XXX: Should we use a separate variable to size this rather than
  * max_replication_slots?
  */
-static ReplicationState *replication_states;
+static ReplicationState *replication_states; // 这个指针指向一个数组，数组成员有max_replication_slots个
 
 /*
  * Actual shared memory block (replication_states[] is now part of this).
@@ -182,7 +182,7 @@ static ReplicationState *session_replication_state = NULL;
 #define REPLICATION_STATE_MAGIC ((uint32) 0x1257DADE)
 
 static void
-replorigin_check_prerequisites(bool check_slots, bool recoveryOK)
+replorigin_check_prerequisites(bool check_slots, bool recoveryOK) // 检查前提，check_slots决定是否检查复制槽， recoveryOK表示备库是否可行
 {
 	if (check_slots && max_replication_slots == 0)
 		ereport(ERROR,
@@ -201,7 +201,7 @@ replorigin_check_prerequisites(bool check_slots, bool recoveryOK)
  *		True iff name is either "none" or "any".
  */
 static bool
-IsReservedOriginName(const char *name)
+IsReservedOriginName(const char *name) // 如果名字是none或者any就返回true
 {
 	return ((pg_strcasecmp(name, LOGICALREP_ORIGIN_NONE) == 0) ||
 			(pg_strcasecmp(name, LOGICALREP_ORIGIN_ANY) == 0));
@@ -227,7 +227,7 @@ replorigin_by_name(const char *roname, bool missing_ok)
 
 	roname_d = CStringGetTextDatum(roname);
 
-	tuple = SearchSysCache1(REPLORIGNAME, roname_d);
+	tuple = SearchSysCache1(REPLORIGNAME, roname_d); // 在catalog里面寻找？
 	if (HeapTupleIsValid(tuple))
 	{
 		ident = (Form_pg_replication_origin) GETSTRUCT(tuple);
@@ -249,7 +249,7 @@ replorigin_by_name(const char *roname, bool missing_ok)
  * Needs to be called in a transaction.
  */
 RepOriginId
-replorigin_create(const char *roname) // 创建一个replication origin
+replorigin_create(const char *roname) // 创建一个replication origin， 就是往pg_replication_origin表里插入一条记录
 {
 	Oid			roident;
 	HeapTuple	tuple = NULL;
@@ -278,11 +278,12 @@ replorigin_create(const char *roname) // 创建一个replication origin
 	 * to the exclusive lock there's no danger that new rows can appear while
 	 * we're checking.
 	 */
-	InitDirtySnapshot(SnapshotDirty);
+	InitDirtySnapshot(SnapshotDirty); // 设置snapshot_type = SNAPSHOT_DIRTY
 
-	rel = table_open(ReplicationOriginRelationId, ExclusiveLock);
+	// pg_replication_origin表？ 就两列： roident oid， roname text
+	rel = table_open(ReplicationOriginRelationId, ExclusiveLock); // #define ReplicationOriginRelationId 6000 系统表都有固定的值
 
-	for (roident = InvalidOid + 1; roident < PG_UINT16_MAX; roident++)
+	for (roident = InvalidOid + 1; roident < PG_UINT16_MAX; roident++) // InvalidOid是0， PG_UINT16_MAX	(0xFFFF)， 从1开始扫描
 	{
 		bool		nulls[Natts_pg_replication_origin];
 		Datum		values[Natts_pg_replication_origin];
@@ -338,7 +339,7 @@ replorigin_create(const char *roname) // 创建一个replication origin
  * Helper function to drop a replication origin.
  */
 static void
-replorigin_state_clear(RepOriginId roident, bool nowait)
+replorigin_state_clear(RepOriginId roident, bool nowait) // 删除一个origin，根据roident
 {
 	int			i;
 
@@ -348,7 +349,7 @@ replorigin_state_clear(RepOriginId roident, bool nowait)
 restart:
 	LWLockAcquire(ReplicationOriginLock, LW_EXCLUSIVE);
 
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) // 扫描数组ReplicationState
 	{
 		ReplicationState *state = &replication_states[i];
 
@@ -388,13 +389,13 @@ restart:
 				xlrec.node_id = roident;
 				XLogBeginInsert();
 				XLogRegisterData((char *) (&xlrec), sizeof(xlrec));
-				XLogInsert(RM_REPLORIGIN_ID, XLOG_REPLORIGIN_DROP);
+				XLogInsert(RM_REPLORIGIN_ID, XLOG_REPLORIGIN_DROP); // 写一条WAL记录来保护这个操作
 			}
 
 			/* then clear the in-memory slot */
 			state->roident = InvalidRepOriginId;
 			state->remote_lsn = InvalidXLogRecPtr;
-			state->local_lsn = InvalidXLogRecPtr;
+			state->local_lsn = InvalidXLogRecPtr; // 清空内存的槽
 			break;
 		}
 	}
@@ -503,7 +504,7 @@ replorigin_by_oid(RepOriginId roident, bool missing_ok, char **roname)
  */
 
 Size
-ReplicationOriginShmemSize(void)
+ReplicationOriginShmemSize(void) // 计算共享内存的大小，ReplicationState数组共有max_replication_slots个成员
 {
 	Size		size = 0;
 
@@ -523,7 +524,7 @@ ReplicationOriginShmemSize(void)
 }
 
 void
-ReplicationOriginShmemInit(void)
+ReplicationOriginShmemInit(void) // 初始化共享内存池
 {
 	bool		found;
 
@@ -570,7 +571,7 @@ ReplicationOriginShmemInit(void)
  * ---------------------------------------------------------------------------
  */
 void
-CheckPointReplicationOrigin(void)
+CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文件，再改名
 {
 	const char *tmppath = "pg_logical/replorigin_checkpoint.tmp";
 	const char *path = "pg_logical/replorigin_checkpoint";
@@ -621,7 +622,7 @@ CheckPointReplicationOrigin(void)
 	LWLockAcquire(ReplicationOriginLock, LW_SHARED);
 
 	/* write actual data */
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) // 依次扫描数组
 	{
 		ReplicationStateOnDisk disk_state;
 		ReplicationState *curstate = &replication_states[i];
@@ -696,7 +697,7 @@ CheckPointReplicationOrigin(void)
  * state thereafter can be recovered by looking at commit records.
  */
 void
-StartupReplicationOrigin(void)
+StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkpoint
 {
 	const char *path = "pg_logical/replorigin_checkpoint";
 	int			fd;

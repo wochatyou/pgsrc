@@ -375,7 +375,7 @@ WalSndResourceCleanup(bool isCommit)
  * Handle a client's connection abort in an orderly manner.
  */
 static void
-WalSndShutdown(void)
+WalSndShutdown(void) // 退出本进程
 {
 	/*
 	 * Reset whereToSendOutput to prevent ereport from attempting to send any
@@ -1062,7 +1062,7 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 	{
 		ReplicationSlotCreate(cmd->slotname, false,
 							  cmd->temporary ? RS_TEMPORARY : RS_PERSISTENT,
-							  false);
+							  false); // 就是共享内存中找到一个空槽，初始化，然后在磁盘上创建对应的文件
 	}
 	else // 创建逻辑复制槽
 	{
@@ -1075,7 +1075,7 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 		 * end. Temporary slots can be created as temporary from beginning as
 		 * they get dropped on error as well.
 		 */
-		ReplicationSlotCreate(cmd->slotname, true,
+		ReplicationSlotCreate(cmd->slotname, true, // true表示是一个逻辑复制槽
 							  cmd->temporary ? RS_TEMPORARY : RS_EPHEMERAL,
 							  two_phase);
 	}
@@ -1180,13 +1180,13 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 	}
 	else if (cmd->kind == REPLICATION_KIND_PHYSICAL && reserve_wal)
 	{
-		ReplicationSlotReserveWal();
+		ReplicationSlotReserveWal(); // 计算MyReplicationSlot的restart_lsn
 
-		ReplicationSlotMarkDirty();
+		ReplicationSlotMarkDirty(); // 把复制槽的状态修改为dirty，后面会被写入磁盘
 
 		/* Write this slot to disk if it's a permanent one. */
 		if (!cmd->temporary)
-			ReplicationSlotSave();
+			ReplicationSlotSave(); // 把MyReplicationSlot中的内容保存到磁盘上
 	}
 
 	snprintf(xloc, sizeof(xloc), "%X/%X",
@@ -1245,7 +1245,7 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
  * Get rid of a replication slot that is no longer wanted.
  */
 static void
-DropReplicationSlot(DropReplicationSlotCmd *cmd)
+DropReplicationSlot(DropReplicationSlotCmd *cmd) // 删除复制槽
 {
 	ReplicationSlotDrop(cmd->slotname, !cmd->wait);
 }
@@ -3290,7 +3290,7 @@ WalSndShmemSize(void) // 计算总的共享内存尺寸，一个总控数据结�
 
 /* Allocate and initialize walsender-related shared memory */
 void
-WalSndShmemInit(void)
+WalSndShmemInit(void) // 初始化walsender的共享内存
 {
 	bool		found;
 	int			i;

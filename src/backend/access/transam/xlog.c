@@ -467,7 +467,7 @@ typedef struct XLogCtlData // XLOG在共享内存中的数据结构
 	XLogRecPtr	asyncXactLSN;	/* LSN of newest async commit/abort */
 	XLogRecPtr	replicationSlotMinLSN;	/* oldest LSN needed by any slot */
 
-	XLogSegNo	lastRemovedSegNo;	/* latest removed/recycled XLOG segment */
+	XLogSegNo	lastRemovedSegNo;	/* latest removed/recycled XLOG segment */ // 最后一个被删除或者重新利用的WAL文件
 
 	/* Fake LSN counter, for unlogged relations. Protected by ulsn_lck. */
 	XLogRecPtr	unloggedLSN;
@@ -2408,7 +2408,7 @@ XLogSetReplicationSlotMinimumLSN(XLogRecPtr lsn)
  * Return the oldest LSN we must retain to satisfy the needs of some
  * replication slot.
  */
-static XLogRecPtr // 获取复制槽的最小的LSN
+static XLogRecPtr // 获取复制槽的最小的LSN， 就是读取XLogCtl->replicationSlotMinLSN
 XLogGetReplicationSlotMinimumLSN(void)
 {
 	XLogRecPtr	retval;
@@ -3434,8 +3434,8 @@ PreallocXlogFiles(XLogRecPtr endptr, TimeLineID tli)
  * error message about a missing file, while still being able to throw
  * a normal file-access error afterwards, if this does return.
  */
-void
-CheckXLogRemoved(XLogSegNo segno, TimeLineID tli)
+void // 逻辑就是判断segno是否小于lastRemovedSegNo
+CheckXLogRemoved(XLogSegNo segno, TimeLineID tli) // 如果指定的WAL文件被删除了，就报错
 {
 	int			save_errno = errno;
 	XLogSegNo	lastRemovedSegNo;
@@ -3466,7 +3466,7 @@ CheckXLogRemoved(XLogSegNo segno, TimeLineID tli)
  * with that.
  */
 XLogSegNo
-XLogGetLastRemovedSegno(void)
+XLogGetLastRemovedSegno(void) // 就是返回XLogCtl->lastRemovedSegNo，表示最近一次被删除的WAL文件的段号
 {
 	XLogSegNo	lastRemovedSegNo;
 
@@ -3483,7 +3483,7 @@ XLogGetLastRemovedSegno(void)
  * given XLOG file has been removed.
  */
 static void
-UpdateLastRemovedPtr(char *filename)
+UpdateLastRemovedPtr(char *filename) // lastRemovedSegNo设置为filename的段号
 {
 	uint32		tli;
 	XLogSegNo	segno;
@@ -3537,7 +3537,7 @@ RemoveTempXlogFiles(void) // 删除pg_wal目录下的所有临时的WAL文件。
  */
 static void
 RemoveOldXlogFiles(XLogSegNo segno, XLogRecPtr lastredoptr, XLogRecPtr endptr,
-				   TimeLineID insertTLI)
+				   TimeLineID insertTLI) // 删除老的WAL文件
 {
 	DIR		   *xldir;
 	struct dirent *xlde;
@@ -3546,7 +3546,7 @@ RemoveOldXlogFiles(XLogSegNo segno, XLogRecPtr lastredoptr, XLogRecPtr endptr,
 	XLogSegNo	recycleSegNo;
 
 	/* Initialize info about where to try to recycle to */
-	XLByteToSeg(endptr, endlogSegNo, wal_segment_size);
+	XLByteToSeg(endptr, endlogSegNo, wal_segment_size); // endlogSegNo就是endptr这个LSN所在的WAL文件的段号
 	recycleSegNo = XLOGfileslop(lastredoptr);
 
 	/*
@@ -3554,19 +3554,19 @@ RemoveOldXlogFiles(XLogSegNo segno, XLogRecPtr lastredoptr, XLogRecPtr endptr,
 	 * doesn't matter, we ignore that in the comparison. (During recovery,
 	 * InsertTimeLineID isn't set, so we can't use that.)
 	 */
-	XLogFileName(lastoff, 0, segno, wal_segment_size);
+	XLogFileName(lastoff, 0, segno, wal_segment_size); // 计算WAL文件的文件名，这里没有使用时间线
 
 	elog(DEBUG2, "attempting to remove WAL segments older than log file %s",
 		 lastoff);
 
-	xldir = AllocateDir(XLOGDIR);
+	xldir = AllocateDir(XLOGDIR); // #define XLOGDIR				"pg_wal" 
 
-	while ((xlde = ReadDir(xldir, XLOGDIR)) != NULL)
+	while ((xlde = ReadDir(xldir, XLOGDIR)) != NULL) // 读pg_wal目录下的文件
 	{
 		/* Ignore files that are not XLOG segments */
 		if (!IsXLogFileName(xlde->d_name) &&
 			!IsPartialXLogFileName(xlde->d_name))
-			continue;
+			continue; // 如果不是WAL文件，或者WAL.partial文件，就跳过
 
 		/*
 		 * We ignore the timeline part of the XLOG segment identifiers in
@@ -3579,12 +3579,12 @@ RemoveOldXlogFiles(XLogSegNo segno, XLogRecPtr lastredoptr, XLogRecPtr endptr,
 		 * We use the alphanumeric sorting property of the filenames to decide
 		 * which ones are earlier than the lastoff segment.
 		 */
-		if (strcmp(xlde->d_name + 8, lastoff + 8) <= 0)
+		if (strcmp(xlde->d_name + 8, lastoff + 8) <= 0) // 跳过WAL文件名字的时间线，比较后面的16个字节
 		{
 			if (XLogArchiveCheckDone(xlde->d_name))
 			{
 				/* Update the last removed location in shared memory first */
-				UpdateLastRemovedPtr(xlde->d_name);
+				UpdateLastRemovedPtr(xlde->d_name); // 更新一下共享内存中的信息，记录最后一次被删除的WAL文件的信息
 
 				RemoveXlogFile(xlde, recycleSegNo, &endlogSegNo, insertTLI);
 			}
@@ -3749,7 +3749,7 @@ RemoveXlogFile(const struct dirent *segment_de,
 			/* Message already logged by durable_unlink() */
 			return;
 		}
-		CheckpointStats.ckpt_segs_removed++;
+		CheckpointStats.ckpt_segs_removed++; // 这个信息从哪张系统视图可以获得？
 	}
 
 	XLogArchiveCleanup(segname);
@@ -6026,7 +6026,7 @@ LocalSetXLogInsertAllowed(void)
  * As a side-effect, the local RedoRecPtr copy is updated.
  */
 XLogRecPtr
-GetRedoRecPtr(void)
+GetRedoRecPtr(void) // 从共享内存中获得redo的LSN
 {
 	XLogRecPtr	ptr;
 
@@ -7300,7 +7300,7 @@ CreateRestartPoint(int flags) // 在恢复过程中设置起点，从这一点�
 	if (!RecoveryInProgress())
 		replayTLI = XLogCtl->InsertTimeLineID;
 
-	RemoveOldXlogFiles(_logSegNo, RedoRecPtr, endptr, replayTLI);
+	RemoveOldXlogFiles(_logSegNo, RedoRecPtr, endptr, replayTLI); // 删除不需要的WAL文件
 
 	/*
 	 * Make more log segments if needed.  (Do this after recycling old log
@@ -7451,7 +7451,7 @@ GetWALAvailability(XLogRecPtr targetLSN)
  * invalidation is optionally done here, instead.
  */
 static void
-KeepLogSeg(XLogRecPtr recptr, XLogSegNo *logSegNo)
+KeepLogSeg(XLogRecPtr recptr, XLogSegNo *logSegNo) // 根据wal_keep_size和复制槽的信息来决定保留的最小segno，放在logSegNo中
 {
 	XLogSegNo	currSegNo;
 	XLogSegNo	segno;

@@ -313,7 +313,7 @@ AllocateSnapshotBuilder(ReorderBuffer *reorder,
 						TransactionId xmin_horizon,
 						XLogRecPtr start_lsn,
 						bool need_full_snapshot,
-						XLogRecPtr two_phase_at)
+						XLogRecPtr two_phase_at) // snapbuild拥有一个单独的内存池
 {
 	MemoryContext context;
 	MemoryContext oldcontext;
@@ -349,7 +349,7 @@ AllocateSnapshotBuilder(ReorderBuffer *reorder,
 
 	MemoryContextSwitchTo(oldcontext); // 把内存池切换回去
 
-	return builder;  // 返回指针
+	return builder;  // 返回指针， 根据builder->context就可以拿到这个指针所在的内存池的信息了
 }  // 这个函数的整体逻辑还是比较容易理解的。
 
 /*
@@ -483,7 +483,7 @@ SnapBuildSnapDecRefcount(Snapshot snap)
  * and ->subxip/subxcnt values.
  */
 static Snapshot
-SnapBuildBuildSnapshot(SnapBuild *builder)
+SnapBuildBuildSnapshot(SnapBuild *builder) // 先分配一块内存，再把已经提交的事务的事务号数组拷贝到snap中，返回这个snap
 {
 	Snapshot	snapshot;
 	Size		ssize;
@@ -491,10 +491,10 @@ SnapBuildBuildSnapshot(SnapBuild *builder)
 	Assert(builder->state >= SNAPBUILD_FULL_SNAPSHOT);
 
 	ssize = sizeof(SnapshotData)
-		+ sizeof(TransactionId) * builder->committed.xcnt
-		+ sizeof(TransactionId) * 1 /* toplevel xid */ ;
+		+ sizeof(TransactionId) * builder->committed.xcnt // 这是一个事务号的数组
+		+ sizeof(TransactionId) * 1 /* toplevel xid */ ; 
 
-	snapshot = MemoryContextAllocZero(builder->context, ssize);
+	snapshot = MemoryContextAllocZero(builder->context, ssize); // snapshot的内存就在snapbuilder的内存池中分配
 
 	snapshot->snapshot_type = SNAPSHOT_HISTORIC_MVCC;
 
@@ -531,10 +531,10 @@ SnapBuildBuildSnapshot(SnapBuild *builder)
 	snapshot->xcnt = builder->committed.xcnt;
 	memcpy(snapshot->xip,
 		   builder->committed.xip,
-		   builder->committed.xcnt * sizeof(TransactionId));
+		   builder->committed.xcnt * sizeof(TransactionId)); // 把builder中的committed.xip数组的内容拷贝到snap的xip数组中
 
 	/* sort so we can bsearch() */
-	qsort(snapshot->xip, snapshot->xcnt, sizeof(TransactionId), xidComparator);
+	qsort(snapshot->xip, snapshot->xcnt, sizeof(TransactionId), xidComparator); // 对xip数组进行快速排序，所以xip数组是排序的
 
 	/*
 	 * Initially, subxip is empty, i.e. it's a snapshot to be used by
@@ -590,7 +590,7 @@ SnapBuildInitialSnapshot(SnapBuild *builder)
 	if (TransactionIdIsValid(MyProc->xmin))
 		elog(ERROR, "cannot build an initial slot snapshot when MyProc->xmin already is valid");
 
-	snap = SnapBuildBuildSnapshot(builder);
+	snap = SnapBuildBuildSnapshot(builder); // 在builder所在的内存池中分配内存，拷贝已经提交的事务号数组，返回snap指针
 
 	/*
 	 * We know that snap->xmin is alive, enforced by the logical xmin
@@ -630,7 +630,7 @@ SnapBuildInitialSnapshot(SnapBuild *builder)
 		 * meaning of ->xip.
 		 */
 		test = bsearch(&xid, snap->xip, snap->xcnt,
-					   sizeof(TransactionId), xidComparator);
+					   sizeof(TransactionId), xidComparator); // 二分查找
 
 		if (test == NULL)
 		{
@@ -688,7 +688,7 @@ SnapBuildExportSnapshot(SnapBuild *builder)
 	 * now that we've built a plain snapshot, make it active and use the
 	 * normal mechanisms for exporting it
 	 */
-	snapname = ExportSnapshot(snap);
+	snapname = ExportSnapshot(snap); // 导出快照，就是写文本文件到pg_snapshots目录下，返回这个文件的名字
 
 	ereport(LOG,
 			(errmsg_plural("exported logical decoding snapshot: \"%s\" with %u transaction ID",
