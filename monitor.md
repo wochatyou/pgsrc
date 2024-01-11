@@ -1,5 +1,5 @@
 ### check-postgresql 监控的指标：
-
+```
 our $action_info = {
  # Name                 # clusterwide? # helpstring
  archive_ready       => [1, 'Check the number of WAL files ready in the pg_xlog/archive_status'],
@@ -65,4 +65,4 @@ our $action_info = {
  version             => [1, 'Check for proper Postgres version.'],
  wal_files           => [1, 'Check the number of WAL files in the pg_xlog directory'],
 };
-
+```
