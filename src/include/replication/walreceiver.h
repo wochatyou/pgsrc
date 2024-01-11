@@ -63,10 +63,10 @@ typedef struct
 	 * start time (actually, the time at which it was requested to be
 	 * started).
 	 */
-	pid_t		pid;
-	WalRcvState walRcvState;
+	pid_t		pid;  // walreceiver进程的进程号
+	WalRcvState walRcvState;  // 进程的状态
 	ConditionVariable walRcvStoppedCV;
-	pg_time_t	startTime;
+	pg_time_t	startTime;  // 进程的启动时间
 
 	/*
 	 * receiveStart and receiveStartTLI indicate the first byte position and
@@ -74,7 +74,7 @@ typedef struct
 	 * walreceiver, it sets these to the point where it wants the streaming to
 	 * begin.
 	 */
-	XLogRecPtr	receiveStart;
+	XLogRecPtr	receiveStart; // 发送给sender进程，作为流复制的起点
 	TimeLineID	receiveStartTLI;
 
 	/*
@@ -84,7 +84,7 @@ typedef struct
 	 * that, walreceiver updates these whenever it flushes the received WAL to
 	 * disk.
 	 */
-	XLogRecPtr	flushedUpto;
+	XLogRecPtr	flushedUpto; 
 	TimeLineID	receivedTLI;
 
 	/*
@@ -98,8 +98,8 @@ typedef struct
 	/*
 	 * Time of send and receive of any message received.
 	 */
-	TimestampTz lastMsgSendTime;
-	TimestampTz lastMsgReceiptTime;
+	TimestampTz lastMsgSendTime; // 最后一个消息包的发送时间，这个时间应该是主库的时间吧？
+	TimestampTz lastMsgReceiptTime; // TimestampTz是8个字节
 
 	/*
 	 * Latest reported end of WAL on the sender
@@ -111,26 +111,26 @@ typedef struct
 	 * connection string; initially set to connect to the primary, and later
 	 * clobbered to hide security-sensitive fields.
 	 */
-	char		conninfo[MAXCONNINFO];
+	char		conninfo[MAXCONNINFO]; // MAXCONNINFO是1024，可以放1023个字节
 
 	/*
 	 * Host name (this can be a host name, an IP address, or a directory path)
 	 * and port number of the active replication connection.
 	 */
-	char		sender_host[NI_MAXHOST];
+	char		sender_host[NI_MAXHOST]; // 主库的主机名
 	int			sender_port;
 
 	/*
 	 * replication slot name; is also used for walreceiver to connect with the
 	 * primary
 	 */
-	char		slotname[NAMEDATALEN];
+	char		slotname[NAMEDATALEN]; // 复制槽的名称
 
 	/*
 	 * If it's a temporary replication slot, it needs to be recreated when
 	 * connecting.
 	 */
-	bool		is_temp_slot;
+	bool		is_temp_slot; // 如果是临时性复制槽，连接的时候创建，断开连接的时候删除
 
 	/* set true once conninfo is ready to display (obfuscated pwds etc) */
 	bool		ready_to_display;
@@ -143,7 +143,7 @@ typedef struct
 	 * normally mapped to procLatch when walreceiver is running.
 	 */
 	Latch	   *latch;
-
+	// typedef unsigned char slock_t; 自旋锁
 	slock_t		mutex;			/* locks shared variables shown above */
 
 	/*

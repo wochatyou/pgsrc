@@ -49,7 +49,7 @@ extern const PGDLLIMPORT PQcommMethods *PqCommMethods;
 #define pq_putmessage(msgtype, s, len) \
 	(PqCommMethods->putmessage(msgtype, s, len))
 #define pq_putmessage_noblock(msgtype, s, len) \
-	(PqCommMethods->putmessage_noblock(msgtype, s, len))
+	(PqCommMethods->putmessage_noblock(msgtype, s, len)) // 通过指针函数调用发送消息的函数
 
 /*
  * External functions.

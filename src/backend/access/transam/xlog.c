@@ -4987,13 +4987,13 @@ CleanupAfterArchiveRecovery(TimeLineID EndOfLogTLI, XLogRecPtr EndOfLog,
  * If you change them, don't forget to update the list.
  */
 static void
-CheckRequiredParameterValues(void)
+CheckRequiredParameterValues(void) // 检查恢复相关的参数
 {
 	/*
 	 * For archive recovery, the WAL must be generated with at least 'replica'
 	 * wal_level.
 	 */
-	if (ArchiveRecoveryRequested && ControlFile->wal_level == WAL_LEVEL_MINIMAL)
+	if (ArchiveRecoveryRequested && ControlFile->wal_level == WAL_LEVEL_MINIMAL) //如果是备份恢复，wal_level至少是replica
 	{
 		ereport(FATAL,
 				(errmsg("WAL was generated with wal_level=minimal, cannot continue recovering"),
@@ -5005,7 +5005,7 @@ CheckRequiredParameterValues(void)
 	 * For Hot Standby, the WAL must be generated with 'replica' mode, and we
 	 * must have at least as many backend slots as the primary.
 	 */
-	if (ArchiveRecoveryRequested && EnableHotStandby)
+	if (ArchiveRecoveryRequested && EnableHotStandby) // 备库会对比参数和控制文件里面的参数
 	{
 		/* We ignore autovacuum_max_workers when we make this test. */
 		RecoveryRequiresIntParameter("max_connections",
@@ -5207,7 +5207,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 	 * Startup logical state, needs to be setup now so we have proper data
 	 * during crash recovery.
 	 */
-	StartupReorderBuffer();
+	StartupReorderBuffer(); // 这个是关于逻辑复制的
 
 	/*
 	 * Startup CLOG. This must be done after ShmemVariableCache->nextXid has
@@ -5233,7 +5233,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 	/*
 	 * Recover knowledge about replay progress of known replication partners.
 	 */
-	StartupReplicationOrigin();
+	StartupReplicationOrigin(); // 跟踪逻辑复制的位置的
 
 	/*
 	 * Initialize unlogged LSN. On a clean shutdown, it's restored from the
@@ -5360,7 +5360,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 		}
 
 		/* Check that the GUCs used to generate the WAL allow recovery */
-		CheckRequiredParameterValues();
+		CheckRequiredParameterValues(); // 检查一些和恢复相关的参数
 
 		/*
 		 * We're in recovery, so unlogged relations may be trashed and must be
@@ -5798,7 +5798,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
  * recovery to archive recovery mode.  Updates the control file accordingly.
  */
 void
-SwitchIntoArchiveRecovery(XLogRecPtr EndRecPtr, TimeLineID replayTLI)
+SwitchIntoArchiveRecovery(XLogRecPtr EndRecPtr, TimeLineID replayTLI) // 从崩溃模式转到归档恢复模式
 {
 	/* initialize minRecoveryPoint to this record */
 	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);

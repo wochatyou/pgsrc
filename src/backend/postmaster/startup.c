@@ -171,7 +171,7 @@ StartupRereadConfig(void)
 	 */
 	if (!slotnameChanged && strcmp(PrimarySlotName, "") == 0) // 没有配置primary slot name这个参数
 		tempSlotChanged = tempSlot != wal_receiver_create_temp_slot;
-	pfree(conninfo);
+	pfree(conninfo); // pstrdup函数要注意及时释放不再使用的内存
 	pfree(slotname);
 
 	if (conninfoChanged || slotnameChanged || tempSlotChanged)

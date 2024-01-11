@@ -435,7 +435,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 				WalRcvComputeNextWakeup(i, now);
 
 			/* Send initial reply/feedback messages. */
-			XLogWalRcvSendReply(true, false);
+			XLogWalRcvSendReply(true, false); // 给主库汇报一下自己的位置
 			XLogWalRcvSendHSFeedback(true);
 
 			/* Loop until end-of-streaming or error */
@@ -456,7 +456,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 				if (!RecoveryInProgress()) // 判断数据库是否还处于恢复状态。只有处于恢复状态，walreceiver的工作才有意义
 					ereport(FATAL,
 							(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-							 errmsg("cannot continue WAL streaming, recovery has already ended")));
+							 errmsg("cannot continue WAL streaming, recovery has already ended"))); // 这种情况是备库promote了
 
 				/* Process any requests or signals received recently */
 				ProcessWalRcvInterrupts(); // 处理最近收到的请求或者信号
@@ -493,7 +493,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 													now);
 							WalRcvComputeNextWakeup(WALRCV_WAKEUP_PING, now);
 							XLogWalRcvProcessMsg(buf[0], &buf[1], len - 1,
-												 startpointTLI); // 处理来自主库的消息包
+												 startpointTLI); // 处理来自主库的消息包 ======!!!!!!!!!!!!!!!!!!!!!!!!!!
 						}
 						else if (len == 0)
 							break;
@@ -1094,7 +1094,7 @@ XLogWalRcvClose(XLogRecPtr recptr, TimeLineID tli)
  * wal_receiver_timeout.
  */
 static void
-XLogWalRcvSendReply(bool force, bool requestReply)
+XLogWalRcvSendReply(bool force, bool requestReply)  // 想主库汇报我的位置
 {
 	static XLogRecPtr writePtr = 0;
 	static XLogRecPtr flushPtr = 0;
@@ -1147,7 +1147,7 @@ XLogWalRcvSendReply(bool force, bool requestReply)
 		 LSN_FORMAT_ARGS(writePtr),
 		 LSN_FORMAT_ARGS(flushPtr),
 		 LSN_FORMAT_ARGS(applyPtr),
-		 requestReply ? " (reply requested)" : "");
+		 requestReply ? " (reply requested)" : ""); // 在日志中记录一下
 
 	walrcv_send(wrconn, reply_message.data, reply_message.len);
 }

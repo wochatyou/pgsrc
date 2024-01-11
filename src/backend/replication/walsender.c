@@ -3211,12 +3211,12 @@ WalSndRqstFileReload(void)
 		WalSnd	   *walsnd = &WalSndCtl->walsnds[i];
 
 		SpinLockAcquire(&walsnd->mutex);
-		if (walsnd->pid == 0)
+		if (walsnd->pid == 0) // 如果是空槽
 		{
 			SpinLockRelease(&walsnd->mutex);
 			continue;
 		}
-		walsnd->needreload = true;
+		walsnd->needreload = true; // 设置一下状态变量
 		SpinLockRelease(&walsnd->mutex);
 	}
 }
@@ -3278,7 +3278,7 @@ WalSndSignals(void)
 
 /* Report shared-memory space needed by WalSndShmemInit */
 Size
-WalSndShmemSize(void)
+WalSndShmemSize(void) // 计算总的共享内存尺寸，一个总控数据结构 加上一个数组
 {
 	Size		size = 0;
 
@@ -3298,7 +3298,7 @@ WalSndShmemInit(void)
 	WalSndCtl = (WalSndCtlData *)
 		ShmemInitStruct("Wal Sender Ctl", WalSndShmemSize(), &found);
 
-	if (!found)
+	if (!found) // 第一次，需要初始化
 	{
 		/* First time through, so initialize */
 		MemSet(WalSndCtl, 0, WalSndShmemSize());
@@ -3334,7 +3334,7 @@ WalSndShmemInit(void)
  * advisable.
  */
 void
-WalSndWakeup(bool physical, bool logical) // 唤醒walsender进程。这个函数是别的子进程调用的
+WalSndWakeup(bool physical, bool logical) // 唤醒walsender进程。这个函数是startup进程调用的
 {
 	/*
 	 * Wake up all the walsenders waiting on WAL being flushed or replayed
@@ -3406,8 +3406,8 @@ WalSndWait(uint32 socket_events, long timeout, uint32 wait_event)
  * This will trigger walsenders to move to a state where no further WAL can be
  * generated. See this file's header for details.
  */
-void
-WalSndInitStopping(void)
+void // 给所有的活跃walsender进程发送SIGUSR1信号
+WalSndInitStopping(void) // 扫描整个数组，遇到活跃的walsender进程，就给它发送信号
 {
 	int			i;
 
@@ -3422,8 +3422,8 @@ WalSndInitStopping(void)
 
 		if (pid == 0)
 			continue;
-
-		SendProcSignal(pid, PROCSIG_WALSND_INIT_STOPPING, InvalidBackendId);
+		// 通过kill系统调用发送SIGUSR1信号
+		SendProcSignal(pid, PROCSIG_WALSND_INIT_STOPPING, InvalidBackendId); // #define InvalidBackendId		(-1) 这是定义
 	}
 }
 
@@ -3433,7 +3433,7 @@ WalSndInitStopping(void)
  * safely be performed.
  */
 void
-WalSndWaitStopping(void)
+WalSndWaitStopping(void) // 等待所有的walsender进程停止，由checkpointer进程调用， 这个函数返回后，所有的sender进程都停止了
 {
 	for (;;)
 	{
@@ -3452,7 +3452,7 @@ WalSndWaitStopping(void)
 				continue;
 			}
 
-			if (walsnd->state != WALSNDSTATE_STOPPING)
+			if (walsnd->state != WALSNDSTATE_STOPPING) // 遇到一个还没有停止的
 			{
 				all_stopped = false;
 				SpinLockRelease(&walsnd->mutex);
@@ -3465,7 +3465,7 @@ WalSndWaitStopping(void)
 		if (all_stopped)
 			return;
 
-		pg_usleep(10000L);		/* wait for 10 msec */
+		pg_usleep(10000L);		/* wait for 10 msec */ // 休眠10毫秒，继续测试
 	}
 }
 
@@ -3490,7 +3490,7 @@ WalSndSetState(WalSndState state)
  * in system views, and should *not* be translated.
  */
 static const char *
-WalSndGetStateString(WalSndState state)
+WalSndGetStateString(WalSndState state) // 根据状态返回字符串，比较简单
 {
 	switch (state)
 	{
@@ -3509,7 +3509,7 @@ WalSndGetStateString(WalSndState state)
 }
 
 static Interval *
-offset_to_interval(TimeOffset offset)
+offset_to_interval(TimeOffset offset) // 分配一个内存，把offset塞进去
 {
 	Interval   *result = palloc(sizeof(Interval));
 
@@ -3695,8 +3695,8 @@ pg_stat_get_wal_senders(PG_FUNCTION_ARGS)
  * the same as sentPtr but in some cases, we need to send keep alive before
  * sentPtr is updated like when skipping empty transactions.
  */
-static void
-WalSndKeepalive(bool requestReply, XLogRecPtr writePtr)
+static void // 发送一个心跳消息包， requestReply = true表示要求对方回复
+WalSndKeepalive(bool requestReply, XLogRecPtr writePtr) // 消息包共计 1 + 8 + 8 + 1 共16个字节
 {
 	elog(DEBUG2, "sending replication keepalive");
 
@@ -3730,7 +3730,7 @@ WalSndKeepaliveIfNecessary(void)
 	if (wal_sender_timeout <= 0 || last_reply_timestamp <= 0)
 		return;
 
-	if (waiting_for_ping_response)
+	if (waiting_for_ping_response) // 如果还在等备库的回复，就不再发送了，这个值在上面的函数中设置了
 		return;
 
 	/*
@@ -3742,7 +3742,7 @@ WalSndKeepaliveIfNecessary(void)
 											wal_sender_timeout / 2);
 	if (last_processing >= ping_time)
 	{
-		WalSndKeepalive(true, InvalidXLogRecPtr);
+		WalSndKeepalive(true, InvalidXLogRecPtr); // 发送心跳消息包
 
 		/* Try to flush pending output to the client */
 		if (pq_flush_if_writable() != 0)

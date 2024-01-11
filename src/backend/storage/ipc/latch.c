@@ -1530,7 +1530,7 @@ WaitEventSetWaitBlock(WaitEventSet *set, int cur_timeout,
 					Min(nevents, set->nevents_space), cur_timeout);
 
 	/* Check return code */
-	if (rc < 0)
+	if (rc < 0) // epoll_wait调用失败
 	{
 		/* EINTR is okay, otherwise complain */
 		if (errno != EINTR)
@@ -1543,7 +1543,7 @@ WaitEventSetWaitBlock(WaitEventSet *set, int cur_timeout,
 		}
 		return 0;
 	}
-	else if (rc == 0)
+	else if (rc == 0) // 超时了
 	{
 		/* timeout exceeded */
 		return -1;
@@ -1557,7 +1557,7 @@ WaitEventSetWaitBlock(WaitEventSet *set, int cur_timeout,
 	for (cur_epoll_event = set->epoll_ret_events;
 		 cur_epoll_event < (set->epoll_ret_events + rc) &&
 		 returned_events < nevents;
-		 cur_epoll_event++)
+		 cur_epoll_event++) // 遍历数组
 	{
 		/* epoll's data pointer is set to the associated WaitEvent */
 		cur_event = (WaitEvent *) cur_epoll_event->data.ptr;
@@ -1944,7 +1944,7 @@ WaitEventSetWaitBlock(WaitEventSet *set, int cur_timeout,
  */
 static inline int
 WaitEventSetWaitBlock(WaitEventSet *set, int cur_timeout,
-					  WaitEvent *occurred_events, int nevents)
+					  WaitEvent *occurred_events, int nevents) // Windows版本，使用WaitForMultipleObjects()函数
 {
 	int			returned_events = 0;
 	DWORD		rc;

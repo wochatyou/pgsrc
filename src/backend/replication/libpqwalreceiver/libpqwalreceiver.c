@@ -37,7 +37,7 @@
 
 PG_MODULE_MAGIC;  // 这是一个动态库libpqwalreceiver.so 在$PGHOME/lib/postgresql目录下可以找到
 
-struct WalReceiverConn
+struct WalReceiverConn // 这个结构比较简单，一个连接句柄，一个标识是否为逻辑复制，一个是接受数据的缓冲区
 {
 	/* Current connection to the primary, if any */
 	PGconn	   *streamConn;

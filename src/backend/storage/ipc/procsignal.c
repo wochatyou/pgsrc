@@ -283,7 +283,7 @@ SendProcSignal(pid_t pid, ProcSignalReason reason, BackendId backendId)
 			return kill(pid, SIGUSR1);
 		}
 	}
-	else
+	else // 没有提供backendId, 从后往前扫描，提高性能
 	{
 		/*
 		 * BackendId not provided, so search the array using pid.  We search

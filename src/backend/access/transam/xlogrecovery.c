@@ -1586,7 +1586,7 @@ ShutdownWalRecovery(void)
  * If the system was shut down cleanly, this is never called.
  */
 void
-PerformWalRecovery(void)
+PerformWalRecovery(void) // 执行恢复工作
 {
 	XLogRecord *record;
 	bool		reachedRecoveryTarget = false;
@@ -1597,7 +1597,7 @@ PerformWalRecovery(void)
 	 * we had just replayed the record before the REDO location (or the
 	 * checkpoint record itself, if it's a shutdown checkpoint).
 	 */
-	SpinLockAcquire(&XLogRecoveryCtl->info_lck);
+	SpinLockAcquire(&XLogRecoveryCtl->info_lck); // 更新共享内存XLogRecoveryCtl里面的一些信息
 	if (RedoStartLSN < CheckPointLoc)
 	{
 		XLogRecoveryCtl->lastReplayedReadRecPtr = InvalidXLogRecPtr;
@@ -1648,10 +1648,10 @@ PerformWalRecovery(void)
 		/* just have to read next record after CheckPoint */
 		Assert(xlogreader->ReadRecPtr == CheckPointLoc);
 		replayTLI = CheckPointTLI;
-		record = ReadRecord(xlogprefetcher, LOG, false, replayTLI);
+		record = ReadRecord(xlogprefetcher, LOG, false, replayTLI); // 读取WAL记录
 	}
 
-	if (record != NULL)
+	if (record != NULL) // 如果读到了一条WAL记录
 	{
 		TimestampTz xtime;
 		PGRUsage	ru0;
@@ -1686,7 +1686,7 @@ PerformWalRecovery(void)
 			{
 				StringInfoData buf;
 
-				initStringInfo(&buf);
+				initStringInfo(&buf); // 在这里分配1KB的内存给buf.data
 				appendStringInfo(&buf, "REDO @ %X/%X; LSN %X/%X: ",
 								 LSN_FORMAT_ARGS(xlogreader->ReadRecPtr),
 								 LSN_FORMAT_ARGS(xlogreader->EndRecPtr));
@@ -1694,7 +1694,7 @@ PerformWalRecovery(void)
 				appendStringInfoString(&buf, " - ");
 				xlog_outdesc(&buf, xlogreader);
 				elog(LOG, "%s", buf.data);
-				pfree(buf.data);
+				pfree(buf.data); // 这里要释放1KB的内存
 			}
 #endif
 
@@ -1833,7 +1833,7 @@ PerformWalRecovery(void)
  * Subroutine of PerformWalRecovery, to apply one WAL record.
  */
 static void
-ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *replayTLI)
+ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *replayTLI) // 回放一条WAL记录
 {
 	ErrorContextCallback errcallback;
 	bool		switchedTLI = false;
@@ -1880,7 +1880,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 			prevReplayTLI = xlrec.PrevTimeLineID;
 		}
 
-		if (newReplayTLI != *replayTLI)
+		if (newReplayTLI != *replayTLI) // 如果两条时间线不相等
 		{
 			/* Check that it's OK to switch to this TLI */
 			checkTimeLineSwitch(xlogreader->EndRecPtr,
@@ -1888,7 +1888,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 
 			/* Following WAL records should be run with new TLI */
 			*replayTLI = newReplayTLI;
-			switchedTLI = true;
+			switchedTLI = true; // 记录一下时间线切换了
 		}
 	}
 
@@ -1916,7 +1916,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 		xlogrecovery_redo(xlogreader, *replayTLI);
 
 	/* Now apply the WAL record itself */
-	GetRmgr(record->xl_rmid).rm_redo(xlogreader);
+	GetRmgr(record->xl_rmid).rm_redo(xlogreader); // 调用不同的指针函数去redo
 
 	/*
 	 * After redo, check whether the backup pages associated with the WAL
@@ -1976,7 +1976,7 @@ ApplyWalRecord(XLogReaderState *xlogreader, XLogRecord *record, TimeLineID *repl
 	}
 
 	/* Allow read-only connections if we're consistent now */
-	CheckRecoveryConsistency();
+	CheckRecoveryConsistency(); // 如果达到了一致的状态，就允许只读连接
 
 	/* Is this a timeline switch? */
 	if (switchedTLI)
@@ -2027,11 +2027,11 @@ xlogrecovery_redo(XLogReaderState *record, TimeLineID replayTLI)
 		/* Verifying the record should only happen once */
 		record->overwrittenRecPtr = InvalidXLogRecPtr;
 	}
-	else if (info == XLOG_BACKUP_END)
+	else if (info == XLOG_BACKUP_END) // 处理备份结束的WAL记录
 	{
 		XLogRecPtr	startpoint;
 
-		memcpy(&startpoint, XLogRecGetData(record), sizeof(startpoint));
+		memcpy(&startpoint, XLogRecGetData(record), sizeof(startpoint)); // 这条WAL记录里只包含了一条LSN，指向备份的起点，就是某一个redo
 
 		if (backupStartPoint == startpoint)
 		{
@@ -2100,7 +2100,7 @@ CheckTablespaceDirectory(void)
  * that it can start accepting read-only connections.
  */
 static void
-CheckRecoveryConsistency(void)
+CheckRecoveryConsistency(void) // 检查数据库的一致性状态
 {
 	XLogRecPtr	lastReplayedEndRecPtr;
 	TimeLineID	lastReplayedTLI;
