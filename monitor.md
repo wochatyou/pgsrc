@@ -64,5 +64,38 @@ our $action_info = {
  txn_wraparound      => [1, 'See how close databases are getting to transaction ID wraparound.'],
  version             => [1, 'Check for proper Postgres version.'],
  wal_files           => [1, 'Check the number of WAL files in the pg_xlog directory'],
+
 };
+
+检查PostgreSQL的版本：
+postgres=# SELECT setting FROM pg_settings WHERE name = 'server_version';
+ setting 
+---------
+ 16.1
+(1 row)
+
+SELECT freez, txns, ROUND(100*(txns/freez::float)) AS perc, datname
+FROM (SELECT foo.freez::int, age(datfrozenxid) AS txns, datname FROM pg_database d JOIN (SELECT setting AS freez FROM pg_settings WHERE name = 'autovacuum_freeze_max_age') AS foo
+ON (true) WHERE d.datallowconn) AS foo2 ORDER BY 3 DESC, 4 ASC;
+
+-- 这条命令获得autovacuum_freeze_max_age参数的值
+postgres=# SELECT setting AS freez FROM pg_settings WHERE name = 'autovacuum_freeze_max_age';
+   freez   
+-----------
+ 200000000
+(1 row)
+
+postgres=# SELECT age(datfrozenxid) AS txns, datname FROM pg_database;
+ txns |  datname  
+------+-----------
+   23 | postgres
+   23 | oracle
+   23 | template1
+   23 | template0
+(4 rows)
+关键是理解datfrozenxid。官方文档：
+All transaction IDs before this one have been replaced with a permanent (“frozen”) transaction ID in this database. This is used to track whether the database needs to be vacuumed in order to prevent transaction ID wraparound or to allow pg_xact to be shrunk. It is the minimum of the per-table pg_class.relfrozenxid values.
+
+在本数据库中，任何在datfrozenxid之前的事务均被冻结了。它是pg_class.relfrozenxid的最小值
+
 ```
