@@ -301,7 +301,7 @@ static void ReorderBufferChangeMemoryUpdate(ReorderBuffer *rb,
  * prior ReorderBuffer instances for the same slot.
  */
 ReorderBuffer *
-ReorderBufferAllocate(void)
+ReorderBufferAllocate(void) // 先分配一个内存池，再在其中分配内存，返回指针
 {
 	ReorderBuffer *buffer;
 	HASHCTL		hash_ctl;
@@ -408,7 +408,7 @@ ReorderBufferGetTXN(ReorderBuffer *rb)
 	ReorderBufferTXN *txn;
 
 	txn = (ReorderBufferTXN *)
-		MemoryContextAlloc(rb->txn_context, sizeof(ReorderBufferTXN));
+		MemoryContextAlloc(rb->txn_context, sizeof(ReorderBufferTXN)); // 从rb所在的内存中分配一块空间，做一些初始化的工作，返回指针
 
 	memset(txn, 0, sizeof(ReorderBufferTXN));
 
@@ -430,7 +430,7 @@ static void
 ReorderBufferReturnTXN(ReorderBuffer *rb, ReorderBufferTXN *txn)
 {
 	/* clean the lookup cache if we were cached (quite likely) */
-	if (rb->by_txn_last_xid == txn->xid)
+	if (rb->by_txn_last_xid == txn->xid) // by_txn_last_xid这个变量是cache
 	{
 		rb->by_txn_last_xid = InvalidTransactionId;
 		rb->by_txn_last_txn = NULL;

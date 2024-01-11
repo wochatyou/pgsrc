@@ -56,15 +56,15 @@ column_in_column_list(int attnum, Bitmapset *columns)
 /*
  * Write BEGIN to the output stream.
  */
-void
-logicalrep_write_begin(StringInfo out, ReorderBufferTXN *txn)
+void // 把BEGIN的信息写入到缓冲区
+logicalrep_write_begin(StringInfo out, ReorderBufferTXN *txn) // 往缓冲区里放信息， 1+8+8+4
 {
-	pq_sendbyte(out, LOGICAL_REP_MSG_BEGIN);
+	pq_sendbyte(out, LOGICAL_REP_MSG_BEGIN); // LOGICAL_REP_MSG_BEGIN = 'B',
 
 	/* fixed fields */
 	pq_sendint64(out, txn->final_lsn);
 	pq_sendint64(out, txn->xact_time.commit_time);
-	pq_sendint32(out, txn->xid);
+	pq_sendint32(out, txn->xid);  
 }
 
 /*
@@ -87,14 +87,14 @@ logicalrep_read_begin(StringInfo in, LogicalRepBeginData *begin_data)
  */
 void
 logicalrep_write_commit(StringInfo out, ReorderBufferTXN *txn,
-						XLogRecPtr commit_lsn)
+						XLogRecPtr commit_lsn) // 往缓冲区里面写COMMIT的信息 1 + 1 + 8 + 8 + 8
 {
 	uint8		flags = 0;
 
 	pq_sendbyte(out, LOGICAL_REP_MSG_COMMIT);
 
 	/* send the flags field (unused for now) */
-	pq_sendbyte(out, flags);
+	pq_sendbyte(out, flags); // flasgs恒定为0，目前没有使用
 
 	/* send fields */
 	pq_sendint64(out, commit_lsn);
@@ -383,9 +383,9 @@ logicalrep_read_stream_prepare(StringInfo in, LogicalRepPreparedTxnData *prepare
  */
 void
 logicalrep_write_origin(StringInfo out, const char *origin,
-						XLogRecPtr origin_lsn)
+						XLogRecPtr origin_lsn) // 构造origin消息包， 8+1结构，第一个是LSN，第二个是一个字符
 {
-	pq_sendbyte(out, LOGICAL_REP_MSG_ORIGIN);
+	pq_sendbyte(out, LOGICAL_REP_MSG_ORIGIN); // LOGICAL_REP_MSG_ORIGIN = 'O'
 
 	/* fixed fields */
 	pq_sendint64(out, origin_lsn);
@@ -410,20 +410,20 @@ logicalrep_read_origin(StringInfo in, XLogRecPtr *origin_lsn)
 /*
  * Write INSERT to the output stream.
  */
-void
+void // 把插入指令写入到发送的消息包中
 logicalrep_write_insert(StringInfo out, TransactionId xid, Relation rel,
 						TupleTableSlot *newslot, bool binary, Bitmapset *columns)
 {
-	pq_sendbyte(out, LOGICAL_REP_MSG_INSERT);
+	pq_sendbyte(out, LOGICAL_REP_MSG_INSERT); // LOGICAL_REP_MSG_INSERT = 'I', 先写一个I字符
 
 	/* transaction ID (if not valid, we're not streaming) */
 	if (TransactionIdIsValid(xid))
-		pq_sendint32(out, xid);
+		pq_sendint32(out, xid); // 再写4个字节的事务号
 
 	/* use Oid as relation identifier */
-	pq_sendint32(out, RelationGetRelid(rel));
+	pq_sendint32(out, RelationGetRelid(rel)); // 再写表的Oid
 
-	pq_sendbyte(out, 'N');		/* new tuple follows */
+	pq_sendbyte(out, 'N');		/* new tuple follows */ // 再写一个字符N
 	logicalrep_write_tuple(out, rel, newslot, binary, columns);
 }
 

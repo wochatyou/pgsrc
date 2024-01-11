@@ -51,8 +51,8 @@ typedef struct Bitmapset
 	pg_node_attr(custom_copy_equal, special_read_write, no_query_jumble)
 
 	NodeTag		type;
-	int			nwords;			/* number of words in array */
-	bitmapword	words[FLEXIBLE_ARRAY_MEMBER];	/* really [nwords] */
+	int			nwords;			/* number of words in array */   // 下面的位图数组有多少个world，每个world是8个字节
+	bitmapword	words[FLEXIBLE_ARRAY_MEMBER];	/* really [nwords] */ // 位图
 } Bitmapset;
 
 

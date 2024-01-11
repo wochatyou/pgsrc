@@ -267,7 +267,7 @@ typedef struct ReorderBufferChange
 	rbtxn_is_subtxn(txn) ? (txn)->toptxn : (txn) \
 )
 
-typedef struct ReorderBufferTXN
+typedef struct ReorderBufferTXN // 这个数据结构描述事务
 {
 	/* See above */
 	bits32		txn_flags;
@@ -289,7 +289,7 @@ typedef struct ReorderBufferTXN
 	 * xid. This is allowed to *not* be first record adorned with this xid, if
 	 * the previous records aren't relevant for logical decoding.
 	 */
-	XLogRecPtr	first_lsn;
+	XLogRecPtr	first_lsn; // 这个事务的第一个LSN
 
 	/* ----
 	 * LSN of the record that lead to this xact to be prepared or committed or
@@ -306,12 +306,12 @@ typedef struct ReorderBufferTXN
 	 * the latest change written to disk so far.
 	 * ----
 	 */
-	XLogRecPtr	final_lsn;
+	XLogRecPtr	final_lsn; // 这个事务的最后一个LSN
 
 	/*
 	 * LSN pointing to the end of the commit record + 1.
 	 */
-	XLogRecPtr	end_lsn;
+	XLogRecPtr	end_lsn; // 指向COMMIT的LSN
 
 	/* Toplevel transaction for this subxact (NULL for top-level). */
 	struct ReorderBufferTXN *toptxn;
@@ -324,7 +324,7 @@ typedef struct ReorderBufferTXN
 	XLogRecPtr	restart_decoding_lsn;
 
 	/* origin of the change that caused this transaction */
-	RepOriginId origin_id;
+	RepOriginId origin_id; // 就是2个字节
 	XLogRecPtr	origin_lsn;
 
 	/*
@@ -333,7 +333,7 @@ typedef struct ReorderBufferTXN
 	 */
 	union
 	{
-		TimestampTz commit_time;
+		TimestampTz commit_time;  // 提交时间
 		TimestampTz prepare_time;
 		TimestampTz abort_time;
 	}			xact_time;

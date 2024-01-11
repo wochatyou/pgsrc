@@ -100,7 +100,7 @@ logicalrep_relmap_invalidate_cb(Datum arg, Oid reloid)
  * Initialize the relation map cache.
  */
 static void
-logicalrep_relmap_init(void)
+logicalrep_relmap_init(void) // relation map cache就是一个哈希表，初始化这个哈希表
 {
 	HASHCTL		ctl;
 
@@ -108,15 +108,15 @@ logicalrep_relmap_init(void)
 		LogicalRepRelMapContext =
 			AllocSetContextCreate(CacheMemoryContext,
 								  "LogicalRepRelMapContext",
-								  ALLOCSET_DEFAULT_SIZES);
+								  ALLOCSET_DEFAULT_SIZES); // 内存池还没有创建，就创建它
 
 	/* Initialize the relation hash table. */
-	ctl.keysize = sizeof(LogicalRepRelId);
-	ctl.entrysize = sizeof(LogicalRepRelMapEntry);
+	ctl.keysize = sizeof(LogicalRepRelId);  // 哈希表的K是4个字节， typedef uint32 LogicalRepRelId;
+	ctl.entrysize = sizeof(LogicalRepRelMapEntry); // V是一大堆描述表的信息
 	ctl.hcxt = LogicalRepRelMapContext;
 
 	LogicalRepRelMap = hash_create("logicalrep relation map cache", 128, &ctl,
-								   HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+								   HASH_ELEM | HASH_BLOBS | HASH_CONTEXT); // 创建哈希表
 
 	/* Watch for invalidation events. */
 	CacheRegisterRelcacheCallback(logicalrep_relmap_invalidate_cb,
@@ -127,7 +127,7 @@ logicalrep_relmap_init(void)
  * Free the entry of a relation map cache.
  */
 static void
-logicalrep_relmap_free_entry(LogicalRepRelMapEntry *entry)
+logicalrep_relmap_free_entry(LogicalRepRelMapEntry *entry) // 在哈希表中释放某一个元素占有内存的各域
 {
 	LogicalRepRelation *remoterel;
 
@@ -173,15 +173,15 @@ logicalrep_relmap_update(LogicalRepRelation *remoterel)
 	 * HASH_ENTER returns the existing entry if present or creates a new one.
 	 */
 	entry = hash_search(LogicalRepRelMap, &remoterel->remoteid,
-						HASH_ENTER, &found);
+						HASH_ENTER, &found); // 根据头4个字节的Oid来查找
 
 	if (found)
 		logicalrep_relmap_free_entry(entry);
 
-	memset(entry, 0, sizeof(LogicalRepRelMapEntry));
+	memset(entry, 0, sizeof(LogicalRepRelMapEntry)); // 重新归零
 
 	/* Make cached copy of the data */
-	oldctx = MemoryContextSwitchTo(LogicalRepRelMapContext);
+	oldctx = MemoryContextSwitchTo(LogicalRepRelMapContext); // 申请一大堆内存
 	entry->remoterel.remoteid = remoterel->remoteid;
 	entry->remoterel.nspname = pstrdup(remoterel->nspname);
 	entry->remoterel.relname = pstrdup(remoterel->relname);
@@ -204,13 +204,13 @@ logicalrep_relmap_update(LogicalRepRelation *remoterel)
  * Returns -1 if not found.
  */
 static int
-logicalrep_rel_att_by_name(LogicalRepRelation *remoterel, const char *attname)
+logicalrep_rel_att_by_name(LogicalRepRelation *remoterel, const char *attname) // 依次比较列名，找到该列的顺序，如果没有找到，就返回-1
 {
 	int			i;
 
 	for (i = 0; i < remoterel->natts; i++)
 	{
-		if (strcmp(remoterel->attnames[i], attname) == 0)
+		if (strcmp(remoterel->attnames[i], attname) == 0) // 使用strcmp函数比较两个字符串
 			return i;
 	}
 
@@ -222,15 +222,15 @@ logicalrep_rel_att_by_name(LogicalRepRelation *remoterel, const char *attname)
  */
 static void
 logicalrep_report_missing_attrs(LogicalRepRelation *remoterel,
-								Bitmapset *missingatts)
+								Bitmapset *missingatts) // 如果位图不为空，就打印日志，报错退出
 {
-	if (!bms_is_empty(missingatts))
+	if (!bms_is_empty(missingatts)) // 如果位图不为空， missingatts != NULL
 	{
 		StringInfoData missingattsbuf;
 		int			missingattcnt = 0;
 		int			i;
 
-		initStringInfo(&missingattsbuf);
+		initStringInfo(&missingattsbuf); // 分配1KB内存
 
 		i = -1;
 		while ((i = bms_next_member(missingatts, i)) >= 0)
@@ -333,11 +333,11 @@ logicalrep_rel_open(LogicalRepRelId remoteid, LOCKMODE lockmode)
 
 	/* Search for existing entry. */
 	entry = hash_search(LogicalRepRelMap, &remoteid,
-						HASH_FIND, &found);
+						HASH_FIND, &found); // 在哈希表中查找
 
 	if (!found)
 		elog(ERROR, "no relation map entry for remote relation ID %u",
-			 remoteid);
+			 remoteid); // 如果没有找到就报错退出
 
 	remoterel = &entry->remoterel;
 

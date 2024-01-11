@@ -280,7 +280,7 @@ appendBinaryStringInfoNT(StringInfo str, const void *data, int datalen)
  * current.  This is the desired and indeed critical behavior!
  */
 void
-enlargeStringInfo(StringInfo str, int needed)
+enlargeStringInfo(StringInfo str, int needed) // 如果needed<0就报错退出
 {
 	int			newlen;
 
@@ -297,7 +297,7 @@ enlargeStringInfo(StringInfo str, int needed)
 		exit(EXIT_FAILURE);
 #endif
 	}
-	if (((Size) needed) >= (MaxAllocSize - (Size) str->len))
+	if (((Size) needed) >= (MaxAllocSize - (Size) str->len)) // 太大了
 	{
 #ifndef FRONTEND
 		ereport(ERROR,
