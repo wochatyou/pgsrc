@@ -40,10 +40,10 @@ our $COMMA = ',';
 use vars qw/ %opt $PGBINDIR $PSQL $res $COM $SQL $db /;
 
 ## Which user to connect as if --dbuser is not given
-$opt{defaultuser} = 'postgres';
+$opt{defaultuser} = 'postgres'; // 缺省的连接用户
 
 ## Which port to connect to if --dbport is not given
-$opt{defaultport} = 5432;
+$opt{defaultport} = 5432;  // 缺省的连接端口
 
 ## What type of output to use by default
 our $DEFAULT_OUTPUT = 'nagios';
@@ -3497,7 +3497,7 @@ sub verify_version {
     return if ! $limit and ! $versiononly and !defined wantarray;
 
     ## We almost always need the version, so just grab it for any limitation
-    $SQL = q{SELECT setting FROM pg_settings WHERE name = 'server_version'};
+    $SQL = q{SELECT setting FROM pg_settings WHERE name = 'server_version'}; // 检查PostgreSQL的版本
     my $oldslurp = $db->{slurp} || '';
     my $info = run_command($SQL, {noverify => 1});
     if (defined $info->{db}[0]
@@ -4015,7 +4015,7 @@ sub perfname {
 } ## end of perfname;
 
 
-sub open_controldata {
+sub open_controldata { // 运行pg_controldata命令，返回结果
     ## Requires $ENV{PGDATA} or --datadir
 
     ## Find the data directory, make sure it exists
@@ -4121,6 +4121,7 @@ sub check_autovac_freeze {
     (my $w = $warning) =~ s/\D//;
     (my $c = $critical) =~ s/\D//;
 
+    // 这里最关键的是ROUND(100*(txns/freez::float)) AS perc， 如果接近100%，就说明危险了
     my $SQL = q{SELECT freez, txns, ROUND(100*(txns/freez::float)) AS perc, datname}.
         q{ FROM (SELECT foo.freez::int, age(datfrozenxid) AS txns, datname}.
         q{ FROM pg_database d JOIN (SELECT setting AS freez FROM pg_settings WHERE name = 'autovacuum_freeze_max_age') AS foo}.

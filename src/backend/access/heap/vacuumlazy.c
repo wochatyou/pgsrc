@@ -130,7 +130,7 @@
 /* Phases of vacuum during which we report error context. */
 typedef enum
 {
-	VACUUM_ERRCB_PHASE_UNKNOWN,
+	VACUUM_ERRCB_PHASE_UNKNOWN, // 开始的状态
 	VACUUM_ERRCB_PHASE_SCAN_HEAP,
 	VACUUM_ERRCB_PHASE_VACUUM_INDEX,
 	VACUUM_ERRCB_PHASE_VACUUM_HEAP,
@@ -321,9 +321,9 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 				StartPageMiss = VacuumPageMiss,
 				StartPageDirty = VacuumPageDirty;
 	ErrorContextCallback errcallback;
-	char	  **indnames = NULL;
+	char	  **indnames = NULL; // 这个是该表上所有索引的名字的数组，个数是vacrel->nindexes
 
-	verbose = (params->options & VACOPT_VERBOSE) != 0;
+	verbose = (params->options & VACOPT_VERBOSE) != 0; // options是一个32-bit的无符号整数
 	instrument = (verbose || (IsAutoVacuumWorkerProcess() &&
 							  params->log_min_duration >= 0));
 	if (instrument)
@@ -357,7 +357,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	vacrel->relnamespace = get_namespace_name(RelationGetNamespace(rel));
 	vacrel->relname = pstrdup(RelationGetRelationName(rel));
 	vacrel->indname = NULL;
-	vacrel->phase = VACUUM_ERRCB_PHASE_UNKNOWN;
+	vacrel->phase = VACUUM_ERRCB_PHASE_UNKNOWN; // 这是开始的状态
 	vacrel->verbose = verbose;
 	errcallback.callback = vacuum_error_callback;
 	errcallback.arg = vacrel;
@@ -372,7 +372,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	if (instrument && vacrel->nindexes > 0)
 	{
 		/* Copy index names used by instrumentation (not error reporting) */
-		indnames = palloc(sizeof(char *) * vacrel->nindexes);
+		indnames = palloc(sizeof(char *) * vacrel->nindexes); // 分配一个char*指针的数组，分别指向每个索引的名字
 		for (int i = 0; i < vacrel->nindexes; i++)
 			indnames[i] = pstrdup(RelationGetRelationName(vacrel->indrels[i]));
 	}
