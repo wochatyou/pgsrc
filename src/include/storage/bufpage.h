@@ -104,7 +104,7 @@ PageXLogRecPtrGet(PageXLogRecPtr val)
 }
 
 #define PageXLogRecPtrSet(ptr, lsn) \
-	((ptr).xlogid = (uint32) ((lsn) >> 32), (ptr).xrecoff = (uint32) (lsn))
+	((ptr).xlogid = (uint32) ((lsn) >> 32), (ptr).xrecoff = (uint32) (lsn)) // 就是把8字节的LSN放在页头处
 
 /*
  * disk page organization

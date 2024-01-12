@@ -456,7 +456,7 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 	 * time to time, to increase the number of dead tuples it can prune away.)
 	 */
 	vacrel->aggressive = vacuum_get_cutoffs(rel, params, &vacrel->cutoffs);
-	vacrel->rel_pages = orig_rel_pages = RelationGetNumberOfBlocks(rel);
+	vacrel->rel_pages = orig_rel_pages = RelationGetNumberOfBlocks(rel); // 获得堆表的数据块的总个数
 	vacrel->vistest = GlobalVisTestFor(rel);
 	/* Initialize state used to track oldest extant XID/MXID */
 	vacrel->NewRelfrozenXid = vacrel->cutoffs.OldestXmin;
@@ -920,7 +920,7 @@ lazy_scan_heap(LVRelState *vacrel)
 			 * correctness, but we do it anyway to avoid holding the pin
 			 * across a lengthy, unrelated operation.
 			 */
-			if (BufferIsValid(vmbuffer))
+			if (BufferIsValid(vmbuffer)) // 扫描的块数足够了，这儿vm数据页不需要了
 			{
 				ReleaseBuffer(vmbuffer);
 				vmbuffer = InvalidBuffer;
@@ -940,7 +940,7 @@ lazy_scan_heap(LVRelState *vacrel)
 
 			/* Report that we are once again scanning the heap */
 			pgstat_progress_update_param(PROGRESS_VACUUM_PHASE,
-										 PROGRESS_VACUUM_PHASE_SCAN_HEAP);
+										 PROGRESS_VACUUM_PHASE_SCAN_HEAP); // 回到SCAN_HEAP的阶段
 		}
 
 		/*
@@ -958,7 +958,7 @@ lazy_scan_heap(LVRelState *vacrel)
 		 */
 		buf = ReadBufferExtended(vacrel->rel, MAIN_FORKNUM, blkno, RBM_NORMAL,
 								 vacrel->bstrategy); // 根据数据块blkno读取数据页到内存，编号是buf
-		page = BufferGetPage(buf);
+		page = BufferGetPage(buf); // 就是根据页面编号获得真正的数据指针
 		if (!ConditionalLockBufferForCleanup(buf))
 		{
 			bool		hastup,
@@ -1254,7 +1254,7 @@ lazy_scan_heap(LVRelState *vacrel)
 	 * Do index vacuuming (call each index's ambulkdelete routine), then do
 	 * related heap vacuuming
 	 */
-	if (dead_items->num_items > 0)
+	if (dead_items->num_items > 0) // 如果死亡记录数组中还有剩余的尾巴，再做一次
 		lazy_vacuum(vacrel);
 
 	/*
@@ -2186,14 +2186,14 @@ lazy_scan_noprune(LVRelState *vacrel,
  * same items LP_UNUSED in the heap.  See the comments above lazy_scan_heap
  * for full details.
  *
- * Also empties dead_items, freeing up space for later TIDs.
+ * Also empties dead_items, freeing up space for later TIDs. // 这个函数也会清空死亡记录数组，为搜集下一批死亡记录做准备
  *
  * We may choose to bypass index vacuuming at this point, though only when the
  * ongoing VACUUM operation will definitely only have one index scan/round of
  * index vacuuming.
  */
 static void
-lazy_vacuum(LVRelState *vacrel)
+lazy_vacuum(LVRelState *vacrel) // 这个函数做index vacuuming和heap vacuuming两个主要的工作
 {
 	bool		bypass;
 
@@ -2278,13 +2278,13 @@ lazy_vacuum(LVRelState *vacrel)
 		 */
 		vacrel->do_index_vacuuming = false;
 	}
-	else if (lazy_vacuum_all_indexes(vacrel))
+	else if (lazy_vacuum_all_indexes(vacrel)) // vacuum index步骤
 	{
 		/*
 		 * We successfully completed a round of index vacuuming.  Do related
 		 * heap vacuuming now.
 		 */
-		lazy_vacuum_heap_rel(vacrel);
+		lazy_vacuum_heap_rel(vacrel); // vacuum heap步骤
 	}
 	else
 	{
@@ -2306,7 +2306,7 @@ lazy_vacuum(LVRelState *vacrel)
 	 * Forget the LP_DEAD items that we just vacuumed (or just decided to not
 	 * vacuum)
 	 */
-	vacrel->dead_items->num_items = 0;
+	vacrel->dead_items->num_items = 0; // 清空死亡记录数组
 }
 
 /*
@@ -2411,9 +2411,9 @@ lazy_vacuum_all_indexes(LVRelState *vacrel)
  *
  * Note: the reason for doing this as a second pass is we cannot remove the
  * tuples until we've removed their index entries, and we want to process
- * index entry removal in batches as large as possible.
+ * index entry removal in batches as large as possible. // 必须先清空索引的记录，再清空堆表中的记录
  */
-static void // 对堆表的第二轮扫描
+static void // 对堆表的第二轮扫描，并不是扫描整个堆表，而是死亡记录数组中的内容
 lazy_vacuum_heap_rel(LVRelState *vacrel)
 {
 	int			index = 0;
@@ -2451,7 +2451,7 @@ lazy_vacuum_heap_rel(LVRelState *vacrel)
 		 * all-visible.  In most cases this will be very cheap, because we'll
 		 * already have the correct page pinned anyway.
 		 */
-		visibilitymap_pin(vacrel->rel, blkno, &vmbuffer);
+		visibilitymap_pin(vacrel->rel, blkno, &vmbuffer); // 把这个数据块对应的VM读入到内存
 
 		/* We need a non-cleanup exclusive lock to mark dead_items unused */
 		buf = ReadBufferExtended(vacrel->rel, MAIN_FORKNUM, blkno, RBM_NORMAL,
@@ -2507,7 +2507,7 @@ lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 {
 	VacDeadItems *dead_items = vacrel->dead_items;
 	Page		page = BufferGetPage(buffer);
-	OffsetNumber unused[MaxHeapTuplesPerPage];
+	OffsetNumber unused[MaxHeapTuplesPerPage]; // 本函数只处理一个页面，所以最多291条记录足够了
 	int			nunused = 0;
 	TransactionId visibility_cutoff_xid;
 	bool		all_frozen;
@@ -2534,7 +2534,7 @@ lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 		if (tblk != blkno) // 已经不是本块了，所以就跳出循环后返回
 			break;				/* past end of tuples for this block */
 		toff = ItemPointerGetOffsetNumber(&dead_items->items[index]);
-		itemid = PageGetItemId(page, toff);
+		itemid = PageGetItemId(page, toff); // itemid指向页面的该条记录的指针
 
 		Assert(ItemIdIsDead(itemid) && !ItemIdHasStorage(itemid));
 		ItemIdSetUnused(itemid); // 把这个记录的状态变成LP_UNUSED， 这是最主要的动作
@@ -2567,7 +2567,7 @@ lazy_vacuum_heap_page(LVRelState *vacrel, BlockNumber blkno, Buffer buffer,
 
 		recptr = XLogInsert(RM_HEAP2_ID, XLOG_HEAP2_VACUUM);
 
-		PageSetLSN(page, recptr);
+		PageSetLSN(page, recptr); // 更新一下页头的LSN
 	}
 
 	/*
@@ -2663,7 +2663,7 @@ lazy_check_wraparound_failsafe(LVRelState *vacrel)
  *	lazy_cleanup_all_indexes() -- cleanup all indexes of relation.
  */
 static void
-lazy_cleanup_all_indexes(LVRelState *vacrel)
+lazy_cleanup_all_indexes(LVRelState *vacrel) // 这个是vacuum的第四个阶段
 {
 	double		reltuples = vacrel->new_rel_tuples;
 	bool		estimated_count = vacrel->scanned_pages < vacrel->rel_pages;
@@ -2675,7 +2675,7 @@ lazy_cleanup_all_indexes(LVRelState *vacrel)
 	pgstat_progress_update_param(PROGRESS_VACUUM_PHASE,
 								 PROGRESS_VACUUM_PHASE_INDEX_CLEANUP);
 
-	if (!ParallelVacuumIsActive(vacrel))
+	if (!ParallelVacuumIsActive(vacrel)) // 不是并发vacuum
 	{
 		for (int idx = 0; idx < vacrel->nindexes; idx++)
 		{
@@ -2687,7 +2687,7 @@ lazy_cleanup_all_indexes(LVRelState *vacrel)
 									   estimated_count, vacrel);
 		}
 	}
-	else
+	else // 并发vacuum
 	{
 		/* Outsource everything to parallel variant */
 		parallel_vacuum_cleanup_all_indexes(vacrel->pvs, reltuples,

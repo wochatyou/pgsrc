@@ -6402,19 +6402,19 @@ heap_prepare_freeze_tuple(HeapTupleHeader tuple,
 	 * will become frozen iff our freeze plan is executed by caller (could be
 	 * neither).
 	 */
-	xid = HeapTupleHeaderGetXmin(tuple);
+	xid = HeapTupleHeaderGetXmin(tuple); // 获得这条记录的xmin，如果这条记录已经被冻结了，则返回2，表示冻结的事务
 	if (!TransactionIdIsNormal(xid))
-		xmin_already_frozen = true;
+		xmin_already_frozen = true; // xmin已经被冻结了
 	else
 	{
-		if (TransactionIdPrecedes(xid, cutoffs->relfrozenxid))
+		if (TransactionIdPrecedes(xid, cutoffs->relfrozenxid)) // 如果xmin比relfrozenxid更古老
 			ereport(ERROR,
 					(errcode(ERRCODE_DATA_CORRUPTED),
 					 errmsg_internal("found xmin %u from before relfrozenxid %u",
 									 xid, cutoffs->relfrozenxid)));
 
 		/* Will set freeze_xmin flags in freeze plan below */
-		freeze_xmin = TransactionIdPrecedes(xid, cutoffs->OldestXmin);
+		freeze_xmin = TransactionIdPrecedes(xid, cutoffs->OldestXmin); // xmin更古老一些
 
 		/* Verify that xmin committed if and when freeze plan is executed */
 		if (freeze_xmin)
@@ -6442,7 +6442,7 @@ heap_prepare_freeze_tuple(HeapTupleHeader tuple,
 
 	/* Now process xmax */
 	xid = frz->xmax;
-	if (tuple->t_infomask & HEAP_XMAX_IS_MULTI)
+	if (tuple->t_infomask & HEAP_XMAX_IS_MULTI) // xmax是MultiXactId
 	{
 		/* Raw xmax is a MultiXactId */
 		TransactionId newxmax;

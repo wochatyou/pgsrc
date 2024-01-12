@@ -816,7 +816,7 @@ btbulkdelete(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
  * Result: a palloc'd struct containing statistical info for VACUUM displays.
  */
 IndexBulkDeleteResult *
-btvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats)
+btvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats) // 这是B树索引的VACUUM的后期操作
 {
 	BlockNumber num_delpages;
 
@@ -981,13 +981,13 @@ btvacuumscan(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 	 */
 	needLock = !RELATION_IS_LOCAL(rel);
 
-	scanblkno = BTREE_METAPAGE + 1;
+	scanblkno = BTREE_METAPAGE + 1; // 从第一个数据块开始扫描， BTREE_METAPAGE的值是0
 	for (;;)
 	{
 		/* Get the current relation length */
 		if (needLock)
 			LockRelationForExtension(rel, ExclusiveLock);
-		num_pages = RelationGetNumberOfBlocks(rel);
+		num_pages = RelationGetNumberOfBlocks(rel); // 获得这个索引共计多少个数据块
 		if (needLock)
 			UnlockRelationForExtension(rel, ExclusiveLock);
 
@@ -1038,7 +1038,7 @@ btvacuumscan(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
  * recycled (i.e. before the page split).
  */
 static void
-btvacuumpage(BTVacState *vstate, BlockNumber scanblkno)
+btvacuumpage(BTVacState *vstate, BlockNumber scanblkno) // Vacuum索引的一个数据块
 {
 	IndexVacuumInfo *info = vstate->info;
 	IndexBulkDeleteResult *stats = vstate->stats;

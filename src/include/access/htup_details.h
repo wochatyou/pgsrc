@@ -206,7 +206,7 @@ struct HeapTupleHeaderData
 #define HEAP_XMIN_FROZEN		(HEAP_XMIN_COMMITTED|HEAP_XMIN_INVALID)
 #define HEAP_XMAX_COMMITTED		0x0400	/* t_xmax committed */
 #define HEAP_XMAX_INVALID		0x0800	/* t_xmax invalid/aborted */
-#define HEAP_XMAX_IS_MULTI		0x1000	/* t_xmax is a MultiXactId */
+#define HEAP_XMAX_IS_MULTI		0x1000	/* t_xmax is a MultiXactId */ // xmax有不同的含义，可能保存MultiXactId
 #define HEAP_UPDATED			0x2000	/* this is UPDATEd version of row */
 #define HEAP_MOVED_OFF			0x4000	/* moved to another place by pre-9.0
 										 * VACUUM FULL; kept for binary
@@ -333,7 +333,7 @@ struct HeapTupleHeaderData
 		HEAP_XMIN_INVALID \
 )
 
-#define HeapTupleHeaderXminFrozen(tup) \
+#define HeapTupleHeaderXminFrozen(tup) \   // 就是看这条记录的t_infomask域里面的HEAP_XMIN_FROZEN是否置位
 ( \
 	((tup)->t_infomask & (HEAP_XMIN_FROZEN)) == HEAP_XMIN_FROZEN \
 )

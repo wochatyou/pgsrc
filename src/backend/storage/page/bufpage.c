@@ -840,7 +840,7 @@ PageTruncateLinePointerArray(Page page)
 	int			nunusedend = 0;
 
 	/* Scan line pointer array back-to-front */
-	for (int i = PageGetMaxOffsetNumber(page); i >= FirstOffsetNumber; i--) // 从头往前扫描
+	for (int i = PageGetMaxOffsetNumber(page); i >= FirstOffsetNumber; i--) // 从后往前扫描
 	{
 		ItemId		lp = PageGetItemId(page, i);
 
@@ -864,7 +864,7 @@ PageTruncateLinePointerArray(Page page)
 			 * there are any remaining LP_UNUSED line pointers somewhere more
 			 * towards the front of the array.
 			 */
-			if (!ItemIdIsUsed(lp))
+			if (!ItemIdIsUsed(lp)) // ((itemId)->lp_flags != LP_UNUSED)
 			{
 				/*
 				 * This is an unused line pointer that we won't be truncating

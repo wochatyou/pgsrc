@@ -3486,7 +3486,7 @@ FlushBuffer(BufferDesc *buf, SMgrRelation reln, IOObject io_object,
  * it might not be.
  */
 BlockNumber
-RelationGetNumberOfBlocksInFork(Relation relation, ForkNumber forkNum)
+RelationGetNumberOfBlocksInFork(Relation relation, ForkNumber forkNum) // 获得指定表有多少个数据块
 {
 	if (RELKIND_HAS_TABLE_AM(relation->rd_rel->relkind))
 	{
@@ -3498,9 +3498,9 @@ RelationGetNumberOfBlocksInFork(Relation relation, ForkNumber forkNum)
 		 */
 		uint64		szbytes;
 
-		szbytes = table_relation_size(relation, forkNum);
+		szbytes = table_relation_size(relation, forkNum); // 获得表的体积，单位是字节
 
-		return (szbytes + (BLCKSZ - 1)) / BLCKSZ;
+		return (szbytes + (BLCKSZ - 1)) / BLCKSZ; // 把字节除于8KB，换算成数据块的个数
 	}
 	else if (RELKIND_HAS_STORAGE(relation->rd_rel->relkind))
 	{

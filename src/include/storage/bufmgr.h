@@ -225,7 +225,7 @@ extern void DropRelationsAllBuffers(struct SMgrRelationData **smgr_reln,
 extern void DropDatabaseBuffers(Oid dbid);
 
 #define RelationGetNumberOfBlocks(reln) \
-	RelationGetNumberOfBlocksInFork(reln, MAIN_FORKNUM)
+	RelationGetNumberOfBlocksInFork(reln, MAIN_FORKNUM) // 获得堆表的数据块的个数
 
 extern bool BufferIsPermanent(Buffer buffer);
 extern XLogRecPtr BufferGetLSNAtomic(Buffer buffer);
