@@ -4536,12 +4536,12 @@ internal_forkexec(int argc, char *argv[], Port *port)
 
 	/* Calculate name for temp file */
 	snprintf(tmpfilename, MAXPGPATH, "%s/%s.backend_var.%d.%lu",
-			 PG_TEMP_FILES_DIR, PG_TEMP_FILE_PREFIX,
-			 MyProcPid, ++tmpBackendFileNum);
+			 PG_TEMP_FILES_DIR, PG_TEMP_FILE_PREFIX, // #define PG_TEMP_FILES_DIR "pgsql_tmp" #define PG_TEMP_FILE_PREFIX "pgsql_tmp"
+			 MyProcPid, ++tmpBackendFileNum); // 按照一定的规则产生一个临时文件
 
 	/* Open file */
 	fp = AllocateFile(tmpfilename, PG_BINARY_W);
-	if (!fp)
+	if (!fp) // 如果打开文件失败
 	{
 		/*
 		 * As in OpenTemporaryFileInTablespace, try to make the temp-file
@@ -4582,7 +4582,7 @@ internal_forkexec(int argc, char *argv[], Port *port)
 	Assert(argc >= 3);
 	Assert(argv[argc] == NULL);
 	Assert(strncmp(argv[1], "--fork", 6) == 0);
-	Assert(argv[2] == NULL);
+	Assert(argv[2] == NULL); // 这些是传入参数的规矩
 
 	/* Insert temp file name after --fork argument */
 	argv[2] = tmpfilename;
@@ -4879,7 +4879,7 @@ SubPostmasterMain(int argc, char *argv[])
 
 	/* autovacuum needs this set before calling InitProcess */
 	if (strcmp(argv[1], "--forkavlauncher") == 0)
-		AutovacuumLauncherIAm();
+		AutovacuumLauncherIAm(); // 就是设置变量am_autovacuum_launcher，记录一下自己的身份
 	if (strcmp(argv[1], "--forkavworker") == 0)
 		AutovacuumWorkerIAm();
 
@@ -4988,7 +4988,7 @@ SubPostmasterMain(int argc, char *argv[])
 		/* Attach process to shared data structures */
 		CreateSharedMemoryAndSemaphores();
 
-		AutoVacLauncherMain(argc - 2, argv + 2);	/* does not return */
+		AutoVacLauncherMain(argc - 2, argv + 2);	/* does not return */ // 转入AVL进程的入口函数
 	}
 	if (strcmp(argv[1], "--forkavworker") == 0)
 	{

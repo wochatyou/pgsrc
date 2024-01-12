@@ -187,7 +187,7 @@ main(int argc, char *argv[])
 		BootstrapModeMain(argc, argv, false);
 #ifdef EXEC_BACKEND
 	else if (argc > 1 && strncmp(argv[1], "--fork", 6) == 0)
-		SubPostmasterMain(argc, argv);
+		SubPostmasterMain(argc, argv); // 对比前6个字符，只要是--fork就调用这个函数。这是主进程fork出来后的子进程执行的函数
 #endif
 	else if (argc > 1 && strcmp(argv[1], "--describe-config") == 0)
 		GucInfoMain();

@@ -62,7 +62,7 @@
  * wrapped in a struct to prevent implicit conversion to/from TransactionId.
  * Not all values represent valid normal XIDs.
  */
-typedef struct FullTransactionId
+typedef struct FullTransactionId // 这个是64位的XID
 {
 	uint64		value;
 } FullTransactionId;
@@ -314,7 +314,7 @@ extern void AssertTransactionIdInAllowableRange(TransactionId xid);
 static inline TransactionId
 ReadNextTransactionId(void)
 {
-	return XidFromFullTransactionId(ReadNextFullTransactionId());
+	return XidFromFullTransactionId(ReadNextFullTransactionId()); // 就是返回低四个字节
 }
 
 /* return transaction ID backed up by amount, handling wraparound correctly */

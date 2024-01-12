@@ -372,7 +372,7 @@ static void avl_sigusr2_handler(SIGNAL_ARGS);
  * Format up the arglist, then fork and exec.
  */
 static pid_t
-avlauncher_forkexec(void)
+avlauncher_forkexec(void) // postmaster调用这个函数fork进程
 {
 	char	   *av[10];
 	int			ac = 0;
@@ -384,7 +384,7 @@ avlauncher_forkexec(void)
 
 	Assert(ac < lengthof(av));
 
-	return postmaster_forkexec(ac, av);
+	return postmaster_forkexec(ac, av); // 现在ac是3， av[2]留给postmaster去填充
 }
 
 /*
@@ -402,7 +402,7 @@ AutovacuumLauncherIAm(void)
  * postmaster.
  */
 int
-StartAutoVacLauncher(void) // 启动AVW进程，返回结果是AVW进程的进程号
+StartAutoVacLauncher(void) // 启动AVL进程，返回结果是AVL进程的进程号
 {
 	pid_t		AutoVacPID;
 
@@ -440,7 +440,7 @@ StartAutoVacLauncher(void) // 启动AVW进程，返回结果是AVW进程的进�
  * Main loop for the autovacuum launcher process.
  */
 NON_EXEC_STATIC void
-AutoVacLauncherMain(int argc, char *argv[])
+AutoVacLauncherMain(int argc, char *argv[]) // AVL进程的入口函数
 {
 	sigjmp_buf	local_sigjmp_buf;
 
@@ -686,7 +686,7 @@ AutoVacLauncherMain(int argc, char *argv[])
 			}
 
 			if (AutoVacuumShmem->av_signal[AutoVacForkFailed]) // AutoVacForkFailed是0，这是一个枚举类型
-			{
+			{   // 这个逻辑是postmaster进程启动worker进程失败了，就休息1秒钟后再次要求主进程启动worker
 				/*
 				 * If the postmaster failed to start a new worker, we sleep
 				 * for a little while and resend the signal.  The new worker's
@@ -3320,7 +3320,7 @@ autovac_report_workitem(AutoVacuumWorkItem *workitem,
  *		running.
  */
 bool
-AutoVacuumingActive(void)
+AutoVacuumingActive(void) // 这由两个参数控制
 {
 	if (!autovacuum_start_daemon || !pgstat_track_counts)
 		return false;
