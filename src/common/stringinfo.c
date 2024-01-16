@@ -37,7 +37,7 @@
  *
  * Create an empty 'StringInfoData' & return a pointer to it.
  */
-StringInfo // 在当前内存池中分配一个StringInfo的数据结构
+StringInfo // 在当前内存池中分配一个StringInfo的数据结构，注意这里是两块内存
 makeStringInfo(void)
 {
 	StringInfo	res;

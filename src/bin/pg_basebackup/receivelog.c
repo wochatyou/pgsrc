@@ -568,7 +568,7 @@ ReceiveXlogStream(PGconn *conn, StreamCtl *stream)
 		 * Before we start streaming from the requested location, check if the
 		 * callback tells us to stop here.
 		 */
-		if (stream->stream_stop(stream->startpos, stream->timeline, false))
+		if (stream->stream_stop(stream->startpos, stream->timeline, false)) /// 确定是否终止的回调函数
 			return true;
 
 		/* Initiate the replication stream at specified location */

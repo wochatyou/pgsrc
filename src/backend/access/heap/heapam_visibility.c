@@ -119,17 +119,17 @@ SetHintBits(HeapTupleHeader tuple, Buffer buffer,
 	if (TransactionIdIsValid(xid))
 	{
 		/* NB: xid must be known committed here! */
-		XLogRecPtr	commitLSN = TransactionIdGetCommitLSN(xid);
+		XLogRecPtr	commitLSN = TransactionIdGetCommitLSN(xid); /// xid这个事务肯定是在commitLSN之前被提交的
 
 		if (BufferIsPermanent(buffer) && XLogNeedsFlush(commitLSN) &&
-			BufferGetLSNAtomic(buffer) < commitLSN)
+			BufferGetLSNAtomic(buffer) < commitLSN) /// 使用自旋锁的机制锁住该数据页，获得LSN
 		{
 			/* not flushed and no LSN interlock, so don't set hint */
 			return;
 		}
 	}
 
-	tuple->t_infomask |= infomask;
+	tuple->t_infomask |= infomask; /// 把这条记录的infomask位设置一下，设置为脏页
 	MarkBufferDirtyHint(buffer, true);
 }
 
@@ -141,7 +141,7 @@ SetHintBits(HeapTupleHeader tuple, Buffer buffer,
  */
 void
 HeapTupleSetHintBits(HeapTupleHeader tuple, Buffer buffer,
-					 uint16 infomask, TransactionId xid)
+					 uint16 infomask, TransactionId xid) /// 仅仅是对inline函数的一层包裹
 {
 	SetHintBits(tuple, buffer, infomask, xid);
 }

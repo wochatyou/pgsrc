@@ -164,7 +164,7 @@ typedef XLogLongPageHeaderData *XLogLongPageHeader;
  * function allocating the result generated.
  */
 static inline void
-XLogFileName(char *fname, TimeLineID tli, XLogSegNo logSegNo, int wal_segsz_bytes)
+XLogFileName(char *fname, TimeLineID tli, XLogSegNo logSegNo, int wal_segsz_bytes) /// 根据时间线和WAL文件的SegNo,组成WAL文件的文件名
 {
 	snprintf(fname, MAXFNAMELEN, "%08X%08X%08X", tli,
 			 (uint32) (logSegNo / XLogSegmentsPerXLogId(wal_segsz_bytes)),

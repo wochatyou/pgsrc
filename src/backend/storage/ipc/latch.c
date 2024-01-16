@@ -147,7 +147,7 @@ struct WaitEventSet
 	 * pgwin32_signal_event, so the remaining elements are offset by one (i.e.
 	 * event->pos + 1).
 	 */
-	HANDLE	   *handles;
+	HANDLE	   *handles; /// 事件句柄数组
 #endif
 };
 
@@ -620,13 +620,13 @@ SetLatch(Latch *latch)
 	pg_memory_barrier();
 
 	/* Quick exit if already set */
-	if (latch->is_set)
+	if (latch->is_set) /// 如果已经set了，就啥也不做，直接返回
 		return;
 
-	latch->is_set = true;
+	latch->is_set = true; /// 设置状态为set
 
 	pg_memory_barrier();
-	if (!latch->maybe_sleeping)
+	if (!latch->maybe_sleeping) /// 如果绑定在该latch上的进程没有睡觉，就返回
 		return;
 
 #ifndef WIN32
@@ -669,7 +669,7 @@ SetLatch(Latch *latch)
 	else
 		kill(owner_pid, SIGURG); // 给那个进程发送SIGURG信号
 
-#else
+#else /// Windows平台下的处理方式
 
 	/*
 	 * See if anyone's waiting for the latch. It can be the current process if
@@ -681,7 +681,7 @@ SetLatch(Latch *latch)
 	handle = latch->event;
 	if (handle)
 	{
-		SetEvent(handle);
+		SetEvent(handle); /// 通过SetEvent函数来唤醒沉睡在这个latch上的线程
 
 		/*
 		 * Note that we silently ignore any errors. We might be in a signal
@@ -696,13 +696,13 @@ SetLatch(Latch *latch)
  * the latch is set again before the WaitLatch call.
  */
 void
-ResetLatch(Latch *latch)
+ResetLatch(Latch *latch) /// 关键逻辑就是 latch->is_set = false
 {
 	/* Only the owner should reset the latch */
 	Assert(latch->owner_pid == MyProcPid);
 	Assert(latch->maybe_sleeping == false);
 
-	latch->is_set = false; // 置位
+	latch->is_set = false; // 复位，下次可以继续沉睡
 
 	/*
 	 * Ensure that the write to is_set gets flushed to main memory before we
@@ -720,7 +720,7 @@ ResetLatch(Latch *latch)
  * WaitEventSetWait().
  */
 WaitEventSet *
-CreateWaitEventSet(MemoryContext context, int nevents)
+CreateWaitEventSet(MemoryContext context, int nevents) /// 创建事件集
 {
 	WaitEventSet *set;
 	char	   *data;
@@ -743,10 +743,10 @@ CreateWaitEventSet(MemoryContext context, int nevents)
 	sz += MAXALIGN(sizeof(struct pollfd) * nevents);
 #elif defined(WAIT_USE_WIN32)
 	/* need space for the pgwin32_signal_event */
-	sz += MAXALIGN(sizeof(HANDLE) * (nevents + 1));
+	sz += MAXALIGN(sizeof(HANDLE) * (nevents + 1)); /// 在Windows平台下使用HANDLE来表示一个事件
 #endif
 
-	data = (char *) MemoryContextAllocZero(context, sz);
+	data = (char *) MemoryContextAllocZero(context, sz); /// 这是一个数组
 
 	set = (WaitEventSet *) data;
 	data += MAXALIGN(sizeof(WaitEventSet));
@@ -866,7 +866,7 @@ FreeWaitEventSet(WaitEventSet *set)
 	}
 #endif
 
-	pfree(set);
+	pfree(set); /// 通过pfree来释放内存
 }
 
 /*

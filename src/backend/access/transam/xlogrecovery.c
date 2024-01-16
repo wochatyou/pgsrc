@@ -511,7 +511,7 @@ EnableStandbyMode(void)
  */
 void
 InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
-				bool *haveBackupLabel_ptr, bool *haveTblspcMap_ptr)
+				bool *haveBackupLabel_ptr, bool *haveTblspcMap_ptr) /// 第一个参数是输入，后三个参数是输出
 {
 	XLogPageReadPrivate *private;
 	struct stat st;
@@ -523,7 +523,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	CheckPoint	checkPoint;
 	bool		backupFromStandby = false;
 
-	dbstate_at_startup = ControlFile->state;
+	dbstate_at_startup = ControlFile->state; /// 数据库启动时的状态
 
 	/*
 	 * Initialize on the assumption we want to recover to the latest timeline
@@ -542,7 +542,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	readRecoverySignalFile(); // 读取恢复的信号文件，包括standby.signal和recovery.signal
 	validateRecoveryParameters(); // 检查恢复参数
 
-	if (ArchiveRecoveryRequested)
+	if (ArchiveRecoveryRequested) /// 归档恢复模式
 	{
 		if (StandbyModeRequested)
 			ereport(LOG,
@@ -576,12 +576,12 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	 * recovery.
 	 */
 	if (ArchiveRecoveryRequested)
-		OwnLatch(&XLogRecoveryCtl->recoveryWakeupLatch);
+		OwnLatch(&XLogRecoveryCtl->recoveryWakeupLatch); /// 把本恢复进程的进程号放在Latch当中
 
 	private = palloc0(sizeof(XLogPageReadPrivate));
 	xlogreader =
 		XLogReaderAllocate(wal_segment_size, NULL,
-						   XL_ROUTINE(.page_read = &XLogPageRead,
+						   XL_ROUTINE(.page_read = &XLogPageRead, /// 读取WAL记录的回调函数
 									  .segment_open = NULL,
 									  .segment_close = wal_segment_close),
 						   private);
@@ -596,7 +596,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	 * Set the WAL decode buffer size.  This limits how far ahead we can read
 	 * in the WAL.
 	 */
-	XLogReaderSetDecodeBuffer(xlogreader, NULL, wal_decode_buffer_size);
+	XLogReaderSetDecodeBuffer(xlogreader, NULL, wal_decode_buffer_size); /// 这是一个可以配置的参数
 
 	/* Create a WAL prefetcher. */
 	xlogprefetcher = XLogPrefetcherAllocate(xlogreader);
@@ -646,7 +646,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 			 * backup_label around that references a WAL segment that's
 			 * already been archived.
 			 */
-			if (checkPoint.redo < CheckPointLoc)
+			if (checkPoint.redo < CheckPointLoc) /// 如果重做点小于检查点，读取从重做点开始的WAL记录
 			{
 				XLogPrefetcherBeginRead(xlogprefetcher, checkPoint.redo);
 				if (!ReadRecord(xlogprefetcher, LOG, false,
@@ -764,7 +764,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 		}
 
 		/* Get the last valid checkpoint record. */
-		CheckPointLoc = ControlFile->checkPoint;
+		CheckPointLoc = ControlFile->checkPoint; /// 如果没有backup_label文件，就从控制文件中读取信息
 		CheckPointTLI = ControlFile->checkPointCopy.ThisTimeLineID;
 		RedoStartLSN = ControlFile->checkPointCopy.redo;
 		RedoStartTLI = ControlFile->checkPointCopy.ThisTimeLineID;
@@ -893,7 +893,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	{
 		if (InArchiveRecovery)
 		{
-			ControlFile->state = DB_IN_ARCHIVE_RECOVERY;
+			ControlFile->state = DB_IN_ARCHIVE_RECOVERY; /// 修改控制文件中的状态
 		}
 		else
 		{
@@ -1636,7 +1636,7 @@ PerformWalRecovery(void) // 执行恢复工作
 	 * Find the first record that logically follows the checkpoint --- it
 	 * might physically precede it, though.
 	 */
-	if (RedoStartLSN < CheckPointLoc)
+	if (RedoStartLSN < CheckPointLoc) /// 读取重做点的WAL记录，它可以是任意类型的WAL记录
 	{
 		/* back up to find the record */
 		replayTLI = RedoStartTLI;
@@ -1660,7 +1660,7 @@ PerformWalRecovery(void) // 执行恢复工作
 
 		InRedo = true;
 
-		RmgrStartup();
+		RmgrStartup(); /// 启动资源管理器
 
 		ereport(LOG,
 				(errmsg("redo starts at %X/%X",
@@ -1673,7 +1673,7 @@ PerformWalRecovery(void) // 执行恢复工作
 		/*
 		 * main redo apply loop
 		 */
-		do
+		do  /// 不停地读取WAL记录进行回放，直至读不到WAL记录为止
 		{
 			if (!StandbyMode)
 				ereport_startup_progress("redo in progress, elapsed time: %ld.%02d s, current LSN: %X/%X",
@@ -1757,7 +1757,7 @@ PerformWalRecovery(void) // 执行恢复工作
 			}
 
 			/* Else, try to fetch the next WAL record */
-			record = ReadRecord(xlogprefetcher, LOG, false, replayTLI);
+			record = ReadRecord(xlogprefetcher, LOG, false, replayTLI); /// 读取下一个WAL记录
 		} while (record != NULL);
 
 		/*
@@ -3049,7 +3049,7 @@ ConfirmRecoveryPaused(void)
  */
 static XLogRecord *
 ReadRecord(XLogPrefetcher *xlogprefetcher, int emode,
-		   bool fetching_ckpt, TimeLineID replayTLI)
+		   bool fetching_ckpt, TimeLineID replayTLI) /// 读取下一个WAL记录
 {
 	XLogRecord *record;
 	XLogReaderState *xlogreader = XLogPrefetcherGetReader(xlogprefetcher);
@@ -3555,7 +3555,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					startWalReceiver = true;
 					break;
 
-				case XLOG_FROM_STREAM:
+				case XLOG_FROM_STREAM: /// 从网络获取WAL记录
 
 					/*
 					 * Failure while streaming. Most likely, we got here
@@ -3583,7 +3583,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 * walreceiver is not active, so that it won't overwrite
 					 * WAL that we restore from archive.
 					 */
-					XLogShutdownWalRcv();
+					XLogShutdownWalRcv(); /// 恢复进程通过kill往walreceiver进程发送终止信号： kill(walrcvpid, SIGTERM)
 
 					/*
 					 * Before we sleep, re-scan for possible new timelines if
@@ -4381,7 +4381,7 @@ RemovePromoteSignalFiles(void)
  * Check to see if a promote request has arrived.
  */
 bool
-CheckPromoteSignal(void)
+CheckPromoteSignal(void) /// #define PROMOTE_SIGNAL_FILE		"promote"
 {
 	struct stat stat_buf;
 

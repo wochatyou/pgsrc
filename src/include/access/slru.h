@@ -76,7 +76,7 @@ typedef struct SlruSharedData
 	 * highest LSN known for a contiguous group of SLRU entries on that slot's
 	 * page.
 	 */
-	XLogRecPtr *group_lsn;
+	XLogRecPtr *group_lsn; /// LSN的数组
 	int			lsn_groups_per_page;
 
 	/*----------

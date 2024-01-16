@@ -69,11 +69,11 @@ RestoreArchivedFile(char *path, const char *xlogfname,
 	 * Ignore restore_command when not in archive recovery (meaning we are in
 	 * crash recovery).
 	 */
-	if (!ArchiveRecoveryRequested)
+	if (!ArchiveRecoveryRequested) /// 如果我们不处于归档恢复模式，就啥也不做，直接返回
 		goto not_available;
 
 	/* In standby mode, restore_command might not be supplied */
-	if (recoveryRestoreCommand == NULL || strcmp(recoveryRestoreCommand, "") == 0)
+	if (recoveryRestoreCommand == NULL || strcmp(recoveryRestoreCommand, "") == 0) /// 如果没有提供恢复命令，啥也不做
 		goto not_available;
 
 	/*
@@ -106,15 +106,15 @@ RestoreArchivedFile(char *path, const char *xlogfname,
 	 */
 	if (stat(xlogpath, &stat_buf) != 0)
 	{
-		if (errno != ENOENT)
+		if (errno != ENOENT) /// ENOENT表示文件不存在，这是正常的情况，跳过。其它情况报错
 			ereport(FATAL,
 					(errcode_for_file_access(),
 					 errmsg("could not stat file \"%s\": %m",
 							xlogpath)));
 	}
-	else
+	else /// 在pg_wal目录下有这个文件
 	{
-		if (unlink(xlogpath) != 0)
+		if (unlink(xlogpath) != 0) /// 删除这个文件
 			ereport(FATAL,
 					(errcode_for_file_access(),
 					 errmsg("could not remove file \"%s\": %m",
@@ -175,22 +175,22 @@ RestoreArchivedFile(char *path, const char *xlogfname,
 	/*
 	 * Copy xlog from archival storage to XLOGDIR
 	 */
-	rc = system(xlogRestoreCmd);
+	rc = system(xlogRestoreCmd); /// 执行恢复命令，把WAL文件从归档目录拷贝到pg_wal中
 
 	PostRestoreCommand();
 
 	pgstat_report_wait_end();
 	pfree(xlogRestoreCmd);
 
-	if (rc == 0)
+	if (rc == 0) /// 拷贝成功了
 	{
 		/*
 		 * command apparently succeeded, but let's make sure the file is
 		 * really there now and has the correct size.
 		 */
-		if (stat(xlogpath, &stat_buf) == 0)
+		if (stat(xlogpath, &stat_buf) == 0) /// 检查这个文件在pg_wal中存在
 		{
-			if (expectedSize > 0 && stat_buf.st_size != expectedSize)
+			if (expectedSize > 0 && stat_buf.st_size != expectedSize) /// 对比期望的尺寸是否一致
 			{
 				int			elevel;
 
@@ -209,7 +209,7 @@ RestoreArchivedFile(char *path, const char *xlogfname,
 				if (StandbyMode && stat_buf.st_size < expectedSize)
 					elevel = DEBUG1;
 				else
-					elevel = FATAL;
+					elevel = FATAL; /// 拷贝的文件比期望的大，肯定是错了
 				ereport(elevel,
 						(errmsg("archive file \"%s\" has wrong size: %lld instead of %lld",
 								xlogfname,
@@ -328,7 +328,7 @@ ExecuteRecoveryCommand(const char *command, const char *commandName,
 	 */
 	fflush(NULL);
 	pgstat_report_wait_start(wait_event_info);
-	rc = system(xlogRecoveryCmd);
+	rc = system(xlogRecoveryCmd); /// 调用system()系统调用来执行恢复工作
 	pgstat_report_wait_end();
 
 	pfree(xlogRecoveryCmd);
@@ -383,7 +383,7 @@ KeepFileRestoredFromArchive(const char *path, const char *xlogfname)
 		 */
 		snprintf(oldpath, MAXPGPATH, "%s.deleted%u",
 				 xlogfpath, deletedcounter++);
-		if (rename(xlogfpath, oldpath) != 0)
+		if (rename(xlogfpath, oldpath) != 0) /// 改名字
 		{
 			ereport(ERROR,
 					(errcode_for_file_access(),
@@ -442,7 +442,7 @@ KeepFileRestoredFromArchive(const char *path, const char *xlogfname)
  * then when complete, rename it to 0000000100000001000000C6.done
  */
 void
-XLogArchiveNotify(const char *xlog)
+XLogArchiveNotify(const char *xlog) /// 创建归档通知文件，供归档进程使用，类似touch命令，入口参数xlog就是WAL文件的文件名
 {
 	char		archiveStatusPath[MAXPGPATH];
 	FILE	   *fd;
@@ -483,7 +483,7 @@ XLogArchiveNotify(const char *xlog)
 
 	/* Notify archiver that it's got something to do */
 	if (IsUnderPostmaster)
-		PgArchWakeup();
+		PgArchWakeup(); /// 通知归档进程，就是把归档进程沉睡的事件Set一下
 }
 
 /*
@@ -496,8 +496,8 @@ XLogArchiveNotifySeg(XLogSegNo segno, TimeLineID tli)
 
 	Assert(tli != 0);
 
-	XLogFileName(xlog, tli, segno, wal_segment_size);
-	XLogArchiveNotify(xlog);
+	XLogFileName(xlog, tli, segno, wal_segment_size); /// 形成WAL文件的文件名
+	XLogArchiveNotify(xlog); /// 就是创建xxxx.ready的信号文件，并唤醒归档进程
 }
 
 /*
@@ -508,7 +508,7 @@ XLogArchiveNotifySeg(XLogSegNo segno, TimeLineID tli)
  * exists or not.
  */
 void
-XLogArchiveForceDone(const char *xlog)
+XLogArchiveForceDone(const char *xlog) /// 就是创建一个done文件
 {
 	char		archiveReady[MAXPGPATH];
 	char		archiveDone[MAXPGPATH];
@@ -517,11 +517,11 @@ XLogArchiveForceDone(const char *xlog)
 
 	/* Exit if already known done */
 	StatusFilePath(archiveDone, xlog, ".done");
-	if (stat(archiveDone, &stat_buf) == 0)
+	if (stat(archiveDone, &stat_buf) == 0) /// 如果done文件已经存在了，就啥也不做
 		return;
 
 	/* If .ready exists, rename it to .done */
-	StatusFilePath(archiveReady, xlog, ".ready");
+	StatusFilePath(archiveReady, xlog, ".ready"); /// 把.ready文件改名为done文件
 	if (stat(archiveReady, &stat_buf) == 0)
 	{
 		(void) durable_rename(archiveReady, archiveDone, WARNING);
@@ -529,7 +529,7 @@ XLogArchiveForceDone(const char *xlog)
 	}
 
 	/* insert an otherwise empty file called <XLOG>.done */
-	fd = AllocateFile(archiveDone, "w");
+	fd = AllocateFile(archiveDone, "w"); /// .ready文件不存在，也会创建done文件
 	if (fd == NULL)
 	{
 		ereport(LOG,
@@ -563,13 +563,13 @@ XLogArchiveForceDone(const char *xlog)
  * create <XLOG>.ready fails, we'll retry during subsequent checkpoints.
  */
 bool
-XLogArchiveCheckDone(const char *xlog)
+XLogArchiveCheckDone(const char *xlog) /// 如果done文件存在，返回true。否则，如果ready文件存在返回false，否则创建ready文件，返回false
 {
 	char		archiveStatusPath[MAXPGPATH];
 	struct stat stat_buf;
 
 	/* The file is always deletable if archive_mode is "off". */
-	if (!XLogArchivingActive())
+	if (!XLogArchivingActive()) /// 如果不是归档模式
 		return true;
 
 	/*
@@ -602,7 +602,7 @@ XLogArchiveCheckDone(const char *xlog)
 		return true;
 
 	/* Retry creation of the .ready file */
-	XLogArchiveNotify(xlog);
+	XLogArchiveNotify(xlog); /// 创建ready文件，并通知归档进程
 	return false;
 }
 
@@ -678,7 +678,7 @@ XLogArchiveIsReadyOrDone(const char *xlog)
 		return true;
 
 	/* Race condition --- maybe archiver just finished, so recheck */
-	StatusFilePath(archiveStatusPath, xlog, ".done");
+	StatusFilePath(archiveStatusPath, xlog, ".done"); /// 再次检查
 	if (stat(archiveStatusPath, &stat_buf) == 0)
 		return true;
 
@@ -692,7 +692,7 @@ XLogArchiveIsReadyOrDone(const char *xlog)
  * file.
  */
 bool
-XLogArchiveIsReady(const char *xlog)
+XLogArchiveIsReady(const char *xlog) /// ready文件存在。因为创建ready文件后就立刻通知了归档进程，现在ready文件依然存在，说明归档进程正在忙
 {
 	char		archiveStatusPath[MAXPGPATH];
 	struct stat stat_buf;
@@ -710,7 +710,7 @@ XLogArchiveIsReady(const char *xlog)
  * Cleanup archive notification file(s) for a particular xlog segment
  */
 void
-XLogArchiveCleanup(const char *xlog)
+XLogArchiveCleanup(const char *xlog) /// 删除ready和done文件
 {
 	char		archiveStatusPath[MAXPGPATH];
 

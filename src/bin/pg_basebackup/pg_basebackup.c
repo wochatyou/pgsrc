@@ -449,7 +449,7 @@ usage(void)
  */
 static bool
 reached_end_position(XLogRecPtr segendpos, uint32 timeline,
-					 bool segment_finished)
+					 bool segment_finished) /// 回调函数，用于确定是否终止WAL记录的获取
 {
 	if (!has_xlogendptr)
 	{
@@ -531,7 +531,7 @@ typedef struct
 } logstreamer_param;
 
 static int
-LogStreamerMain(logstreamer_param *param)
+LogStreamerMain(logstreamer_param *param) /// 子进程的入口函数
 {
 	StreamCtl	stream = {0};
 
@@ -604,7 +604,7 @@ LogStreamerMain(logstreamer_param *param)
 static void
 StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 				 pg_compress_algorithm wal_compress_algorithm,
-				 int wal_compress_level)
+				 int wal_compress_level) /// 单独开设一个进程接受WAL记录
 {
 	logstreamer_param *param;
 	uint32		hi,
@@ -621,7 +621,7 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 	if (sscanf(startpos, "%X/%X", &hi, &lo) != 2)
 		pg_fatal("could not parse write-ahead log location \"%s\"",
 				 startpos);
-	param->startptr = ((uint64) hi) << 32 | lo;
+	param->startptr = ((uint64) hi) << 32 | lo; /// 开始的LSN
 	/* Round off to even segment position */
 	param->startptr -= XLogSegmentOffset(param->startptr, WalSegSz);
 
@@ -696,7 +696,7 @@ StartLogStreamer(char *startpos, uint32 timeline, char *sysidentifier,
 	if (bgchild == 0)
 	{
 		/* in child process */
-		exit(LogStreamerMain(param));
+		exit(LogStreamerMain(param)); /// 子进程里面
 	}
 	else if (bgchild < 0)
 		pg_fatal("could not create background process: %m");
@@ -1752,7 +1752,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	 */
 	minServerMajor = 901;
 	maxServerMajor = PG_VERSION_NUM / 100;
-	serverVersion = PQserverVersion(conn);
+	serverVersion = PQserverVersion(conn); /// 获取数据库的版本
 	serverMajor = serverVersion / 100;
 	if (serverMajor < minServerMajor || serverMajor > maxServerMajor)
 	{
@@ -1898,7 +1898,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	else
 		basebkp = psprintf("BASE_BACKUP %s", buf.data);
 
-	if (PQsendQuery(conn, basebkp) == 0)
+	if (PQsendQuery(conn, basebkp) == 0) /// 开始执行BASE_BACKUP的命令
 		pg_fatal("could not send replication command \"%s\": %s",
 				 "BASE_BACKUP", PQerrorMessage(conn));
 
@@ -1991,7 +1991,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 	 * If we're streaming WAL, start the streaming session before we start
 	 * receiving the actual data chunks.
 	 */
-	if (includewal == STREAM_WAL)
+	if (includewal == STREAM_WAL) /// 单独开设一个进程接受WAL文件
 	{
 		pg_compress_algorithm wal_compress_algorithm;
 		int			wal_compress_level;
@@ -2086,7 +2086,7 @@ BaseBackup(char *compression_algorithm, char *compression_detail,
 		pg_fatal("no write-ahead log end position returned from server");
 	strlcpy(xlogend, PQgetvalue(res, 0, 0), sizeof(xlogend));
 	if (verbose && includewal != NO_WAL)
-		pg_log_info("write-ahead log end point: %s", xlogend);
+		pg_log_info("write-ahead log end point: %s", xlogend); /// xlogend是BACKUP_END的WAL记录
 	PQclear(res);
 
 	res = PQgetResult(conn);
@@ -2721,7 +2721,7 @@ main(int argc, char **argv)
 	umask(pg_mode_mask);
 
 	/* Backup manifests are supported in 13 and newer versions */
-	if (PQserverVersion(conn) < MINIMUM_VERSION_FOR_MANIFESTS)
+	if (PQserverVersion(conn) < MINIMUM_VERSION_FOR_MANIFESTS) /// 检查数据库的版本
 		manifest = false;
 
 	/*
@@ -2756,7 +2756,7 @@ main(int argc, char **argv)
 		free(linkloc);
 	}
 
-	BaseBackup(compression_algorithm, compression_detail, compressloc,
+	BaseBackup(compression_algorithm, compression_detail, compressloc, /// 干活的主函数
 			   &client_compress);
 
 	success = true;

@@ -26,12 +26,12 @@
  * Returns the result generated as a palloc'd string.
  */
 char *
-build_backup_content(BackupState *state, bool ishistoryfile)
+build_backup_content(BackupState *state, bool ishistoryfile) /// 根据ishistoryfile来决定创建history文件还是backup_label文件
 {
 	char		startstrbuf[128];
 	char		startxlogfile[MAXFNAMELEN]; /* backup start WAL file */
 	XLogSegNo	startsegno;
-	StringInfo	result = makeStringInfo();
+	StringInfo	result = makeStringInfo(); /// 分配了两块内存
 	char	   *data;
 
 	Assert(state != NULL);
@@ -45,7 +45,7 @@ build_backup_content(BackupState *state, bool ishistoryfile)
 	appendStringInfo(result, "START WAL LOCATION: %X/%X (file %s)\n",
 					 LSN_FORMAT_ARGS(state->startpoint), startxlogfile);
 
-	if (ishistoryfile)
+	if (ishistoryfile) /// 如果是创建历史文件，就增加备份终点这些内容
 	{
 		char		stopxlogfile[MAXFNAMELEN];	/* backup stop WAL file */
 		XLogSegNo	stopsegno;
@@ -78,7 +78,7 @@ build_backup_content(BackupState *state, bool ishistoryfile)
 	}
 
 	data = result->data;
-	pfree(result);
+	pfree(result); /// makeStringInfo分配了两块内存，我们只需要data，释放掉第一块内存
 
 	return data;
 }

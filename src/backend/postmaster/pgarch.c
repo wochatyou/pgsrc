@@ -264,7 +264,7 @@ PgArchiverMain(void)
  * Wake up the archiver
  */
 void
-PgArchWakeup(void)
+PgArchWakeup(void) /// 通过SetLatch来唤醒归档进程
 {
 	int			arch_pgprocno = PgArch->pgprocno;
 
@@ -275,7 +275,7 @@ PgArchWakeup(void)
 	 * be relaunched shortly and will start archiving.
 	 */
 	if (arch_pgprocno != INVALID_PGPROCNO)
-		SetLatch(&ProcGlobal->allProcs[arch_pgprocno].procLatch);
+		SetLatch(&ProcGlobal->allProcs[arch_pgprocno].procLatch); /// ProcGlobal是一个共享内存数据结构
 }
 
 

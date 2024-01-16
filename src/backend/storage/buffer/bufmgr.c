@@ -3518,7 +3518,7 @@ RelationGetNumberOfBlocksInFork(Relation relation, ForkNumber forkNum) // 获得
  *		a crash.  Caller must hold a buffer pin.
  */
 bool
-BufferIsPermanent(Buffer buffer)
+BufferIsPermanent(Buffer buffer) /// 读取页头的BM_PERMANENT比特位
 {
 	BufferDesc *bufHdr;
 
@@ -3538,7 +3538,7 @@ BufferIsPermanent(Buffer buffer)
 	 * not random garbage.
 	 */
 	bufHdr = GetBufferDescriptor(buffer - 1);
-	return (pg_atomic_read_u32(&bufHdr->state) & BM_PERMANENT) != 0;
+	return (pg_atomic_read_u32(&bufHdr->state) & BM_PERMANENT) != 0; /// 原子读写，读的是老值或者新值，不会是垃圾
 }
 
 /*
@@ -3558,7 +3558,7 @@ BufferGetLSNAtomic(Buffer buffer)
 	/*
 	 * If we don't need locking for correctness, fastpath out.
 	 */
-	if (!XLogHintBitIsNeeded() || BufferIsLocal(buffer))
+	if (!XLogHintBitIsNeeded() || BufferIsLocal(buffer)) /// 编号小于0的数据页是local的
 		return PageGetLSN(page);
 
 	/* Make sure we've got a real buffer, and that we hold a pin on it. */

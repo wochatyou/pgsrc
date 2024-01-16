@@ -153,7 +153,7 @@ pg_backup_stop(PG_FUNCTION_ARGS)
 	do_pg_backup_stop(backup_state, waitforarchive);
 
 	/* Build the contents of backup_label */
-	backup_label = build_backup_content(backup_state, false);
+	backup_label = build_backup_content(backup_state, false); /// 构建backup_label的内容
 
 	values[0] = LSNGetDatum(backup_state->stoppoint);
 	values[1] = CStringGetTextDatum(backup_label);
@@ -189,7 +189,7 @@ pg_switch_wal(PG_FUNCTION_ARGS)
 				 errmsg("recovery is in progress"),
 				 errhint("WAL control functions cannot be executed during recovery.")));
 
-	switchpoint = RequestXLogSwitch(false);
+	switchpoint = RequestXLogSwitch(false); /// 切换WAL文件
 
 	/*
 	 * As a convenience, return the WAL location of the switch record

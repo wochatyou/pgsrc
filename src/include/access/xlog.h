@@ -112,7 +112,7 @@ extern PGDLLIMPORT int wal_level;
  * of the bits make it to disk, but the checksum wouldn't match.  Also WAL-log
  * them if forced by wal_log_hints=on.
  */
-#define XLogHintBitIsNeeded() (DataChecksumsEnabled() || wal_log_hints)
+#define XLogHintBitIsNeeded() (DataChecksumsEnabled() || wal_log_hints) /// 检查控制文件中的checksum状态，或者设置了wal_log_hints
 
 /* Do we need to WAL-log information required only for Hot Standby and logical replication? */
 #define XLogStandbyInfoActive() (wal_level >= WAL_LEVEL_REPLICA)

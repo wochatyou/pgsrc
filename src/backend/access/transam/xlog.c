@@ -740,7 +740,7 @@ XLogInsertRecord(XLogRecData *rdata,
 	XLogRecord *rechdr = (XLogRecord *) rdata->data;
 	uint8		info = rechdr->xl_info & ~XLR_INFO_MASK;
 	bool		isLogSwitch = (rechdr->xl_rmid == RM_XLOG_ID &&
-							   info == XLOG_SWITCH);
+							   info == XLOG_SWITCH); /// 是不是切换WAL文件，这个特殊对待
 	XLogRecPtr	StartPos;
 	XLogRecPtr	EndPos;
 	bool		prevDoPageWrites = doPageWrites;
@@ -2839,7 +2839,7 @@ XLogBackgroundFlush(void) // 这个函数由WAL写进程walwriter周期性地执
  * is already in process of flushing that far, however.)
  */
 bool
-XLogNeedsFlush(XLogRecPtr record)
+XLogNeedsFlush(XLogRecPtr record) /// 该LSN是否需要被flush，true表示需要，false表示不需要
 {
 	/*
 	 * During recovery, we don't flush WAL but update minRecoveryPoint
@@ -2889,13 +2889,13 @@ XLogNeedsFlush(XLogRecPtr record)
 	}
 
 	/* Quick exit if already known flushed */
-	if (record <= LogwrtResult.Flush)
+	if (record <= LogwrtResult.Flush) /// 如果该LSN小于LogwrtResult.Flush，表明已经被flush了，无需再flush，返回false
 		return false;
 
 	/* read LogwrtResult and update local state */
 	SpinLockAcquire(&XLogCtl->info_lck);
 	LogwrtResult = XLogCtl->LogwrtResult;
-	SpinLockRelease(&XLogCtl->info_lck);
+	SpinLockRelease(&XLogCtl->info_lck); /// 重新获取最后被flush的LSN，再进行判断
 
 	/* check again */
 	if (record <= LogwrtResult.Flush)
@@ -4197,7 +4197,7 @@ GetMockAuthenticationNonce(void)
  * Are checksums enabled for data pages?
  */
 bool
-DataChecksumsEnabled(void)
+DataChecksumsEnabled(void) /// 就是检查控制文件中checksum的状态
 {
 	Assert(ControlFile != NULL);
 	return (ControlFile->data_checksum_version > 0);
@@ -5227,7 +5227,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 	 * timestamps done when the setting was disabled.  This facility can be
 	 * started or stopped when replaying a XLOG_PARAMETER_CHANGE record.
 	 */
-	if (ControlFile->track_commit_timestamp)
+	if (ControlFile->track_commit_timestamp) /// 跟踪提交的时间戳
 		StartupCommitTs();
 
 	/*
@@ -5243,7 +5243,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 	if (ControlFile->state == DB_SHUTDOWNED)
 		XLogCtl->unloggedLSN = ControlFile->unloggedLSN;
 	else
-		XLogCtl->unloggedLSN = FirstNormalUnloggedLSN;
+		XLogCtl->unloggedLSN = FirstNormalUnloggedLSN; /// #define FirstNormalUnloggedLSN	((XLogRecPtr) 1000)
 
 	/*
 	 * Copy any missing timeline history files between 'now' and the recovery
@@ -5449,7 +5449,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 		performedWalRecovery = true;
 	}
 	else
-		performedWalRecovery = false;
+		performedWalRecovery = false; /// 如果是干净地关闭，就啥也不做
 
 	/*
 	 * Finish WAL recovery.
@@ -5818,7 +5818,7 @@ SwitchIntoArchiveRecovery(XLogRecPtr EndRecPtr, TimeLineID replayTLI) // 从崩�
 	 */
 	updateMinRecoveryPoint = true;
 
-	UpdateControlFile();
+	UpdateControlFile(); /// 更新控制文件
 
 	/*
 	 * We update SharedRecoveryState while holding the lock on ControlFileLock
@@ -7544,7 +7544,7 @@ XLogPutNextOid(Oid nextOid)
  * write a switch record because we are already at segment start.
  */
 XLogRecPtr
-RequestXLogSwitch(bool mark_unimportant)
+RequestXLogSwitch(bool mark_unimportant) /// 插入XLOG_SWITCH的WAL记录
 {
 	XLogRecPtr	RecPtr;
 
@@ -7553,7 +7553,7 @@ RequestXLogSwitch(bool mark_unimportant)
 
 	if (mark_unimportant)
 		XLogSetRecordFlags(XLOG_MARK_UNIMPORTANT);
-	RecPtr = XLogInsert(RM_XLOG_ID, XLOG_SWITCH);
+	RecPtr = XLogInsert(RM_XLOG_ID, XLOG_SWITCH); /// 这这里执行真正的WAL文件的切换？
 
 	return RecPtr;
 }
@@ -8274,7 +8274,7 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 {
 	bool		backup_started_in_recovery;
 
-	Assert(state != NULL);
+	Assert(state != NULL); /// BackupState是一个很简单的数据结构，这里提前分配好了内存
 	backup_started_in_recovery = RecoveryInProgress(); // 判断是否在备库上做备份
 
 	/*
@@ -8391,7 +8391,7 @@ do_pg_backup_start(const char *backupidstr, bool fast, List **tablespaces,
 			 */
 			LWLockAcquire(ControlFileLock, LW_SHARED);  // 检查点执行完毕后，记录一下重做点，是否全页写等信息
 			state->checkpointloc = ControlFile->checkPoint;
-			state->startpoint = ControlFile->checkPointCopy.redo;
+			state->startpoint = ControlFile->checkPointCopy.redo; /// backup_label文件的起点位置就是redo
 			state->starttli = ControlFile->checkPointCopy.ThisTimeLineID;
 			checkpointfpw = ControlFile->checkPointCopy.fullPageWrites;
 			LWLockRelease(ControlFileLock);
@@ -8605,7 +8605,7 @@ do_pg_backup_stop(BackupState *state, bool waitforarchive) // 备份停止的函
 	 * During recovery, we don't need to check WAL level. Because, if WAL
 	 * level is not sufficient, it's impossible to get here during recovery.
 	 */
-	if (!backup_stopped_in_recovery && !XLogIsNeeded())
+	if (!backup_stopped_in_recovery && !XLogIsNeeded()) /// 就是(wal_level >= WAL_LEVEL_REPLICA)
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("WAL level not sufficient for making an online backup"),
@@ -8704,11 +8704,11 @@ do_pg_backup_stop(BackupState *state, bool waitforarchive) // 备份停止的函
 
 
 		LWLockAcquire(ControlFileLock, LW_SHARED);
-		state->stoppoint = ControlFile->minRecoveryPoint;
+		state->stoppoint = ControlFile->minRecoveryPoint;   /// 备库上做的话，备份终点就是minRecoveryPoint。
 		state->stoptli = ControlFile->minRecoveryPointTLI;
 		LWLockRelease(ControlFileLock);
 	}
-	else
+	else /// 在主库上做的备份
 	{
 		char	   *history_file;
 
@@ -8942,7 +8942,7 @@ GetOldestRestartPoint(XLogRecPtr *oldrecptr, TimeLineID *oldtli)
 void
 XLogShutdownWalRcv(void)
 {
-	ShutdownWalRcv();
+	ShutdownWalRcv(); /// 恢复进程通过kill往walreceiver进程发送终止信号
 
 	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
 	XLogCtl->InstallXLogFileSegmentActive = false;

@@ -653,7 +653,7 @@ TransactionIdGetStatus(TransactionId xid, XLogRecPtr *lsn)
 	status = (*byteptr >> bshift) & CLOG_XACT_BITMASK;
 
 	lsnindex = GetLSNIndex(slotno, xid);
-	*lsn = XactCtl->shared->group_lsn[lsnindex];
+	*lsn = XactCtl->shared->group_lsn[lsnindex]; /// LSN保存在这里
 
 	LWLockRelease(XactSLRULock);
 

@@ -1191,8 +1191,8 @@ do_start_worker(void) // 这个函数是AVL进程执行的。
 	 * pass without forcing a vacuum.  (This limit can be tightened for
 	 * particular tables, but not loosened.)
 	 */
-	recentXid = ReadNextTransactionId();
-	xidForceLimit = recentXid - autovacuum_freeze_max_age;  // 这是触发AV的条件
+	recentXid = ReadNextTransactionId(); // 获得下一个事务号
+	xidForceLimit = recentXid - autovacuum_freeze_max_age;  // 这是触发AV的条件，确定冻结的标准
 	/* ensure it's a "normal" XID, else TransactionIdPrecedes misbehaves */
 	/* this can cause the limit to go backwards by 3, but that's OK */
 	if (xidForceLimit < FirstNormalTransactionId)  // TransactionId是无符号32位整型，最小值是0 - typedef uint32 TransactionId;
@@ -1414,7 +1414,7 @@ launch_worker(TimestampTz now)
  * after calling this function.
  */
 void
-AutoVacWorkerFailed(void)
+AutoVacWorkerFailed(void) // 主进程执行这个函数，标记一下启动worker进程失败
 {
 	AutoVacuumShmem->av_signal[AutoVacForkFailed] = true;
 }

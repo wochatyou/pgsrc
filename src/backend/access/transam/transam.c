@@ -379,7 +379,7 @@ TransactionIdLatest(TransactionId mainxid,
  * the same group.
  */
 XLogRecPtr
-TransactionIdGetCommitLSN(TransactionId xid)
+TransactionIdGetCommitLSN(TransactionId xid) /// 根据事务号，返回提交WAL记录或者更后的LSN
 {
 	XLogRecPtr	result;
 
