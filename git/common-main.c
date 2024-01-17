@@ -28,7 +28,7 @@ static void restore_sigpipe_to_default(void)
 	signal(SIGPIPE, SIG_DFL);
 }
 
-int main(int argc, const char **argv)
+int main(int argc, const char **argv)  /// 主函数入口
 {
 	int result;
 	struct strbuf tmp = STRBUF_INIT;
@@ -59,7 +59,7 @@ int main(int argc, const char **argv)
 	if (!strbuf_getcwd(&tmp))
 		tmp_original_cwd = strbuf_detach(&tmp, NULL);
 
-	result = cmd_main(argc, argv);
+	result = cmd_main(argc, argv); /// 这是真正的主程序
 
 	/* Not exit(3), but a wrapper calling our common_exit() */
 	exit(result);

@@ -858,7 +858,7 @@ static int run_argv(int *argcp, const char ***argv)
 	return done_alias;
 }
 
-int cmd_main(int argc, const char **argv)
+int cmd_main(int argc, const char **argv) /// 主程序入口
 {
 	const char *cmd;
 	int done_help = 0;

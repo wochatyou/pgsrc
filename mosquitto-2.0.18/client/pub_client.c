@@ -233,7 +233,7 @@ int pub_shared_init(void)
 }
 
 
-static int pub_stdin_line_loop(struct mosquitto *mosq)
+static int pub_stdin_line_loop(struct mosquitto *mosq) /// 主要做的工作
 {
 	char *buf2;
 	int buf_len_actual = 0;
