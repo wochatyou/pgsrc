@@ -145,15 +145,16 @@ static void mosquitto__daemonise(void)
 	char *err;
 	pid_t pid;
 
-	pid = fork();
+	pid = fork(); /// 调用fork()系统调用产生子进程
 	if(pid < 0){
 		err = strerror(errno);
 		log__printf(NULL, MOSQ_LOG_ERR, "Error in fork: %s", err);
 		exit(1);
 	}
-	if(pid > 0){
+	if(pid > 0){ ///现在是父进程，直接退出了
 		exit(0);
 	}
+	/// 后面的代码就在子进程中运行
 	if(setsid() < 0){
 		err = strerror(errno);
 		log__printf(NULL, MOSQ_LOG_ERR, "Error in setsid: %s", err);
@@ -191,7 +192,7 @@ void listener__set_defaults(struct mosquitto__listener *listener)
 
 void listeners__reload_all_certificates(void)
 {
-#ifdef WITH_TLS
+#ifdef WITH_TLS /// 跳过，不考虑SSL
 	int i;
 	int rc;
 	struct mosquitto__listener *listener;

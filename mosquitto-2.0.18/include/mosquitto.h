@@ -174,11 +174,11 @@ enum mosq_opt_t {
  */
 struct mosquitto_message{
 	int mid;
-	char *topic;
-	void *payload;
-	int payloadlen;
-	int qos;
-	bool retain;
+	char *topic; /// 发布的主题
+	void *payload;  /// 发送的消息包
+	int payloadlen; /// 发送的消息包的长度
+	int qos; /// 消息包的优先级
+	bool retain; /// 保留消息
 };
 
 struct mosquitto;
@@ -245,7 +245,7 @@ typedef struct mqtt5__property mosquitto_property;
  * See Also:
  * 	<mosquitto_lib_cleanup>, <mosquitto_lib_init>
  */
-libmosq_EXPORT int mosquitto_lib_version(int *major, int *minor, int *revision);
+libmosq_EXPORT int mosquitto_lib_version(int *major, int *minor, int *revision); /// 库的版本
 
 /*
  * Function: mosquitto_lib_init
@@ -261,7 +261,7 @@ libmosq_EXPORT int mosquitto_lib_version(int *major, int *minor, int *revision);
  * See Also:
  * 	<mosquitto_lib_cleanup>, <mosquitto_lib_version>
  */
-libmosq_EXPORT int mosquitto_lib_init(void);
+libmosq_EXPORT int mosquitto_lib_init(void); /// 第一个被调用的函数，初始化库，就是初始化socket
 
 /*
  * Function: mosquitto_lib_cleanup
@@ -274,7 +274,7 @@ libmosq_EXPORT int mosquitto_lib_init(void);
  * See Also:
  * 	<mosquitto_lib_init>, <mosquitto_lib_version>
  */
-libmosq_EXPORT int mosquitto_lib_cleanup(void);
+libmosq_EXPORT int mosquitto_lib_cleanup(void); /// 释放库的资源，最后一个调用的函数
 
 
 /* ======================================================================
@@ -311,7 +311,7 @@ libmosq_EXPORT int mosquitto_lib_cleanup(void);
  * See Also:
  * 	<mosquitto_reinitialise>, <mosquitto_destroy>, <mosquitto_user_data_set>
  */
-libmosq_EXPORT struct mosquitto *mosquitto_new(const char *id, bool clean_session, void *obj);
+libmosq_EXPORT struct mosquitto *mosquitto_new(const char *id, bool clean_session, void *obj); /// obj是用户自定的数据的指针，会传递到回调函数中
 
 /*
  * Function: mosquitto_destroy

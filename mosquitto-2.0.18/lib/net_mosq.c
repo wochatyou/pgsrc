@@ -128,7 +128,7 @@ UI_METHOD *net__get_ui_method(void)
 
 #endif
 
-int net__init(void)
+int net__init(void) /// 就是调用Windows socket的初始化
 {
 #ifdef WIN32
 	WSADATA wsaData;
@@ -144,7 +144,7 @@ int net__init(void)
 	return MOSQ_ERR_SUCCESS;
 }
 
-void net__cleanup(void)
+void net__cleanup(void) /// 就是调用WSACleanup();
 {
 #ifdef WITH_TLS
 #  if OPENSSL_VERSION_NUMBER < 0x10100000L

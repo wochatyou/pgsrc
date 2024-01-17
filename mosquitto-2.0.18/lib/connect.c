@@ -93,6 +93,7 @@ int mosquitto_connect_bind(struct mosquitto *mosq, const char *host, int port, i
 	return mosquitto_connect_bind_v5(mosq, host, port, keepalive, bind_address, NULL);
 }
 
+/// 用户连接调用这个函数
 int mosquitto_connect_bind_v5(struct mosquitto *mosq, const char *host, int port, int keepalive, const char *bind_address, const mosquitto_property *properties)
 {
 	int rc;

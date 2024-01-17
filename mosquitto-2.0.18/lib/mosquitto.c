@@ -52,11 +52,12 @@ int mosquitto_lib_version(int *major, int *minor, int *revision)
 	return LIBMOSQUITTO_VERSION_NUMBER;
 }
 
-int mosquitto_lib_init(void)
+int mosquitto_lib_init(void) /// 库的初始化，调用net__init();
 {
 	int rc;
 
-	if (init_refcount == 0) {
+	if (init_refcount == 0) /// 第一次初始化
+	{
 #ifdef WIN32
 		srand((unsigned int)GetTickCount64());
 #elif _POSIX_TIMERS>0 && defined(_POSIX_MONOTONIC_CLOCK)
@@ -79,23 +80,25 @@ int mosquitto_lib_init(void)
 		srand(tv.tv_sec*1000 + tv.tv_usec/1000);
 #endif
 
-		rc = net__init();
+		rc = net__init(); /// 真正的初始化的工作在这里
 		if (rc != MOSQ_ERR_SUCCESS) {
 			return rc;
 		}
 	}
 
-	init_refcount++;
+	init_refcount++; /// 记录一下初始化的次数，下次再调用，仅仅是增加次数，并不会做什么真正的工作
 	return MOSQ_ERR_SUCCESS;
 }
 
 int mosquitto_lib_cleanup(void)
 {
-	if (init_refcount == 1) {
+	if (init_refcount == 1) /// 最后一次释放
+	{
 		net__cleanup();
 	}
 
-	if (init_refcount > 0) {
+	if (init_refcount > 0) /// 把计数器减一
+	{
 		--init_refcount;
 	}
 

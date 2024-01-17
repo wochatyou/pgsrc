@@ -67,9 +67,9 @@ struct mosquitto_client_msg;
 #endif
 
 #ifdef WIN32
-typedef SOCKET mosq_sock_t;
+typedef SOCKET mosq_sock_t; /// 如果是Windows平台就使用SOCKET
 #else
-typedef int mosq_sock_t;
+typedef int mosq_sock_t; /// Linux平台使用整型
 #endif
 
 #define SAFE_PRINT(A) (A)?(A):"null"

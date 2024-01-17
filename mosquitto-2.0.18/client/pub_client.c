@@ -394,7 +394,7 @@ static void print_version(void)
 	printf("mosquitto_pub version %s running on libmosquitto %d.%d.%d.\n", VERSION, major, minor, revision);
 }
 
-static void print_usage(void)
+static void print_usage(void) /// 显示用法
 {
 	int major, minor, revision;
 
@@ -512,12 +512,12 @@ static void print_usage(void)
 	printf("\nSee https://mosquitto.org/ for more information.\n\n");
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) /// 主程序入口
 {
 	struct mosquitto *mosq = NULL;
 	int rc;
 
-	mosquitto_lib_init();
+	mosquitto_lib_init(); /// 初始化，调用socket的初始化函数
 
 	if(pub_shared_init()) return 1;
 
@@ -579,8 +579,8 @@ int main(int argc, char *argv[])
 	if(cfg.debug){
 		mosquitto_log_callback_set(mosq, my_log_callback);
 	}
-	mosquitto_connect_v5_callback_set(mosq, my_connect_callback);
-	mosquitto_disconnect_v5_callback_set(mosq, my_disconnect_callback);
+	mosquitto_connect_v5_callback_set(mosq, my_connect_callback); /// 设置一下连接的回调函数
+	mosquitto_disconnect_v5_callback_set(mosq, my_disconnect_callback); /// 三个回调函数
 	mosquitto_publish_v5_callback_set(mosq, my_publish_callback);
 
 	if(client_opts_set(mosq, &cfg)){
@@ -588,11 +588,12 @@ int main(int argc, char *argv[])
 	}
 
 	rc = client_connect(mosq, &cfg);
-	if(rc){
+	if(rc) /// 非0表示连接失败
+	{
 		goto cleanup;
 	}
 
-	rc = pub_shared_loop(mosq);
+	rc = pub_shared_loop(mosq); /// 这个是主要的工作函数
 
 	if(cfg.message && cfg.pub_mode == MSGMODE_FILE){
 		free(cfg.message);
@@ -606,9 +607,12 @@ int main(int argc, char *argv[])
 	if(rc){
 		err_printf(&cfg, "Error: %s\n", mosquitto_strerror(rc));
 	}
-	if(connack_result){
+
+	if(connack_result) /// 这个判断反正会返回结果，就不会执行到cleanup了
+	{
 		return connack_result;
-	}else{
+	}else
+	{
 		return rc;
 	}
 

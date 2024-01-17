@@ -1347,7 +1347,7 @@ int client_id_generate(struct mosq_config *cfg)
 	return MOSQ_ERR_SUCCESS;
 }
 
-int client_connect(struct mosquitto *mosq, struct mosq_config *cfg)
+int client_connect(struct mosquitto *mosq, struct mosq_config *cfg) /// 客户端连接
 {
 #ifndef WIN32
 	char *err;
@@ -1381,9 +1381,10 @@ int client_connect(struct mosquitto *mosq, struct mosq_config *cfg)
 		rc = mosquitto_connect_bind_v5(mosq, cfg->host, port, cfg->keepalive, cfg->bind_address, cfg->connect_props);
 	}
 #else
-	rc = mosquitto_connect_bind_v5(mosq, cfg->host, port, cfg->keepalive, cfg->bind_address, cfg->connect_props);
+	rc = mosquitto_connect_bind_v5(mosq, cfg->host, port, cfg->keepalive, cfg->bind_address, cfg->connect_props); /// 进行连接
 #endif
-	if(rc>0){
+	if(rc>0) /// 返回结果为0才表示成功
+	{
 		if(rc == MOSQ_ERR_ERRNO){
 #ifndef WIN32
 			err = strerror(errno);
@@ -1397,7 +1398,7 @@ int client_connect(struct mosquitto *mosq, struct mosq_config *cfg)
 		mosquitto_lib_cleanup();
 		return rc;
 	}
-	return MOSQ_ERR_SUCCESS;
+	return MOSQ_ERR_SUCCESS; /// rc == 0，返回成功
 }
 
 #ifdef WITH_SOCKS

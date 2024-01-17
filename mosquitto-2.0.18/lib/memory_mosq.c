@@ -47,7 +47,7 @@ void memory__set_limit(size_t lim)
 }
 #endif
 
-void *mosquitto__calloc(size_t nmemb, size_t size)
+void *mosquitto__calloc(size_t nmemb, size_t size) /// 内存分配使用calloc
 {
 	void *mem;
 #ifdef REAL_WITH_MEMORY_TRACKING
