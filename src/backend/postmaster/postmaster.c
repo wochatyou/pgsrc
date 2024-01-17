@@ -177,17 +177,17 @@ typedef struct bkend
 {
 	pid_t		pid;			/* process id of backend */
 	int32		cancel_key;		/* cancel key for cancels for this backend */
-	int			child_slot;		/* PMChildSlot for this backend, if any */
+	int			child_slot;		/* PMChildSlot for this backend, if any */ /// PMChildSlot是一个数组，这个是下标
 	int			bkend_type;		/* child process flavor, see above */
 	bool		dead_end;		/* is it going to send an error and quit? */
 	bool		bgworker_notify;	/* gets bgworker start/stop notifications */
-	dlist_node	elem;			/* list link in BackendList */
+	dlist_node	elem;			/* list link in BackendList */ /// 双向链表指针
 } Backend;
 
-static dlist_head BackendList = DLIST_STATIC_INIT(BackendList);
+static dlist_head BackendList = DLIST_STATIC_INIT(BackendList); /// 初始化，指向它自己
 
 #ifdef EXEC_BACKEND
-static Backend *ShmemBackendArray;
+static Backend *ShmemBackendArray; /// 这是一个在共享内存中的数组，记录了每一个backend进程的情况
 #endif
 
 BackgroundWorker *MyBgworkerEntry = NULL;
@@ -262,7 +262,7 @@ typedef enum
 	STARTUP_RUNNING,
 	STARTUP_SIGNALED,			/* we sent it a SIGQUIT or SIGKILL */
 	STARTUP_CRASHED
-} StartupStatusEnum;
+} StartupStatusEnum; /// 进程的启动状态
 
 static StartupStatusEnum StartupStatus = STARTUP_NOT_RUNNING;
 
@@ -332,7 +332,7 @@ typedef enum
 								 * finish */
 	PM_WAIT_DEAD_END,			/* waiting for dead_end children to exit */
 	PM_NO_CHILDREN				/* all important children have exited */
-} PMState;
+} PMState; /// 主进程的不同状态
 
 static PMState pmState = PM_INIT;
 
@@ -592,7 +592,7 @@ PostmasterMain(int argc, char *argv[])
 	int			i;
 	char	   *output_config_variable = NULL;
 
-	InitProcessGlobals();
+	InitProcessGlobals(); /// 记录一下时间，生成随机数等工作，逻辑比较简单，在这个函数中记录MyProcPid = 本进程的进程号
 
 	PostmasterPid = MyProcPid;
 
@@ -926,7 +926,7 @@ PostmasterMain(int argc, char *argv[])
 					 MaxConnections);
 		ExitPostmaster(1);
 	}
-	if (XLogArchiveMode > ARCHIVE_MODE_OFF && wal_level == WAL_LEVEL_MINIMAL)
+	if (XLogArchiveMode > ARCHIVE_MODE_OFF && wal_level == WAL_LEVEL_MINIMAL) /// 检查一下归档模式和wal_level的配置
 		ereport(ERROR,
 				(errmsg("WAL archival cannot be enabled when wal_level is \"minimal\"")));
 	if (max_wal_senders > 0 && wal_level == WAL_LEVEL_MINIMAL)
@@ -983,7 +983,7 @@ PostmasterMain(int argc, char *argv[])
 	 * so it must happen before opening sockets so that at exit, the socket
 	 * lockfiles go away after CloseServerPorts runs.
 	 */
-	CreateDataDirLockFile(true);
+	CreateDataDirLockFile(true); /// 创建postmaster.pid文件，并往里面写入必要的信息
 
 	/*
 	 * Read the control file (for error checking and config info).
@@ -1005,7 +1005,7 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * process any libraries that should be preloaded at postmaster start
 	 */
-	process_shared_preload_libraries();
+	process_shared_preload_libraries(); /// 加载动态库。 // 如果这个动态库中有_PG_init函数，就自动执行这个函数
 
 	/*
 	 * Initialize SSL library, if specified.
@@ -1022,19 +1022,19 @@ PostmasterMain(int argc, char *argv[])
 	 * Now that loadable modules have had their chance to alter any GUCs,
 	 * calculate MaxBackends.
 	 */
-	InitializeMaxBackends();
+	InitializeMaxBackends(); /// 根据配置的信息，计算MaxBackends的值
 
 	/*
 	 * Give preloaded libraries a chance to request additional shared memory.
 	 */
-	process_shmem_requests();
+	process_shmem_requests(); /// 给加载的动态库一个机会申请共享内存，现在主共享内存还没有创建呢。
 
 	/*
 	 * Now that loadable modules have had their chance to request additional
 	 * shared memory, determine the value of any runtime-computed GUCs that
 	 * depend on the amount of shared memory required.
 	 */
-	InitializeShmemGUCs();
+	InitializeShmemGUCs(); /// 就是计算一些参数
 
 	/*
 	 * Now that modules have been loaded, we can process any custom resource
@@ -1131,7 +1131,7 @@ PostmasterMain(int argc, char *argv[])
 	 * process is invoked. Because, after that, they can be used by
 	 * postmaster's SIGUSR1 signal handler.
 	 */
-	RemovePromoteSignalFiles();
+	RemovePromoteSignalFiles(); /// 删除promote这个文件
 
 	/* Do the same for logrotate signal file */
 	RemoveLogrotateSignalFiles();
@@ -1150,14 +1150,14 @@ PostmasterMain(int argc, char *argv[])
 	 * charged with closing the sockets again at postmaster shutdown.
 	 */
 	for (i = 0; i < MAXLISTEN; i++)
-		ListenSocket[i] = PGINVALID_SOCKET;
+		ListenSocket[i] = PGINVALID_SOCKET; /// 初始化socket
 
 	on_proc_exit(CloseServerPorts, 0);
 
 	/*
 	 * If enabled, start up syslogger collection subprocess
 	 */
-	SysLoggerPID = SysLogger_Start(); // 启动系统日志进程
+	SysLoggerPID = SysLogger_Start(); // 启动系统日志进程，这是第一个子进程
 
 	/*
 	 * Reset whereToSendOutput from DestDebug (its starting state) to
@@ -1387,7 +1387,7 @@ PostmasterMain(int argc, char *argv[])
 	 * Remove old temporary files.  At this point there can be no other
 	 * Postgres processes running in this directory, so this should be safe.
 	 */
-	RemovePgTempFiles();
+	RemovePgTempFiles(); /// 去掉一些pgsql_tmp文件
 
 	/*
 	 * Initialize the autovacuum subsystem (again, no process start yet)
@@ -1438,7 +1438,7 @@ PostmasterMain(int argc, char *argv[])
 	/*
 	 * Remember postmaster startup time
 	 */
-	PgStartTime = GetCurrentTimestamp();
+	PgStartTime = GetCurrentTimestamp(); /// 记录一下启动的时间
 
 	/*
 	 * Report postmaster status in the postmaster.pid file, to allow pg_ctl to
@@ -1458,7 +1458,7 @@ PostmasterMain(int argc, char *argv[])
 	StartupPID = StartupDataBase();  // 启动恢复进程
 	Assert(StartupPID != 0);
 	StartupStatus = STARTUP_RUNNING;
-	pmState = PM_STARTUP;
+	pmState = PM_STARTUP; /// 记录主进程的状态
 
 	/* Some workers may be scheduled to start now */
 	maybe_start_bgworkers();
@@ -4113,7 +4113,7 @@ TerminateChildren(int signal)
  * Note: if you change this code, also consider StartAutovacuumWorker.
  */
 static int
-BackendStartup(Port *port)
+BackendStartup(Port *port) /// 主进程启动一个子进程
 {
 	Backend    *bn;				/* for backend cleanup */
 	pid_t		pid;
@@ -4122,7 +4122,7 @@ BackendStartup(Port *port)
 	 * Create backend data structure.  Better before the fork() so we can
 	 * handle failure cleanly.
 	 */
-	bn = (Backend *) malloc(sizeof(Backend));
+	bn = (Backend *) malloc(sizeof(Backend)); /// 使用malloc进行内存分配
 	if (!bn)
 	{
 		ereport(LOG,
@@ -4168,7 +4168,7 @@ BackendStartup(Port *port)
 	pid = fork_process();
 	if (pid == 0)				/* child */
 	{
-		free(bn);
+		free(bn); /// 在子进程中做， 槽号已经记录在MyPMChildSlot中了
 
 		/* Detangle from postmaster */
 		InitPostmasterChild();
@@ -4223,7 +4223,7 @@ BackendStartup(Port *port)
 
 #ifdef EXEC_BACKEND
 	if (!bn->dead_end)
-		ShmemBackendArrayAdd(bn);
+		ShmemBackendArrayAdd(bn); // 父进程负责账簿登记工作
 #endif
 
 	return STATUS_OK;
@@ -5043,7 +5043,7 @@ SubPostmasterMain(int argc, char *argv[])
  * Do NOT call exit() directly --- always go through here!
  */
 static void
-ExitPostmaster(int status)
+ExitPostmaster(int status) /// 退出主进程的函数
 {
 #ifdef HAVE_PTHREAD_IS_THREADED_NP
 
@@ -5590,7 +5590,7 @@ CreateOptsFile(int argc, char *argv[], char *fullprogname)
  * isn't too critical as long as it's more than MaxBackends.
  */
 int
-MaxLivePostmasterChildren(void)
+MaxLivePostmasterChildren(void) /// 计算总共的子进程的个数
 {
 	return 2 * (MaxConnections + autovacuum_max_workers + 1 +
 				max_wal_senders + max_worker_processes);
@@ -5743,7 +5743,7 @@ do_start_bgworker(RegisteredBgWorker *rw)
 
 #ifndef EXEC_BACKEND
 		case 0:
-			/* in postmaster child ... */
+			/* in postmaster child ... */  /// 在子进程中
 			InitPostmasterChild();
 
 			/* Close the postmaster's sockets */
@@ -5762,7 +5762,7 @@ do_start_bgworker(RegisteredBgWorker *rw)
 			MemoryContextDelete(PostmasterContext);
 			PostmasterContext = NULL;
 
-			StartBackgroundWorker();
+			StartBackgroundWorker(); /// 转入具体执行的函数
 
 			exit(1);			/* should not get here */
 			break;
@@ -6370,7 +6370,7 @@ restore_backend_variables(BackendParameters *param, Port *port)
 
 
 Size
-ShmemBackendArraySize(void)
+ShmemBackendArraySize(void) /// 计算数组的大小
 {
 	return mul_size(MaxLivePostmasterChildren(), sizeof(Backend));
 }
@@ -6380,19 +6380,19 @@ ShmemBackendArrayAllocation(void)
 {
 	Size		size = ShmemBackendArraySize();
 
-	ShmemBackendArray = (Backend *) ShmemAlloc(size);
+	ShmemBackendArray = (Backend *) ShmemAlloc(size); /// 再共享内存中直接分配一个数组
 	/* Mark all slots as empty */
-	memset(ShmemBackendArray, 0, size);
+	memset(ShmemBackendArray, 0, size); 
 }
 
 static void
 ShmemBackendArrayAdd(Backend *bn)
 {
 	/* The array slot corresponding to my PMChildSlot should be free */
-	int			i = bn->child_slot - 1;
+	int			i = bn->child_slot - 1; /// 计算数组的下标
 
 	Assert(ShmemBackendArray[i].pid == 0);
-	ShmemBackendArray[i] = *bn;
+	ShmemBackendArray[i] = *bn; /// 把一个结构拷贝到另外一个结构中
 }
 
 static void
@@ -6402,7 +6402,7 @@ ShmemBackendArrayRemove(Backend *bn)
 
 	Assert(ShmemBackendArray[i].pid == bn->pid);
 	/* Mark the slot as empty */
-	ShmemBackendArray[i].pid = 0;
+	ShmemBackendArray[i].pid = 0; /// 简单地把pid变成0就可以了。
 }
 #endif							/* EXEC_BACKEND */
 

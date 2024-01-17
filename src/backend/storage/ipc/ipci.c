@@ -301,7 +301,7 @@ CreateSharedMemoryAndSemaphores(void)
 	 * Alloc the win32 shared backend array
 	 */
 	if (!IsUnderPostmaster)
-		ShmemBackendArrayAllocation();
+		ShmemBackendArrayAllocation(); /// 分配后台进程的描述数组
 #endif
 
 	/* Initialize dynamic shared memory facilities. */

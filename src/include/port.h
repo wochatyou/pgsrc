@@ -149,9 +149,9 @@ extern int	pg_disable_aslr(void);
 
 
 #if defined(WIN32) || defined(__CYGWIN__)
-#define EXE ".exe"
+#define EXE ".exe" /// windows平台有.exe
 #else
-#define EXE ""
+#define EXE ""  /// Linux平台上没有
 #endif
 
 #if defined(WIN32) && !defined(__CYGWIN__)

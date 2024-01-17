@@ -741,7 +741,7 @@ bgworker_die(SIGNAL_ARGS)
  * postmaster.
  */
 void
-StartBackgroundWorker(void)
+StartBackgroundWorker(void) /// 现在已经在子进程中了，只是具体执行的逻辑
 {
 	sigjmp_buf	local_sigjmp_buf;
 	BackgroundWorker *worker = MyBgworkerEntry;

@@ -244,7 +244,7 @@ GetQuitSignalReason(void)
  * special locking.
  */
 int
-AssignPostmasterChildSlot(void)
+AssignPostmasterChildSlot(void) /// 扫描PMChildInUse数组，选择一个空闲的槽，拿到下标
 {
 	int			slot = next_child_inuse;
 	int			n;
@@ -255,7 +255,7 @@ AssignPostmasterChildSlot(void)
 	 * We track the last slot assigned so as not to waste time repeatedly
 	 * rescanning low-numbered slots.
 	 */
-	for (n = num_child_inuse; n > 0; n--)
+	for (n = num_child_inuse; n > 0; n--) /// 扫描PMChildInUse数组，拿到下标
 	{
 		if (--slot < 0)
 			slot = num_child_inuse - 1;

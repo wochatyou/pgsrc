@@ -556,7 +556,7 @@ pg_split_opts(char **argv, int *argcp, const char *optstr)
  * this.
  */
 void
-InitializeMaxBackends(void)
+InitializeMaxBackends(void) /// 根据配置的信息，计算MaxBackends的值
 {
 	Assert(MaxBackends == 0);
 
@@ -565,7 +565,7 @@ InitializeMaxBackends(void)
 		max_worker_processes + max_wal_senders;
 
 	/* internal error because the values were all checked previously */
-	if (MaxBackends > MAX_BACKENDS)
+	if (MaxBackends > MAX_BACKENDS) /// MAX_BACKENDS	0x3FFFF
 		elog(ERROR, "too many backends configured");
 }
 
