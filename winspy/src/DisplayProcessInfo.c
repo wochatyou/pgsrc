@@ -35,7 +35,7 @@ BOOL GetProcessNameByPid1(DWORD dwProcessId, TCHAR szName[], DWORD nNameSize, TC
 	szPath[0] = '\0';
 	szName[0] = '\0';
 
-	if(Process32First(h, &pe))
+	if(Process32First(h, &pe)) /// Win32的API
 	{
 		do
 		{
@@ -56,7 +56,7 @@ BOOL GetProcessNameByPid1(DWORD dwProcessId, TCHAR szName[], DWORD nNameSize, TC
 				break;
 			}
 		}
-		while(Process32Next(h, &pe));
+		while(Process32Next(h, &pe)); /// Win32的API
 	}
 
 	CloseHandle(h);

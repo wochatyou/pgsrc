@@ -10,7 +10,7 @@
 //
 
 #define STRICT
-#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN /// 这个可以减少头文件的编译
 
 #include <windows.h>
 #include <tchar.h>
@@ -454,7 +454,7 @@ HWND CreatePinToolbar(HWND hwndDlg)
 //
 //	WM_INITDIALOG handler
 //
-BOOL WinSpy_InitDlg(HWND hwnd)
+BOOL WinSpy_InitDlg(HWND hwnd) /// 初始化主窗口
 {
 	HBITMAP hBmp1, hBmp2;
 	HMENU   hSysMenu;
@@ -731,7 +731,7 @@ void DumpRect(HWND hwnd)
 //
 //	Dialog procedure for main window
 //
-INT_PTR WINAPI DialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+INT_PTR WINAPI DialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) /// 主窗口的消息函数
 {
 	switch(msg)
 	{
@@ -798,26 +798,26 @@ INT_PTR WINAPI DialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 //  is specified. (MFC extensions must be turned off for the resource
 //  to enable this feature).
 //
-void RegisterDialogClass(TCHAR szNewName[])
+void RegisterDialogClass(TCHAR szNewName[]) /// 注册窗口类
 {
 	WNDCLASSEX wc;
 
 	// Get the class structure for the system dialog class
 	wc.cbSize = sizeof(wc);
-	GetClassInfoEx(0, _T("#32770"), &wc);
+	GetClassInfoEx(0, _T("#32770"), &wc); /// 这是Win32 API
 
 	// Make sure our new class does not conflict
 	wc.style &= ~CS_GLOBALCLASS;
 
 	// Register an identical dialog class, but with a new name!
-	wc.lpszClassName = szNewName;
+	wc.lpszClassName = szNewName; /// 使用不同的名字，还是对话框窗口
 
-	RegisterClassEx(&wc);
+	RegisterClassEx(&wc); /// Win32 API，注册窗口类
 }
 //
 //	This is where the fun begins
 //
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) /// 主函数入口
 {
 	HWND	hwndMain;
 	HACCEL	hAccelTable;			
@@ -837,7 +837,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	RegisterDialogClass(_T("WinSpy"));
 	RegisterDialogClass(_T("WinSpyPane"));
 
-	LoadSettings();
+	LoadSettings(); /// 从注册表中读信息
 	
 	//DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAIN), 0, DialogProc);
 
@@ -870,12 +870,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 	}
 
-	SaveSettings();
+	SaveSettings(); /// 往注册表中写信息
 
 	return 0;
 }
 
-void ExitWinSpy(HWND hwnd, UINT uCode)
+void ExitWinSpy(HWND hwnd, UINT uCode) /// 销毁窗口，发出退出消息
 {
 	DestroyWindow(hwnd);
 	PostQuitMessage(uCode);

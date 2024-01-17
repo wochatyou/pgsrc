@@ -38,7 +38,7 @@ extern HWND hwndToolTip;
 
 static TCHAR szRegLoc[] = REG_BASESTR;
 
-void LoadSettings(void)
+void LoadSettings(void) /// 从注册表中读取配置信息
 {
 	HKEY hkey;
 
@@ -64,7 +64,7 @@ void LoadSettings(void)
 	RegCloseKey(hkey);
 }
 
-void SaveSettings(void)
+void SaveSettings(void) /// 往注册表里写信息
 {
 	HKEY hkey;
 

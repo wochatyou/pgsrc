@@ -28,7 +28,7 @@
 BOOL GetRemoteWindowInfo(HWND hwnd, WNDCLASSEX *pClass, WNDPROC *pProc, TCHAR *pszText, int nTextLen);
 
 
-void VerboseClassName(TCHAR ach[])
+void VerboseClassName(TCHAR ach[]) /// 这些都是特殊的窗口类
 {
 	if     (lstrcmpi(ach, _T("#32770")) == 0)	lstrcat(ach, _T(" (Dialog)"));
 	else if(lstrcmpi(ach, _T("#32768")) == 0)	lstrcat(ach, _T(" (Menu)"));
