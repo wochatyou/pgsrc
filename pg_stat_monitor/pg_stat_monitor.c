@@ -267,7 +267,7 @@ static uint64 get_next_wbucket(pgsmSharedState * pgsm);
  */
 /*  cppcheck-suppress unusedFunction */
 void
-_PG_init(void)
+_PG_init(void) /// 这个函数在动态库加载时就被执行
 {
 	int			rc;
 
