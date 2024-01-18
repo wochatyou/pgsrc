@@ -10,7 +10,7 @@ void usage(const char *err)
 	exit(1);
 }
 
-static unsigned hexval(char c)
+static unsigned hexval(char c) /// 如果c是十六进制的字符，返回真实的值，譬如A返回10， '8'返回8，如果不是合法字符，就返回0xFFFF
 {
 	if (c >= '0' && c <= '9')
 		return c - '0';
@@ -21,7 +21,7 @@ static unsigned hexval(char c)
 	return ~0;
 }
 
-int get_sha1_hex(char *hex, unsigned char *sha1)
+int get_sha1_hex(char *hex, unsigned char *sha1) /// 把字符串变成真实的数据
 {
 	int i;
 	for (i = 0; i < 20; i++) {
@@ -34,7 +34,7 @@ int get_sha1_hex(char *hex, unsigned char *sha1)
 	return 0;
 }
 
-char * sha1_to_hex(unsigned char *sha1)
+char * sha1_to_hex(unsigned char *sha1) /// 把20个字节的数据变成40个字节
 {
 	static char buffer[50];
 	static const char hex[] = "0123456789abcdef";
@@ -88,7 +88,7 @@ void * read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
 	void *map, *buf;
 	char *filename = sha1_file_name(sha1);
 
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY); /// 打开文件
 	if (fd < 0) {
 		perror(filename);
 		return NULL;
@@ -97,7 +97,7 @@ void * read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
 		close(fd);
 		return NULL;
 	}
-	map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0); /// map到内存中
 	close(fd);
 	if (-1 == (int)(long)map)
 		return NULL;
@@ -165,9 +165,9 @@ int write_sha1_file(char *buf, unsigned len)
 	return 0;
 }
 
-int write_sha1_buffer(unsigned char *sha1, void *buf, unsigned int size)
+int write_sha1_buffer(unsigned char *sha1, void *buf, unsigned int size) /// 就是把文件内容写入到目录中
 {
-	char *filename = sha1_file_name(sha1);
+	char *filename = sha1_file_name(sha1); /// filename类似 ".dircache/objects/6e/666502660a7e810b276afd62523c56b34c1671"
 	int i, fd;
 
 	fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0666);
@@ -202,7 +202,7 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	return 0;
 }
 
-int read_cache(void)
+int read_cache(void) /// 返回记录的个数，索引文件就是.dircache/objects/index这个文件
 {
 	int fd, i;
 	struct stat st;
@@ -216,12 +216,12 @@ int read_cache(void)
 	errno = ENOENT;
 	sha1_file_directory = getenv(DB_ENVIRONMENT);
 	if (!sha1_file_directory)
-		sha1_file_directory = DEFAULT_DB_ENVIRONMENT;
+		sha1_file_directory = DEFAULT_DB_ENVIRONMENT; /// 如果环境变量没有设置，就使用.dircache/objects
 	if (access(sha1_file_directory, X_OK) < 0)
 		return error("no access to SHA1 file directory");
 	fd = open(".dircache/index", O_RDONLY);
 	if (fd < 0)
-		return (errno == ENOENT) ? 0 : error("open failed");
+		return (errno == ENOENT) ? 0 : error("open failed"); /// 索引文件不存在，就返回0，这是正常情况
 
 	map = (void *)-1;
 	if (!fstat(fd, &st)) {
@@ -229,7 +229,7 @@ int read_cache(void)
 		size = st.st_size;
 		errno = EINVAL;
 		if (size > sizeof(struct cache_header))
-			map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+			map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0); /// 只读索引文件
 	}
 	close(fd);
 	if (-1 == (int)(long)map)

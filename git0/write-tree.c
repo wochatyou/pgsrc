@@ -24,13 +24,14 @@ static int prepend_integer(char *buffer, unsigned val, int i)
 
 #define ORIG_OFFSET (40)	/* Enough space to add the header of "tree <size>\0" */
 
-int main(int argc, char **argv)
+int main(int argc, char **argv) /// 读取index文件中的内容，压缩，计算SHA1，写入到objects目录中对应的文件
 {
 	unsigned long size, offset, val;
 	int i, entries = read_cache();
 	char *buffer;
 
-	if (entries <= 0) {
+	if (entries <= 0) /// 索引文件中的记录数为0，啥也不用做了，直接退出 
+	{
 		fprintf(stderr, "No file-cache to create a tree of\n");
 		exit(1);
 	}

@@ -1,11 +1,13 @@
 #include "cache.h"
 
-int main(int argc, char **argv)
+/// 这个程序就是在当前目录下创建.dircache/objects，然后在这个目录下再创建00 - ff共计256个子目录
+int main(int argc, char **argv) /// 就是创建几个目录
 {
 	char *sha1_dir = getenv(DB_ENVIRONMENT), *path;
 	int len, i, fd;
 
-	if (mkdir(".dircache", 0700) < 0) {
+	if (mkdir(".dircache", 0700) < 0) /// 创建.dircache目录
+	{
 		perror("unable to create .dircache");
 		exit(1);
 	}
@@ -16,8 +18,9 @@ int main(int argc, char **argv)
 	 * On the other hand, it might just make lookup slower and messier. You
 	 * be the judge.
 	 */
-	sha1_dir = getenv(DB_ENVIRONMENT);
-	if (sha1_dir) {
+	sha1_dir = getenv(DB_ENVIRONMENT); /// #define DB_ENVIRONMENT "SHA1_FILE_DIRECTORY"
+	if (sha1_dir) 
+	{
 		struct stat st;
 		if (!stat(sha1_dir, &st) < 0 && S_ISDIR(st.st_mode))
 			return;
@@ -27,7 +30,7 @@ int main(int argc, char **argv)
 	/*
 	 * The default case is to have a DB per managed directory. 
 	 */
-	sha1_dir = DEFAULT_DB_ENVIRONMENT;
+	sha1_dir = DEFAULT_DB_ENVIRONMENT; /// #define DEFAULT_DB_ENVIRONMENT ".dircache/objects"
 	fprintf(stderr, "defaulting to private storage area\n");
 	len = strlen(sha1_dir);
 	if (mkdir(sha1_dir, 0700) < 0) {

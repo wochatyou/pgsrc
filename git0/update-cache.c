@@ -73,6 +73,7 @@ static int add_cache_entry(struct cache_entry *ce)
 	return 0;
 }
 
+/// 把path指定的文件压缩，计算SHA1的值，写入到".dircache/objects/6e/666502660a7e810b276afd62523c56b34c1671"类似的文件里
 static int index_fd(const char *path, int namelen, struct cache_entry *ce, int fd, struct stat *st)
 {
 	z_stream stream;
@@ -107,11 +108,11 @@ static int index_fd(const char *path, int namelen, struct cache_entry *ce, int f
 	while (deflate(&stream, Z_FINISH) == Z_OK)
 		/*nothing */;
 
-	deflateEnd(&stream);
+	deflateEnd(&stream); /// 上述步骤是对path指定的文件进行zip压缩
 	
 	SHA1_Init(&c);
 	SHA1_Update(&c, out, stream.total_out);
-	SHA1_Final(ce->sha1, &c);
+	SHA1_Final(ce->sha1, &c); /// 压缩完计算 SHA1的值
 
 	return write_sha1_buffer(ce->sha1, out, stream.total_out);
 }
@@ -162,7 +163,7 @@ static int write_cache(int newfd, struct cache_entry **cache, int entries)
 	struct cache_header hdr;
 	int i;
 
-	hdr.signature = CACHE_SIGNATURE;
+	hdr.signature = CACHE_SIGNATURE; /// 就是 "DIRC"
 	hdr.version = 1;
 	hdr.entries = entries;
 
@@ -215,24 +216,27 @@ inside:
 	}
 }
 
-int main(int argc, char **argv)
+/// 这个工具就是把文件的内容写入到objects目录中，并且更新.dircache/index文件。如果这个文件没有，就创建一个。 添加文件到暂存区
+int main(int argc, char **argv) /// 主函数   使用方法： update-cache a.txt
 {
 	int i, newfd, entries;
 
 	entries = read_cache();
-	if (entries < 0) {
+	if (entries < 0) /// 如果索引文件不存在，返回0，正常情况
+	{
 		perror("cache corrupted");
 		return -1;
 	}
 
-	newfd = open(".dircache/index.lock", O_RDWR | O_CREAT | O_EXCL, 0600);
+	newfd = open(".dircache/index.lock", O_RDWR | O_CREAT | O_EXCL, 0600); /// 创建锁文件
 	if (newfd < 0) {
 		perror("unable to create new cachefile");
 		return -1;
 	}
 	for (i = 1 ; i < argc; i++) {
 		char *path = argv[i];
-		if (!verify_path(path)) {
+		if (!verify_path(path)) /// 按照某种规则校验文件名
+		{
 			fprintf(stderr, "Ignoring path %s\n", argv[i]);
 			continue;
 		}
@@ -244,5 +248,5 @@ int main(int argc, char **argv)
 	if (!write_cache(newfd, active_cache, active_nr) && !rename(".dircache/index.lock", ".dircache/index"))
 		return 0;
 out:
-	unlink(".dircache/index.lock");
+	unlink(".dircache/index.lock"); /// 删除锁文件
 }

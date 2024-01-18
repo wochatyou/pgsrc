@@ -12,10 +12,10 @@
  *
  * FIXME! Share the code with "write-tree.c"
  */
-static void init_buffer(char **bufp, unsigned int *sizep)
+static void init_buffer(char **bufp, unsigned int *sizep) /// 分配16KB的内存，sizeep返回的是40，SHA1是20个字节，变成字符，是40个
 {
-	char *buf = malloc(BLOCKING);
-	memset(buf, 0, ORIG_OFFSET);
+	char *buf = malloc(BLOCKING); /// 16KB大小
+	memset(buf, 0, ORIG_OFFSET); /// 把头40个字节变成0
 	*sizep = ORIG_OFFSET;
 	*bufp = buf;
 }
@@ -44,7 +44,7 @@ static void add_buffer(char **bufp, unsigned int *sizep, const char *fmt, ...)
 	memcpy(buf + size, one_line, len);
 }
 
-static int prepend_integer(char *buffer, unsigned val, int i)
+static int prepend_integer(char *buffer, unsigned val, int i) /// 把val变成字符串的样子
 {
 	buffer[--i] = '\0';
 	do {
@@ -72,7 +72,7 @@ static void finish_buffer(char *tag, char **bufp, unsigned int *sizep)
 	*sizep = size;
 }
 
-static void remove_special(char *p)
+static void remove_special(char *p) /// 去掉p中\n, <, >三个特殊的字符
 {
 	char c;
 	char *dst = p;
