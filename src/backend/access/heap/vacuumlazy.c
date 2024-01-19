@@ -107,7 +107,7 @@
  * and we vacuum FSM after each index/heap cleaning pass.
  */
 #define VACUUM_FSM_EVERY_PAGES \
-	((BlockNumber) (((uint64) 8 * 1024 * 1024 * 1024) / BLCKSZ))
+	((BlockNumber) (((uint64) 8 * 1024 * 1024 * 1024) / BLCKSZ)) /// 把8GB换成多少个page
 
 /*
  * Before we consider skipping a page that's marked as clean in
@@ -141,13 +141,13 @@ typedef enum
 typedef struct LVRelState
 {
 	/* Target heap relation and its indexes */
-	Relation	rel;
+	Relation	rel;        /// Relation 是指向RelationData的指针，定义在include/utils/rel.h中，是一个巨大复杂的结构体
 	Relation   *indrels;
 	int			nindexes;
 
 	/* Buffer access strategy and parallel vacuum state */
 	BufferAccessStrategy bstrategy;
-	ParallelVacuumState *pvs;
+	ParallelVacuumState *pvs; /// 貌似这是一个数组，每一个成员是一个结构体
 
 	/* Aggressive VACUUM? (must set relfrozenxid >= FreezeLimit) */
 	bool		aggressive;
@@ -166,7 +166,7 @@ typedef struct LVRelState
 	GlobalVisState *vistest;
 	/* Tracks oldest extant XID/MXID for setting relfrozenxid/relminmxid */
 	TransactionId NewRelfrozenXid;
-	MultiXactId NewRelminMxid;
+	MultiXactId NewRelminMxid;  /// 这两个域可能是用来更新pg_class里面的relfrozenxid和relminmxid两列  typedef TransactionId MultiXactId;
 	bool		skippedallvis;
 
 	/* Error reporting state */
@@ -203,7 +203,7 @@ typedef struct LVRelState
 
 	/* Instrumentation counters */
 	int			num_index_scans;
-	/* Counters that follow are only for scanned_pages */
+	/* Counters that follow are only for scanned_pages */ ///一些统计信息
 	int64		tuples_deleted; /* # deleted from table */
 	int64		tuples_frozen;	/* # newly frozen */
 	int64		lpdead_items;	/* # deleted from indexes */

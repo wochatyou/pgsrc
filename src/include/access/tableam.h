@@ -282,7 +282,7 @@ typedef void (*IndexBuildCallback) (Relation index,
 typedef struct TableAmRoutine
 {
 	/* this must be set to T_TableAmRoutine */
-	NodeTag		type;
+	NodeTag		type;  /// 节点标记，是第一个元素
 
 
 	/* ------------------------------------------------------------------------
@@ -1702,7 +1702,7 @@ static inline void
 table_relation_vacuum(Relation rel, struct VacuumParams *params,
 					  BufferAccessStrategy bstrategy)
 {
-	rel->rd_tableam->relation_vacuum(rel, params, bstrategy);
+	rel->rd_tableam->relation_vacuum(rel, params, bstrategy); /// 就是调用heap_vacuum_rel
 }
 
 /*

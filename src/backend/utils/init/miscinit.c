@@ -1801,7 +1801,7 @@ bool		process_shmem_requests_in_progress = false;
  * 'restricted': if true, force libraries to be in $libdir/plugins/
  */
 static void
-load_libraries(const char *libraries, const char *gucname, bool restricted)
+load_libraries(const char *libraries, const char *gucname, bool restricted) /// guc那么是参数的名字，libraries是参数的值
 {
 	char	   *rawstring;
 	List	   *elemlist;
@@ -1811,10 +1811,10 @@ load_libraries(const char *libraries, const char *gucname, bool restricted)
 		return;					/* nothing to do */
 
 	/* Need a modifiable copy of string */
-	rawstring = pstrdup(libraries);
+	rawstring = pstrdup(libraries); /// 复制一个字符串
 
 	/* Parse string into list of filename paths */
-	if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+	if (!SplitDirectoriesString(rawstring, ',', &elemlist)) /// 按照逗号分割参数
 	{
 		/* syntax error in list */
 		list_free_deep(elemlist);

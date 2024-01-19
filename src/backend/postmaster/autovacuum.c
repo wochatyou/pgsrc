@@ -2023,7 +2023,7 @@ get_database_list(void)
  * order not to ignore shutdown commands for too long.
  */
 static void
-do_autovacuum(void)
+do_autovacuum(void) /// 在一个数据库上做vacuum，一张表接着一张表
 {
 	Relation	classRel;
 	HeapTuple	tuple;
@@ -2072,7 +2072,7 @@ do_autovacuum(void)
 		elog(ERROR, "cache lookup failed for database %u", MyDatabaseId);
 	dbForm = (Form_pg_database) GETSTRUCT(tuple);
 
-	if (dbForm->datistemplate || !dbForm->datallowconn)
+	if (dbForm->datistemplate || !dbForm->datallowconn) /// 这个数据库是模板数据库，或者不允许连接
 	{
 		default_freeze_min_age = 0;
 		default_freeze_table_age = 0;
@@ -2137,7 +2137,7 @@ do_autovacuum(void)
 		bool		wraparound;
 
 		if (classForm->relkind != RELKIND_RELATION &&
-			classForm->relkind != RELKIND_MATVIEW)
+			classForm->relkind != RELKIND_MATVIEW) /// 只查找堆表和MV
 			continue;
 
 		relid = classForm->oid;
@@ -2193,7 +2193,7 @@ do_autovacuum(void)
 
 			hentry = hash_search(table_toast_map,
 								 &classForm->reltoastrelid,
-								 HASH_ENTER, &found);
+								 HASH_ENTER, &found); /// 往哈希表中插入记录，堆表和TOASE表的映射关系
 
 			if (!found)
 			{
@@ -2383,7 +2383,7 @@ do_autovacuum(void)
 	/*
 	 * Perform operations on collected tables.
 	 */
-	foreach(cell, table_oids)
+	foreach(cell, table_oids) /// 扫描表的列表依次做Vacuum
 	{
 		Oid			relid = lfirst_oid(cell);
 		HeapTuple	classTup;
@@ -2549,7 +2549,7 @@ do_autovacuum(void)
 			MemoryContextSwitchTo(PortalContext);
 
 			/* have at it */
-			autovacuum_do_vac_analyze(tab, bstrategy);
+			autovacuum_do_vac_analyze(tab, bstrategy); /// 真正做Vacuum的工作在这里
 
 			/*
 			 * Clear a possible query-cancel signal, to avoid a late reaction

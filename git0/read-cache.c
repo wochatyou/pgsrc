@@ -21,10 +21,11 @@ static unsigned hexval(char c) /// 如果c是十六进制的字符，返回真�
 	return ~0;
 }
 
-int get_sha1_hex(char *hex, unsigned char *sha1) /// 把字符串变成真实的数据
+int get_sha1_hex(char *hex, unsigned char *sha1) /// 把字符串变成真实的数据，hex指向了字符串，40字节，sha1指向20字节
 {
 	int i;
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < 20; i++) 
+	{
 		unsigned int val = (hexval(hex[0]) << 4) | hexval(hex[1]);
 		if (val & ~0xff)
 			return -1;
@@ -54,7 +55,7 @@ char * sha1_to_hex(unsigned char *sha1) /// 把20个字节的数据变成40个�
  * careful about using it. Do a "strdup()" if you need to save the
  * filename.
  */
-char *sha1_file_name(unsigned char *sha1)
+char *sha1_file_name(unsigned char *sha1) /// 根据哈希值，返回在仓库中的文件名，譬如ab1234567890...，就返回.dircache/objects/ab/1234567890...
 {
 	int i;
 	static char *name, *base;
@@ -65,7 +66,7 @@ char *sha1_file_name(unsigned char *sha1)
 		base = malloc(len + 60);
 		memcpy(base, sha1_file_directory, len);
 		memset(base+len, 0, 60);
-		base[len] = '/';
+		base[len] = '/'; /// 两个/中间只有2位字符
 		base[len+3] = '/';
 		name = base + len + 1;
 	}
@@ -79,14 +80,14 @@ char *sha1_file_name(unsigned char *sha1)
 	return base;
 }
 
-void * read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
+void * read_sha1_file(unsigned char *sha1, char *type, unsigned long *size) /// 根据指定的哈希值sha1，读取数据。后面两个是输出参数
 {
 	z_stream stream;
 	char buffer[8192];
 	struct stat st;
 	int i, fd, ret, bytes;
 	void *map, *buf;
-	char *filename = sha1_file_name(sha1);
+	char *filename = sha1_file_name(sha1); /// 根据哈希值获得在仓库中的文件名
 
 	fd = open(filename, O_RDONLY); /// 打开文件
 	if (fd < 0) {
@@ -109,7 +110,7 @@ void * read_sha1_file(unsigned char *sha1, char *type, unsigned long *size)
 	stream.next_out = buffer;
 	stream.avail_out = sizeof(buffer);
 
-	inflateInit(&stream);
+	inflateInit(&stream); /// 解压缩文件
 	ret = inflate(&stream, 0);
 	if (sscanf(buffer, "%10s %lu", type, size) != 2)
 		return NULL;

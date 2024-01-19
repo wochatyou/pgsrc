@@ -2214,7 +2214,7 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 			cluster_rel(relid, InvalidOid, &cluster_params);
 		}
 		else
-			table_relation_vacuum(rel, params, bstrategy);
+			table_relation_vacuum(rel, params, bstrategy); /// 干活的
 	}
 
 	/* Roll back any GUC changes executed by index functions */

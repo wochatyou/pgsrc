@@ -94,7 +94,7 @@ static int index_fd(const char *path, int namelen, struct cache_entry *ce, int f
 	 * ASCII size + nul byte
 	 */	
 	stream.next_in = metadata;
-	stream.avail_in = 1+sprintf(metadata, "blob %lu", (unsigned long) st->st_size);
+	stream.avail_in = 1+sprintf(metadata, "blob %lu", (unsigned long) st->st_size); /// 写入文件头
 	stream.next_out = out;
 	stream.avail_out = max_out_bytes;
 	while (deflate(&stream, 0) == Z_OK)

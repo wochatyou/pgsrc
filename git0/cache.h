@@ -21,7 +21,7 @@
  * just a cache, after all.
  */
 
-#define CACHE_SIGNATURE 0x44495243	/* "DIRC" */
+#define CACHE_SIGNATURE 0x44495243	/* "DIRC" */ /// 这个是索引文件的头四个字符
 struct cache_header {
 	unsigned int signature;
 	unsigned int version;
@@ -68,7 +68,7 @@ unsigned int active_nr, active_alloc;
 #define cache_entry_size(len) ((offsetof(struct cache_entry,name) + (len) + 8) & ~7)
 #define ce_size(ce) cache_entry_size((ce)->namelen)
 
-#define alloc_nr(x) (((x)+16)*3/2)
+#define alloc_nr(x) (((x)+16)*3/2) /// 稍微扩充一下分配内存的尺寸
 
 /* Initialize the cache information */
 extern int read_cache(void);

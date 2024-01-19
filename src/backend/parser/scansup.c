@@ -114,7 +114,7 @@ truncate_identifier(char *ident, int len, bool warn)
  * moment only isspace seems needed.
  */
 bool
-scanner_isspace(char ch)
+scanner_isspace(char ch) /// 判断这个字符是不是空字符
 {
 	/* This must match scan.l's list of {space} characters */
 	if (ch == ' ' ||

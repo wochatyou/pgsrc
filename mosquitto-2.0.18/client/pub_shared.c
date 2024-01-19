@@ -87,7 +87,7 @@ int load_stdin(void)
 	return 0;
 }
 
-int load_file(const char *filename)
+int load_file(const char *filename) /// 加载动态库
 {
 	size_t pos, rlen;
 	FILE *fptr = NULL;

@@ -2542,7 +2542,7 @@ SampleHeapTupleVisible(TableScanDesc scan, Buffer buffer,
  * ------------------------------------------------------------------------
  */
 
-static const TableAmRoutine heapam_methods = {
+static const TableAmRoutine heapam_methods = { /// 就是一捆回调函数的集合，写死了
 	.type = T_TableAmRoutine,
 
 	.slot_callbacks = heapam_slot_callbacks,
@@ -2582,7 +2582,7 @@ static const TableAmRoutine heapam_methods = {
 	.relation_nontransactional_truncate = heapam_relation_nontransactional_truncate,
 	.relation_copy_data = heapam_relation_copy_data,
 	.relation_copy_for_cluster = heapam_relation_copy_for_cluster,
-	.relation_vacuum = heap_vacuum_rel,
+	.relation_vacuum = heap_vacuum_rel,  /// Vacuum调用这个函数执行Vacuum的工作
 	.scan_analyze_next_block = heapam_scan_analyze_next_block,
 	.scan_analyze_next_tuple = heapam_scan_analyze_next_tuple,
 	.index_build_range_scan = heapam_index_build_range_scan,
@@ -2603,7 +2603,7 @@ static const TableAmRoutine heapam_methods = {
 
 
 const TableAmRoutine *
-GetHeapamTableAmRoutine(void)
+GetHeapamTableAmRoutine(void) /// 返回指向heapam_methods的指针
 {
 	return &heapam_methods;
 }

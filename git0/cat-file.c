@@ -9,7 +9,7 @@ int main(int argc, char **argv)
 	char template[] = "temp_git_file_XXXXXX";
 	int fd;
 
-	if (argc != 2 || get_sha1_hex(argv[1], sha1))
+	if (argc != 2 || get_sha1_hex(argv[1], sha1)) /// get_sha1_hex()函数把第一个输入表示的字符串，40字节，变成20字节真正的哈希值，如果成功了，就返回0
 		usage("cat-file: cat-file <sha1>");
 	buf = read_sha1_file(sha1, type, &size);
 	if (!buf)

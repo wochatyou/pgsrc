@@ -153,7 +153,7 @@ load_file(const char *filename, bool restricted)
 	fullname = expand_dynamic_library_name(filename);
 
 	/* Load the shared library */
-	(void) internal_load_library(fullname);
+	(void) internal_load_library(fullname); /// 干活的函数在这里
 
 	pfree(fullname);
 }

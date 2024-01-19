@@ -3586,10 +3586,10 @@ SplitDirectoriesString(char *rawstring, char separator,
 
 	*namelist = NIL;
 
-	while (scanner_isspace(*nextp))
+	while (scanner_isspace(*nextp)) /// 跳过开头的空白字符
 		nextp++;				/* skip leading whitespace */
 
-	if (*nextp == '\0')
+	if (*nextp == '\0') /// 到字符结尾了
 		return true;			/* allow empty string */
 
 	/* At the top of the loop, we are at start of a new directory. */

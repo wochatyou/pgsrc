@@ -249,7 +249,7 @@ DatumGetObjectId(Datum X)
  *		Returns datum representation for an object identifier.
  */
 static inline Datum
-ObjectIdGetDatum(Oid X)
+ObjectIdGetDatum(Oid X) /// 就是把X的类型从Oid强制转换成Datum
 {
 	return (Datum) X;
 }

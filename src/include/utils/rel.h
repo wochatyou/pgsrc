@@ -54,7 +54,7 @@ typedef LockInfoData *LockInfo;
 
 typedef struct RelationData
 {
-	RelFileLocator rd_locator;	/* relation physical identifier */ // 三元组
+	RelFileLocator rd_locator;	/* relation physical identifier */ // 三元组，哪个表空间，哪个数据库，哪个表
 	SMgrRelation rd_smgr;		/* cached file handle, or NULL */
 	int			rd_refcnt;		/* reference count */
 	BackendId	rd_backend;		/* owning backend id, if temporary relation */
