@@ -172,7 +172,8 @@ static void git_hash_unknown_final_oid(struct object_id *oid UNUSED,
 	BUG("trying to finalize unknown hash");
 }
 
-const struct git_hash_algo hash_algos[GIT_HASH_NALGOS] = {
+const struct git_hash_algo hash_algos[GIT_HASH_NALGOS] = /// 这个是写死的，不会改变
+{
 	{
 		.name = NULL,
 		.format_id = 0x00000000,
@@ -237,12 +238,12 @@ const char *empty_blob_oid_hex(void)
 	return oid_to_hex_r(buf, the_hash_algo->empty_blob);
 }
 
-int hash_algo_by_name(const char *name)
+int hash_algo_by_name(const char *name) /// 根据名字在数组中查找哈希函数的类型，SHA1/SHA256
 {
 	int i;
 	if (!name)
 		return GIT_HASH_UNKNOWN;
-	for (i = 1; i < GIT_HASH_NALGOS; i++)
+	for (i = 1; i < GIT_HASH_NALGOS; i++) /// GIT_HASH_NALGOS 的值是3，只支持SHA1和SHA256两种哈希函数
 		if (!strcmp(name, hash_algos[i].name))
 			return i;
 	return GIT_HASH_UNKNOWN;
@@ -1808,7 +1809,7 @@ static void write_object_file_prepare_literally(const struct git_hash_algo *algo
 /*
  * Move the just written object into its final resting place.
  */
-int finalize_object_file(const char *tmpfile, const char *filename)
+int finalize_object_file(const char *tmpfile, const char *filename) /// 改名字，形成最终的文件
 {
 	int ret = 0;
 
@@ -2034,7 +2035,7 @@ static int write_loose_object(const struct object_id *oid, char *hdr,
 	if (batch_fsync_enabled(FSYNC_COMPONENT_LOOSE_OBJECT))
 		prepare_loose_object_bulk_checkin();
 
-	loose_object_path(the_repository, &filename, oid);
+	loose_object_path(the_repository, &filename, oid); /// 先写入某些头部信息
 
 	fd = start_loose_object_common(&tmp_file, filename.buf, flags,
 				       &stream, compressed, sizeof(compressed),

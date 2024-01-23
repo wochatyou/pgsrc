@@ -2753,7 +2753,7 @@ FreeFile(FILE *file)
  * to handle close errors.
  */
 int
-CloseTransientFile(int fd)
+CloseTransientFile(int fd) /// 关闭一个文件句柄，就是调用close()这个系统调用来完成
 {
 	int			i;
 

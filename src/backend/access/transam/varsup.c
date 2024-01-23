@@ -47,7 +47,7 @@ VariableCache ShmemVariableCache = NULL;
  * issue a warning about XID wrap.
  */
 FullTransactionId
-GetNewTransactionId(bool isSubXact)
+GetNewTransactionId(bool isSubXact) /// 获得一个事务号。输入参数表示是否为子事务
 {
 	FullTransactionId full_xid;
 	TransactionId xid;
@@ -77,11 +77,11 @@ GetNewTransactionId(bool isSubXact)
 
 	LWLockAcquire(XidGenLock, LW_EXCLUSIVE);
 
-	full_xid = ShmemVariableCache->nextXid;
+	full_xid = ShmemVariableCache->nextXid; /// 这个是关键，从这里获得下一个事务号
 	xid = XidFromFullTransactionId(full_xid);
 
 	/*----------
-	 * Check to see if it's safe to assign another XID.  This protects against
+	 * Check to see if it's safe to assign another XID.  This protects against /// 三道防线防止事务号回卷
 	 * catastrophic data loss due to XID wraparound.  The basic rules are:
 	 *
 	 * If we're past xidVacLimit, start trying to force autovacuum cycles.
@@ -93,7 +93,7 @@ GetNewTransactionId(bool isSubXact)
 	 * Note that this coding also appears in GetNewMultiXactId.
 	 *----------
 	 */
-	if (TransactionIdFollowsOrEquals(xid, ShmemVariableCache->xidVacLimit))
+	if (TransactionIdFollowsOrEquals(xid, ShmemVariableCache->xidVacLimit)) /// xid在xidVacLimit的后面，未来，第一道防线
 	{
 		/*
 		 * For safety's sake, we release XidGenLock while sending signals,
@@ -115,12 +115,12 @@ GetNewTransactionId(bool isSubXact)
 		 * plenty of chances before we get into real trouble.
 		 */
 		if (IsUnderPostmaster && (xid % 65536) == 0)
-			SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_LAUNCHER);
+			SendPostmasterSignal(PMSIGNAL_START_AUTOVAC_LAUNCHER); /// 如果xid能够整除64K,就给主进程发送启动AV的请求，这是一种预防措施
 
 		if (IsUnderPostmaster &&
-			TransactionIdFollowsOrEquals(xid, xidStopLimit))
+			TransactionIdFollowsOrEquals(xid, xidStopLimit)) /// 第三道防线
 		{
-			char	   *oldest_datname = get_database_name(oldest_datoid);
+			char	   *oldest_datname = get_database_name(oldest_datoid); /// 根据数据库的Oid获得数据库的名字
 
 			/* complain even if that DB has disappeared */
 			if (oldest_datname)
@@ -138,7 +138,7 @@ GetNewTransactionId(bool isSubXact)
 						 errhint("Stop the postmaster and vacuum that database in single-user mode.\n"
 								 "You might also need to commit or roll back old prepared transactions, or drop stale replication slots.")));
 		}
-		else if (TransactionIdFollowsOrEquals(xid, xidWarnLimit))
+		else if (TransactionIdFollowsOrEquals(xid, xidWarnLimit)) /// 第二道防线
 		{
 			char	   *oldest_datname = get_database_name(oldest_datoid);
 
@@ -184,7 +184,7 @@ GetNewTransactionId(bool isSubXact)
 	 * want the next incoming transaction to try it again.  We cannot assign
 	 * more XIDs until there is CLOG space for them.
 	 */
-	FullTransactionIdAdvance(&ShmemVariableCache->nextXid);
+	FullTransactionIdAdvance(&ShmemVariableCache->nextXid); /// 把nextXid的值加一，变成下一个事务号
 
 	/*
 	 * We must store the new XID into the shared ProcArray before releasing

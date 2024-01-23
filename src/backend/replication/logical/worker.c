@@ -214,7 +214,7 @@
 
 typedef struct FlushPosition
 {
-	dlist_node	node;
+	dlist_node	node; /// 这个表示一个双向链表
 	XLogRecPtr	local_end;
 	XLogRecPtr	remote_end;
 } FlushPosition;

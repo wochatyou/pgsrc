@@ -894,7 +894,7 @@ static int calc_shared_perm(int mode)
 }
 
 
-int adjust_shared_perm(const char *path)
+int adjust_shared_perm(const char *path) /// 调用chmod改变目录的属性
 {
 	int old_mode, new_mode;
 
@@ -922,11 +922,12 @@ int adjust_shared_perm(const char *path)
 	return 0;
 }
 
-void safe_create_dir(const char *dir, int share)
+void safe_create_dir(const char *dir, int share) /// 创建目录dir，share表示共享
 {
-	if (mkdir(dir, 0777) < 0) {
-		if (errno != EEXIST) {
-			perror(dir);
+	if (mkdir(dir, 0777) < 0) /// 创建目录失败
+	{
+		if (errno != EEXIST) {  /// EEXIST表示该目录已经存在了
+			perror(dir); /// 别的情况就退出程序
 			exit(1);
 		}
 	}

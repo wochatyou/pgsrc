@@ -83,7 +83,8 @@ static WalRcvExecResult *libpqrcv_exec(WalReceiverConn *conn,
 									   const Oid *retTypes);
 static void libpqrcv_disconnect(WalReceiverConn *conn);
 
-static WalReceiverFunctionsType PQWalReceiverFunctions = {
+static WalReceiverFunctionsType PQWalReceiverFunctions = /// 写死了函数指针
+{
 	.walrcv_connect = libpqrcv_connect,
 	.walrcv_check_conninfo = libpqrcv_check_conninfo,
 	.walrcv_get_conninfo = libpqrcv_get_conninfo,
@@ -114,7 +115,7 @@ _PG_init(void)
 {
 	if (WalReceiverFunctions != NULL) // 这个变量是在walreceiver.c中定义的，在本模块加载之前，它应该是NULL，因为模块只加载一次
 		elog(ERROR, "libpqwalreceiver already loaded");
-	WalReceiverFunctions = &PQWalReceiverFunctions;
+	WalReceiverFunctions = &PQWalReceiverFunctions; /// 设置各种回调函数
 }
 
 /*
@@ -128,7 +129,7 @@ _PG_init(void)
  * machinery to pass all of those back to the caller just to cover this one
  * case.
  */
-static WalReceiverConn *
+static WalReceiverConn * /// 如果连接成功，返回指针，否则返回NULL
 libpqrcv_connect(const char *conninfo, bool logical, bool must_use_password,
 				 const char *appname, char **err)
 {
@@ -178,13 +179,13 @@ libpqrcv_connect(const char *conninfo, bool logical, bool must_use_password,
 
 	Assert(i < sizeof(keys));
 
-	conn = palloc0(sizeof(WalReceiverConn));
-	conn->streamConn =
+	conn = palloc0(sizeof(WalReceiverConn)); /// 分配一块内存区
+	conn->streamConn = /// 这个是连接句柄
 		libpqsrv_connect_params(keys, vals,
 								 /* expand_dbname = */ true,
-								WAIT_EVENT_LIBPQWALRECEIVER_CONNECT);
+								WAIT_EVENT_LIBPQWALRECEIVER_CONNECT); /// 根据conninfo，建立和数据库的连接
 
-	if (PQstatus(conn->streamConn) != CONNECTION_OK)
+	if (PQstatus(conn->streamConn) != CONNECTION_OK) /// 如果连接失败，就做一些处理
 		goto bad_connection_errmsg;
 
 	if (must_use_password && !PQconnectionUsedPassword(conn->streamConn))
@@ -217,7 +218,7 @@ libpqrcv_connect(const char *conninfo, bool logical, bool must_use_password,
 
 	conn->logical = logical;
 
-	return conn;
+	return conn; /// 连接成功，返回指针
 
 	/* error path, using libpq's error message */
 bad_connection_errmsg:
@@ -226,7 +227,7 @@ bad_connection_errmsg:
 	/* error path, error already set */
 bad_connection:
 	libpqsrv_disconnect(conn->streamConn);
-	pfree(conn);
+	pfree(conn); /// 连接失败了，释放内存，返回空值
 	return NULL;
 }
 
@@ -350,11 +351,11 @@ libpqrcv_get_senderinfo(WalReceiverConn *conn, char **sender_host,
 
 	ret = PQhost(conn->streamConn);
 	if (ret && strlen(ret) != 0)
-		*sender_host = pstrdup(ret);
+		*sender_host = pstrdup(ret); /// sender_host的内存在本函数内部分配，注意释放问题
 
 	ret = PQport(conn->streamConn);
 	if (ret && strlen(ret) != 0)
-		*sender_port = atoi(ret);
+		*sender_port = atoi(ret); /// 获得端口
 }
 
 /*
@@ -362,7 +363,7 @@ libpqrcv_get_senderinfo(WalReceiverConn *conn, char **sender_host,
  * timeline ID of the primary.
  */
 static char *
-libpqrcv_identify_system(WalReceiverConn *conn, TimeLineID *primary_tli)
+libpqrcv_identify_system(WalReceiverConn *conn, TimeLineID *primary_tli) /// 返回系统标识符，和当前的时间线
 {
 	PGresult   *res;
 	char	   *primary_sysid;
@@ -421,7 +422,7 @@ libpqrcv_server_version(WalReceiverConn *conn)
  */
 static bool
 libpqrcv_startstreaming(WalReceiverConn *conn,
-						const WalRcvStreamOptions *options)
+						const WalRcvStreamOptions *options) /// 执行START_REPLICATION指令
 {
 	StringInfoData cmd;
 	PGresult   *res;
@@ -499,7 +500,7 @@ libpqrcv_startstreaming(WalReceiverConn *conn,
 						 options->proto.physical.startpointTLI);
 
 	/* Start streaming. */
-	res = libpqrcv_PQexec(conn->streamConn, cmd.data);
+	res = libpqrcv_PQexec(conn->streamConn, cmd.data); /// 上面的逻辑是拼凑字符串，这里执行指令
 	pfree(cmd.data);
 
 	if (PQresultStatus(res) == PGRES_COMMAND_OK)
@@ -603,7 +604,7 @@ libpqrcv_endstreaming(WalReceiverConn *conn, TimeLineID *next_tli)
 static void
 libpqrcv_readtimelinehistoryfile(WalReceiverConn *conn,
 								 TimeLineID tli, char **filename,
-								 char **content, int *len)
+								 char **content, int *len) /// 执行TIMELINE_HISTORY指令
 {
 	PGresult   *res;
 	char		cmd[64];
@@ -658,7 +659,7 @@ libpqrcv_readtimelinehistoryfile(WalReceiverConn *conn,
  * May return NULL, rather than an error result, on failure.
  */
 static PGresult *
-libpqrcv_PQexec(PGconn *streamConn, const char *query)
+libpqrcv_PQexec(PGconn *streamConn, const char *query) /// 执行query里面的指令，query就是字符串
 {
 	PGresult   *lastResult = NULL;
 
@@ -683,7 +684,7 @@ libpqrcv_PQexec(PGconn *streamConn, const char *query)
 		PGresult   *result;
 
 		result = libpqrcv_PQgetResult(streamConn);
-		if (result == NULL)
+		if (result == NULL) /// 已经处理完了
 			break;				/* query is complete, or failure */
 
 		/*
@@ -866,7 +867,7 @@ libpqrcv_receive(WalReceiverConn *conn, char **buffer,
  * ereports on error.
  */
 static void
-libpqrcv_send(WalReceiverConn *conn, const char *buffer, int nbytes)
+libpqrcv_send(WalReceiverConn *conn, const char *buffer, int nbytes) /// 发送指定长度的字节流
 {
 	if (PQputCopyData(conn->streamConn, buffer, nbytes) <= 0 ||
 		PQflush(conn->streamConn))
@@ -884,7 +885,7 @@ libpqrcv_send(WalReceiverConn *conn, const char *buffer, int nbytes)
 static char *
 libpqrcv_create_slot(WalReceiverConn *conn, const char *slotname,
 					 bool temporary, bool two_phase, CRSSnapshotAction snapshot_action,
-					 XLogRecPtr *lsn)
+					 XLogRecPtr *lsn) /// 执行CREATE_REPLICATION_SLOT指令
 {
 	PGresult   *res;
 	StringInfoData cmd;

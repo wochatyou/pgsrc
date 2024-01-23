@@ -4456,7 +4456,7 @@ HotStandbyActiveInReplay(void)
  *
  * Exported to allow WALReceiver to read the pointer directly.
  */
-XLogRecPtr // 获得最后redo apply的LSN号
+XLogRecPtr // 获得最后redo apply的LSN号和时间线，就是读取XLogRecoveryCtl里面的内容
 GetXLogReplayRecPtr(TimeLineID *replayTLI)
 {
 	XLogRecPtr	recptr;

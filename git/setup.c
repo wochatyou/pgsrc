@@ -2183,7 +2183,7 @@ int init_db(const char *git_dir, const char *real_git_dir,
 	    const char *template_dir, int hash,
 	    unsigned int ref_storage_format,
 	    const char *initial_branch,
-	    int init_shared_repository, unsigned int flags)
+	    int init_shared_repository, unsigned int flags) /// 真正初始化git目录的函数
 {
 	int reinit;
 	int exist_ok = flags & INIT_DB_EXIST_OK;
@@ -2213,7 +2213,7 @@ int init_db(const char *git_dir, const char *real_git_dir,
 	/* Ensure `core.hidedotfiles` is processed */
 	git_config(platform_core_config, NULL);
 
-	safe_create_dir(git_dir, 0);
+	safe_create_dir(git_dir, 0); /// 创建目录
 
 	prev_bare_repository = is_bare_repository();
 

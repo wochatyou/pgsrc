@@ -100,7 +100,7 @@ ReplicationSlot *MyReplicationSlot = NULL;
 
 /* GUC variable */
 int			max_replication_slots = 10; /* the maximum number of replication
-										 * slots */
+										 * slots */ /// max_replication_slots的缺省值是10
 
 static void ReplicationSlotShmemExit(int code, Datum arg);
 static void ReplicationSlotDropAcquired(void);
@@ -545,7 +545,7 @@ retry:
  * Resources this slot requires will be preserved.
  */
 void
-ReplicationSlotRelease(void)
+ReplicationSlotRelease(void) /// 释放复制槽
 {
 	ReplicationSlot *slot = MyReplicationSlot;
 
@@ -583,16 +583,16 @@ ReplicationSlotRelease(void)
 		 * disconnecting, but wake up others that may be waiting for it.
 		 */
 		SpinLockAcquire(&slot->mutex);
-		slot->active_pid = 0;
+		slot->active_pid = 0;  /// 把该槽的进程号变为0
 		SpinLockRelease(&slot->mutex);
 		ConditionVariableBroadcast(&slot->active_cv);
 	}
 
-	MyReplicationSlot = NULL;
+	MyReplicationSlot = NULL; /// 记录当前槽的指针变为NULL
 
 	/* might not have been set when we've been a plain slot */
 	LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
-	MyProc->statusFlags &= ~PROC_IN_LOGICAL_DECODING;
+	MyProc->statusFlags &= ~PROC_IN_LOGICAL_DECODING; /// 去掉这个标志
 	ProcGlobal->statusFlags[MyProc->pgxactoff] = MyProc->statusFlags;
 	LWLockRelease(ProcArrayLock);
 }
@@ -819,11 +819,11 @@ ReplicationSlotPersist(void)
 	Assert(slot->data.persistency != RS_PERSISTENT);
 
 	SpinLockAcquire(&slot->mutex);
-	slot->data.persistency = RS_PERSISTENT;
+	slot->data.persistency = RS_PERSISTENT; /// 把类型改为永久性的
 	SpinLockRelease(&slot->mutex);
 
-	ReplicationSlotMarkDirty();
-	ReplicationSlotSave();
+	ReplicationSlotMarkDirty(); /// 设置状态为脏
+	ReplicationSlotSave(); /// 保存复制槽到磁盘上
 }
 
 /*
@@ -1576,7 +1576,7 @@ restart:
  * location.
  */
 void
-CheckPointReplicationSlots(void)
+CheckPointReplicationSlots(void) /// 检查点把所有非空的复制槽写入到磁盘上
 {
 	int			i;
 
@@ -1591,12 +1591,12 @@ CheckPointReplicationSlots(void)
 	 */
 	LWLockAcquire(ReplicationSlotAllocationLock, LW_SHARED);
 
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) /// 从头开始扫描数组
 	{
 		ReplicationSlot *s = &ReplicationSlotCtl->replication_slots[i];
 		char		path[MAXPGPATH];
 
-		if (!s->in_use)
+		if (!s->in_use) /// 如果没有使用，就跳过
 			continue;
 
 		/* save the slot to disk, locking is handled in SaveSlotToPath() */

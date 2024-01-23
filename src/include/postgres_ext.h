@@ -31,7 +31,7 @@
 typedef unsigned int Oid;
 
 #ifdef __cplusplus
-#define InvalidOid		(Oid(0))
+#define InvalidOid		(Oid(0)) /// C++和C的写法不同
 #else
 #define InvalidOid		((Oid) 0)
 #endif

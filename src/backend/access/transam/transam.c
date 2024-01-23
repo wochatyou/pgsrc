@@ -325,8 +325,8 @@ TransactionIdFollows(TransactionId id1, TransactionId id2)
 /*
  * TransactionIdFollowsOrEquals --- is id1 logically >= id2?
  */
-bool
-TransactionIdFollowsOrEquals(TransactionId id1, TransactionId id2)
+bool  /// 如果id1逻辑上大于id2，就返回true
+TransactionIdFollowsOrEquals(TransactionId id1, TransactionId id2) /// 假设id1=10, id2=7，id1在id2的后面，返回true
 {
 	int32		diff;
 

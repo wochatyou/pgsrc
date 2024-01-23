@@ -158,8 +158,9 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		free(cwd);
 	}
 
-	if (object_format) {
-		hash_algo = hash_algo_by_name(object_format);
+	if (object_format) /// 分为SHA1和SHA256两种
+	{
+		hash_algo = hash_algo_by_name(object_format); /// 获得算法的类型
 		if (hash_algo == GIT_HASH_UNKNOWN)
 			die(_("unknown hash algorithm '%s'"), object_format);
 	}
@@ -188,8 +189,8 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	/*
 	 * Set up the default .git directory contents
 	 */
-	if (!git_dir)
-		git_dir = DEFAULT_GIT_DIR_ENVIRONMENT;
+	if (!git_dir) /// 如果没有指定git的目录，就使用 .git
+		git_dir = DEFAULT_GIT_DIR_ENVIRONMENT; /// #define DEFAULT_GIT_DIR_ENVIRONMENT ".git"
 
 	/*
 	 * When --separate-git-dir is used inside a linked worktree, take

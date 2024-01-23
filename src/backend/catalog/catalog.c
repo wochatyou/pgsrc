@@ -216,7 +216,7 @@ IsToastNamespace(Oid namespaceId)
  *		for roles.
  */
 bool
-IsReservedName(const char *name)
+IsReservedName(const char *name) /// 就是头3个字母是pg_
 {
 	/* ugly coding for speed */
 	return (name[0] == 'p' &&

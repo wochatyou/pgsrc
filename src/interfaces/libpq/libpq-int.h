@@ -357,7 +357,7 @@ typedef struct pg_conn_host
  * PGconn stores all the state data associated with a single connection
  * to a backend.
  */
-struct pg_conn
+struct pg_conn /// 一个巨复杂的链接表示的数据结构
 {
 	/* Saved values of connection options */
 	char	   *pghost;			/* the machine on which the server is running,

@@ -291,9 +291,9 @@ parse_output_parameters(List *options, PGOutputData *data)
 	data->messages = false;
 	data->two_phase = false;
 
-	foreach(lc, options)
+	foreach(lc, options) /// 依次循环遍历options
 	{
-		DefElem    *defel = (DefElem *) lfirst(lc);
+		DefElem    *defel = (DefElem *) lfirst(lc); /// ListCell就是一个8字节，这里返回指针的值
 
 		Assert(defel->arg == NULL || IsA(defel->arg, String));
 
@@ -407,7 +407,7 @@ pgoutput_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 				 bool is_init)
 {
 	PGOutputData *data = palloc0(sizeof(PGOutputData)); // 这个内存在ctx的内存池中分配
-	static bool publication_callback_registered = false;
+	static bool publication_callback_registered = false; /// 注意这里是static变量
 
 	/* Create our memory context for private allocations. */
 	data->context = AllocSetContextCreate(ctx->context,
@@ -421,7 +421,7 @@ pgoutput_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 	ctx->output_plugin_private = data; // output_plugin_private由插件自己解释，框架不操心
 
 	/* This plugin uses binary protocol. */
-	opt->output_type = OUTPUT_PLUGIN_BINARY_OUTPUT;
+	opt->output_type = OUTPUT_PLUGIN_BINARY_OUTPUT; /// 分为二进制和文本两种类型
 
 	/*
 	 * This is replication start and not slot initialization.
@@ -508,12 +508,12 @@ pgoutput_startup(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 		 * Register callback for pg_publication if we didn't already do that
 		 * during some previous call in this process.
 		 */
-		if (!publication_callback_registered)
+		if (!publication_callback_registered) /// 第一次执行。这个保证只执行一次
 		{
 			CacheRegisterSyscacheCallback(PUBLICATIONOID,
 										  publication_invalidation_cb,
 										  (Datum) 0);
-			publication_callback_registered = true;
+			publication_callback_registered = true; /// 第二次就不再执行了
 		}
 
 		/* Initialize relation schema cache. */
@@ -578,9 +578,9 @@ pgoutput_send_begin(LogicalDecodingContext *ctx, ReorderBufferTXN *txn)
  */
 static void
 pgoutput_commit_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
-					XLogRecPtr commit_lsn)
+					XLogRecPtr commit_lsn) /// 处理提交事务的回调函数
 {
-	PGOutputTxnData *txndata = (PGOutputTxnData *) txn->output_plugin_private;
+	PGOutputTxnData *txndata = (PGOutputTxnData *) txn->output_plugin_private; /// 私有的数据内容
 	bool		sent_begin_txn;
 
 	Assert(txndata);
@@ -592,7 +592,7 @@ pgoutput_commit_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	sent_begin_txn = txndata->sent_begin_txn;
 	OutputPluginUpdateProgress(ctx, !sent_begin_txn);
 	pfree(txndata);
-	txn->output_plugin_private = NULL;
+	txn->output_plugin_private = NULL; /// 内存释放了，指针变成NULL
 
 	if (!sent_begin_txn)
 	{

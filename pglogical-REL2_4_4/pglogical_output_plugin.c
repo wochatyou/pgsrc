@@ -441,12 +441,12 @@ pg_decode_begin_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn)
  */
 static void
 pg_decode_commit_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
-					 XLogRecPtr commit_lsn)
+					 XLogRecPtr commit_lsn) /// commit的回调函数
 {
 	PGLogicalOutputData* data = (PGLogicalOutputData*)ctx->output_plugin_private;
 	MemoryContext old_ctx;
 
-	old_ctx = MemoryContextSwitchTo(data->context);
+	old_ctx = MemoryContextSwitchTo(data->context); /// 切换内存池
 
 	OutputPluginPrepareWrite(ctx, true);
 	data->api->write_commit(ctx->out, data, txn, commit_lsn);
@@ -460,8 +460,8 @@ pg_decode_commit_txn(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	relmetacache_prune();
 
 	Assert(CurrentMemoryContext == data->context);
-	MemoryContextSwitchTo(old_ctx);
-	MemoryContextReset(data->context);
+	MemoryContextSwitchTo(old_ctx); /// 再切换回来
+	MemoryContextReset(data->context); /// COMMIT的内存池重置一下
 
 	VALGRIND_DO_ADDED_LEAK_CHECK;
 }

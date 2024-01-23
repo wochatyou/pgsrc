@@ -29,7 +29,7 @@ typedef enum
 }			DebugLogicalRepStreamingMode;
 
 /* an individual tuple, stored in one chunk of memory */
-typedef struct ReorderBufferTupleBuf
+typedef struct ReorderBufferTupleBuf /// 一条记录的描述
 {
 	/* position in preallocated list */
 	slist_node	node;
@@ -86,15 +86,15 @@ struct ReorderBufferTXN;
  * The same struct is also used internally for other purposes but that should
  * never be visible outside reorderbuffer.c.
  */
-typedef struct ReorderBufferChange
+typedef struct ReorderBufferChange /// 单一的改变
 {
 	XLogRecPtr	lsn;
 
 	/* The type of change. */
-	ReorderBufferChangeType action;
+	ReorderBufferChangeType action; /// 枚举类型，INSERT/UPDATE/DELETE?
 
 	/* Transaction this change belongs to. */
-	struct ReorderBufferTXN *txn;
+	struct ReorderBufferTXN *txn;  /// 属于哪个事务？
 
 	RepOriginId origin_id;
 
@@ -114,9 +114,9 @@ typedef struct ReorderBufferChange
 			bool		clear_toast_afterwards;
 
 			/* valid for DELETE || UPDATE */
-			ReorderBufferTupleBuf *oldtuple;
+			ReorderBufferTupleBuf *oldtuple; /// 老值
 			/* valid for INSERT || UPDATE */
-			ReorderBufferTupleBuf *newtuple;
+			ReorderBufferTupleBuf *newtuple; /// 新值
 		}			tp;
 
 		/*
@@ -550,12 +550,12 @@ typedef void (*ReorderBufferUpdateProgressTxnCB) (
 												  ReorderBufferTXN *txn,
 												  XLogRecPtr lsn);
 
-struct ReorderBuffer
+struct ReorderBuffer /// 这是一个重要的数据结构
 {
 	/*
 	 * xid => ReorderBufferTXN lookup table
 	 */
-	HTAB	   *by_txn;
+	HTAB	   *by_txn; /// 哈希表，根据xid查找？
 
 	/*
 	 * Transactions that could be a toplevel xact, ordered by LSN of the first
@@ -590,7 +590,7 @@ struct ReorderBuffer
 	ReorderBufferBeginCB begin;
 	ReorderBufferApplyChangeCB apply_change;
 	ReorderBufferApplyTruncateCB apply_truncate;
-	ReorderBufferCommitCB commit;
+	ReorderBufferCommitCB commit;  /// commit的回调函数
 	ReorderBufferMessageCB message;
 
 	/*
@@ -657,6 +657,7 @@ struct ReorderBuffer
 	 * two different counters. For spilling, the transaction counter includes
 	 * both toplevel transactions and subtransactions.
 	 */
+	/// 各种统计指标
 	int64		spillTxns;		/* number of transactions spilled to disk */
 	int64		spillCount;		/* spill-to-disk invocation counter */
 	int64		spillBytes;		/* amount of data spilled to disk */

@@ -836,7 +836,7 @@ CheckPointCLOG(void) // 把CLOG的页面都写入到磁盘文件上
  * in shared memory.
  */
 void
-ExtendCLOG(TransactionId newestXact)
+ExtendCLOG(TransactionId newestXact) /// 每当分配一个新的事务号，确保CLOG有足够的空间保存它
 {
 	int			pageno;
 
@@ -949,7 +949,7 @@ CLOGPagePrecedes(int page1, int page2)
  * Write a ZEROPAGE xlog record
  */
 static void
-WriteZeroPageXlogRec(int pageno)
+WriteZeroPageXlogRec(int pageno) /// 增加一个WAL记录
 {
 	XLogBeginInsert();
 	XLogRegisterData((char *) (&pageno), sizeof(int));

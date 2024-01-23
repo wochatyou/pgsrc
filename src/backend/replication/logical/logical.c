@@ -887,7 +887,7 @@ commit_cb_wrapper(ReorderBuffer *cache, ReorderBufferTXN *txn,
 	ctx->end_xact = true;
 
 	/* do the actual work: call callback */
-	ctx->callbacks.commit_cb(ctx, txn, commit_lsn);
+	ctx->callbacks.commit_cb(ctx, txn, commit_lsn); /// 调用回调函数做事情
 
 	/* Pop the error context stack */
 	error_context_stack = errcallback.previous;

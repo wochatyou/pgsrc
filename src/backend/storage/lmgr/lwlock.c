@@ -727,7 +727,7 @@ RequestNamedLWLockTranche(const char *tranche_name, int num_lwlocks)
  * LWLockInitialize - initialize a new lwlock; it's initially unlocked
  */
 void
-LWLockInitialize(LWLock *lock, int tranche_id)
+LWLockInitialize(LWLock *lock, int tranche_id) /// 记录一下tranche_id在LW锁中
 {
 	pg_atomic_init_u32(&lock->state, LW_FLAG_RELEASE_OK);
 #ifdef LOCK_DEBUG

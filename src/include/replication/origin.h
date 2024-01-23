@@ -15,7 +15,7 @@
 #include "access/xlogreader.h"
 #include "catalog/pg_replication_origin.h"
 
-typedef struct xl_replorigin_set
+typedef struct xl_replorigin_set /// 这个是WAL记录的类型
 {
 	XLogRecPtr	remote_lsn;
 	RepOriginId node_id;

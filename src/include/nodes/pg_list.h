@@ -42,7 +42,7 @@
 #include "nodes/nodes.h"
 
 
-typedef union ListCell
+typedef union ListCell /// 这是一个联合，最长是8个字节
 {
 	void	   *ptr_value;
 	int			int_value;
@@ -52,9 +52,9 @@ typedef union ListCell
 
 typedef struct List
 {
-	NodeTag		type;			/* T_List, T_IntList, T_OidList, or T_XidList */
-	int			length;			/* number of elements currently present */
-	int			max_length;		/* allocated length of elements[] */
+	NodeTag		type;			/* T_List, T_IntList, T_OidList, or T_XidList */ /// 表示存储的值的类型
+	int			length;			/* number of elements currently present */ /// 当前有多少个元素
+	int			max_length;		/* allocated length of elements[] */ /// 最长多少个元素
 	ListCell   *elements;		/* re-allocatable array of cells */
 	/* We may allocate some cells along with the List header: */
 	ListCell	initial_elements[FLEXIBLE_ARRAY_MEMBER];
@@ -125,21 +125,21 @@ typedef struct ForFiveState
 
 /* Fetch address of list's first cell; NULL if empty list */
 static inline ListCell *
-list_head(const List *l)
+list_head(const List *l) /// 如果list不为空，返回它的成员变量elements
 {
 	return l ? &l->elements[0] : NULL;
 }
 
 /* Fetch address of list's last cell; NULL if empty list */
 static inline ListCell *
-list_tail(const List *l)
+list_tail(const List *l) /// elements是一个指针数组，它的下标从0 到 length - 1， 返回尾部的那个指针
 {
 	return l ? &l->elements[l->length - 1] : NULL;
 }
 
 /* Fetch address of list's second cell, if it has one, else NULL */
 static inline ListCell *
-list_second_cell(const List *l)
+list_second_cell(const List *l) /// 返回第二个指针
 {
 	if (l && l->length >= 2)
 		return &l->elements[1];
@@ -149,7 +149,7 @@ list_second_cell(const List *l)
 
 /* Fetch list's length */
 static inline int
-list_length(const List *l)
+list_length(const List *l) /// 返回list的长度，就是length
 {
 	return l ? l->length : 0;
 }
@@ -169,33 +169,33 @@ list_length(const List *l)
  * linitial() than lfirst(): given a List, lsecond() returns the data
  * in the second list cell.
  */
-#define lfirst(lc)				((lc)->ptr_value)
+#define lfirst(lc)				((lc)->ptr_value) /// 返回List Cell的值，分不同的情况
 #define lfirst_int(lc)			((lc)->int_value)
 #define lfirst_oid(lc)			((lc)->oid_value)
 #define lfirst_xid(lc)			((lc)->xid_value)
 #define lfirst_node(type,lc)	castNode(type, lfirst(lc))
 
-#define linitial(l)				lfirst(list_nth_cell(l, 0))
+#define linitial(l)				lfirst(list_nth_cell(l, 0)) /// 返回第一个cell的值，分不同的情况
 #define linitial_int(l)			lfirst_int(list_nth_cell(l, 0))
 #define linitial_oid(l)			lfirst_oid(list_nth_cell(l, 0))
 #define linitial_node(type,l)	castNode(type, linitial(l))
 
-#define lsecond(l)				lfirst(list_nth_cell(l, 1))
+#define lsecond(l)				lfirst(list_nth_cell(l, 1))  /// 返回第二个cell的值，分不同的情况
 #define lsecond_int(l)			lfirst_int(list_nth_cell(l, 1))
 #define lsecond_oid(l)			lfirst_oid(list_nth_cell(l, 1))
 #define lsecond_node(type,l)	castNode(type, lsecond(l))
 
-#define lthird(l)				lfirst(list_nth_cell(l, 2))
+#define lthird(l)				lfirst(list_nth_cell(l, 2)) /// 返回第三个cell的值，分不同的情况
 #define lthird_int(l)			lfirst_int(list_nth_cell(l, 2))
 #define lthird_oid(l)			lfirst_oid(list_nth_cell(l, 2))
 #define lthird_node(type,l)		castNode(type, lthird(l))
 
-#define lfourth(l)				lfirst(list_nth_cell(l, 3))
+#define lfourth(l)				lfirst(list_nth_cell(l, 3)) /// 返回第四个cell的值，分不同的情况
 #define lfourth_int(l)			lfirst_int(list_nth_cell(l, 3))
 #define lfourth_oid(l)			lfirst_oid(list_nth_cell(l, 3))
 #define lfourth_node(type,l)	castNode(type, lfourth(l))
 
-#define llast(l)				lfirst(list_last_cell(l))
+#define llast(l)				lfirst(list_last_cell(l))  /// 返回最后一个cell的值，分不同的情况
 #define llast_int(l)			lfirst_int(list_last_cell(l))
 #define llast_oid(l)			lfirst_oid(list_last_cell(l))
 #define llast_xid(l)			lfirst_xid(list_last_cell(l))
@@ -274,7 +274,7 @@ list_length(const List *l)
  * It is an assertion failure if there is no such cell.
  */
 static inline ListCell *
-list_nth_cell(const List *list, int n)
+list_nth_cell(const List *list, int n) /// 返回一个列表中第n个Cell，从0开始计算
 {
 	Assert(list != NIL);
 	Assert(n >= 0 && n < list->length);
@@ -285,7 +285,7 @@ list_nth_cell(const List *list, int n)
  * Return the last cell in a non-NIL List.
  */
 static inline ListCell *
-list_last_cell(const List *list)
+list_last_cell(const List *list) /// 返回最后一个cell
 {
 	Assert(list != NIL);
 	return &list->elements[list->length - 1];
@@ -296,7 +296,7 @@ list_last_cell(const List *list)
  * specified list. (List elements begin at 0.)
  */
 static inline void *
-list_nth(const List *list, int n)
+list_nth(const List *list, int n) /// 返回第n个cell的指针值
 {
 	Assert(IsA(list, List));
 	return lfirst(list_nth_cell(list, n));

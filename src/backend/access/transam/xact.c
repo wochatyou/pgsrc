@@ -138,7 +138,7 @@ int			MyXactFlags;
 /*
  *	transaction states - transaction state from server perspective
  */
-typedef enum TransState
+typedef enum TransState /// 事务的状态
 {
 	TRANS_DEFAULT,				/* idle */
 	TRANS_START,				/* transaction starting */
@@ -188,8 +188,8 @@ typedef enum TBlockState
  */
 typedef struct TransactionStateData
 {
-	FullTransactionId fullTransactionId;	/* my FullTransactionId */
-	SubTransactionId subTransactionId;	/* my subxact ID */
+	FullTransactionId fullTransactionId;	/* my FullTransactionId */ /// 这个是64位的事务号
+	SubTransactionId subTransactionId;	/* my subxact ID */  /// 这个是32位的事务号
 	char	   *name;			/* savepoint name, if any */
 	int			savepointLevel; /* savepoint level */
 	TransState	state;			/* low-level state */
@@ -377,7 +377,7 @@ static const char *TransStateAsString(TransState state);
 bool // 判断我们是否处于一个事务中， 就是判断CurrentTransactionState的状态是不是TRANS_INPROGRESS
 IsTransactionState(void)
 {
-	TransactionState s = CurrentTransactionState;
+	TransactionState s = CurrentTransactionState; /// 这是一个全局变量指针
 
 	/*
 	 * TRANS_DEFAULT and TRANS_ABORT are obviously unsafe states.  However, we
@@ -431,7 +431,7 @@ GetTopTransactionId(void)
 TransactionId
 GetTopTransactionIdIfAny(void)
 {
-	return XidFromFullTransactionId(XactTopFullTransactionId);
+	return XidFromFullTransactionId(XactTopFullTransactionId); /// XidFromFullTransactionId就是返回64位事务号的低32位
 }
 
 /*
@@ -446,7 +446,7 @@ GetCurrentTransactionId(void)
 {
 	TransactionState s = CurrentTransactionState;
 
-	if (!FullTransactionIdIsValid(s->fullTransactionId))
+	if (!FullTransactionIdIsValid(s->fullTransactionId)) /// 就是看它的低32位是不是0
 		AssignTransactionId(s);
 	return XidFromFullTransactionId(s->fullTransactionId);
 }
@@ -623,14 +623,14 @@ GetStableLatestTransactionId(void)
  * following its parent's.
  */
 static void
-AssignTransactionId(TransactionState s)
+AssignTransactionId(TransactionState s) /// 为s分配一个新的事务号
 {
-	bool		isSubXact = (s->parent != NULL);
+	bool		isSubXact = (s->parent != NULL); /// 如果s的parent不为空，就是一个子事务
 	ResourceOwner currentOwner;
 	bool		log_unknown_top = false;
 
 	/* Assert that caller didn't screw up */
-	Assert(!FullTransactionIdIsValid(s->fullTransactionId));
+	Assert(!FullTransactionIdIsValid(s->fullTransactionId)); /// fullTransactionId的低32位是0
 	Assert(s->state == TRANS_INPROGRESS);
 
 	/*
@@ -646,7 +646,7 @@ AssignTransactionId(TransactionState s)
 	 * overflow if we're at the bottom of a huge stack of subtransactions none
 	 * of which have XIDs yet.
 	 */
-	if (isSubXact && !FullTransactionIdIsValid(s->parent->fullTransactionId))
+	if (isSubXact && !FullTransactionIdIsValid(s->parent->fullTransactionId)) /// 这里处理子事务的情况
 	{
 		TransactionState p = s->parent;
 		TransactionState *parents;

@@ -3081,7 +3081,7 @@ get_database_oid(const char *dbname, bool missing_ok)
  * Returns a palloc'd string, or NULL if no such database.
  */
 char *
-get_database_name(Oid dbid)
+get_database_name(Oid dbid) /// 根据数据库的Oid，拿到数据库的名字，就是扫描catalog
 {
 	HeapTuple	dbtuple;
 	char	   *result;

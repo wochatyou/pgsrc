@@ -280,7 +280,7 @@ CreateSharedMemoryAndSemaphores(void)
 	CheckpointerShmemInit();
 	AutoVacuumShmemInit();
 	ReplicationSlotsShmemInit(); // 初始化复制槽的共享内存
-	ReplicationOriginShmemInit();
+	ReplicationOriginShmemInit(); /// 初始化复制槽状态的共享内存，这个和上一行是不一样的
 	WalSndShmemInit(); // 初始化walsender的共享内存
 	WalRcvShmemInit(); // 初始化walreceiver进程的共享内存
 	PgArchShmemInit();

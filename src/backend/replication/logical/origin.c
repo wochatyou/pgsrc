@@ -20,7 +20,7 @@
  * exists because replication origin have to be stored in WAL and shared
  * memory and long descriptors would be inefficient.  For now only use 2 bytes
  * for the internal id of a replication origin as it seems unlikely that there
- * soon will be more than 65k nodes in one replication setup; and using only
+ * soon will be more than 65k nodes in one replication setup; and using only /// 只所以选择2个字节，是一个服务器上不大可能有64KB个逻辑复制节点
  * two bytes allow us to be more space efficient.
  *
  * Replication progress is tracked in a shared memory table
@@ -99,7 +99,7 @@
 /*
  * Replay progress of a single remote node.
  */
-typedef struct ReplicationState
+typedef struct ReplicationState /// 逻辑复制的状态
 {
 	/*
 	 * Local identifier for the remote node.
@@ -139,9 +139,9 @@ typedef struct ReplicationState
  */
 typedef struct ReplicationStateOnDisk // 在磁盘上保存的，2个字节的id加上远端commit的LSN
 {
-	RepOriginId roident;
-	XLogRecPtr	remote_lsn;
-} ReplicationStateOnDisk;
+	RepOriginId roident;  /// 这是2个字节： typedef uint16 RepOriginId;
+	XLogRecPtr	remote_lsn; /// 这是8个字节，所以这个结构共计10个字节
+} ReplicationStateOnDisk; /// 存放在磁盘上的数据就是上面数据的简化版，因为有些数据如进程号等是不需要保存到磁盘上的
 
 
 typedef struct ReplicationStateCtl
@@ -150,7 +150,7 @@ typedef struct ReplicationStateCtl
 	int			tranche_id; // 这个是下面这个数组的长度？
 	/* Array of length max_replication_slots */
 	ReplicationState states[FLEXIBLE_ARRAY_MEMBER];
-} ReplicationStateCtl;
+} ReplicationStateCtl; /// 这个是一个控制数据结构，里面就是一个数组
 
 /* external variables */
 RepOriginId replorigin_session_origin = InvalidRepOriginId; /* assumed identity */
@@ -184,12 +184,12 @@ static ReplicationState *session_replication_state = NULL;
 static void
 replorigin_check_prerequisites(bool check_slots, bool recoveryOK) // 检查前提，check_slots决定是否检查复制槽， recoveryOK表示备库是否可行
 {
-	if (check_slots && max_replication_slots == 0)
+	if (check_slots && max_replication_slots == 0) /// 只看槽的个数是否为0
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("cannot query or manipulate replication origin when max_replication_slots = 0")));
 
-	if (!recoveryOK && RecoveryInProgress())
+	if (!recoveryOK && RecoveryInProgress()) /// 看是否处于备库状态
 		ereport(ERROR,
 				(errcode(ERRCODE_READ_ONLY_SQL_TRANSACTION),
 				 errmsg("cannot manipulate replication origins during recovery")));
@@ -218,7 +218,7 @@ IsReservedOriginName(const char *name) // 如果名字是none或者any就返回t
  * Returns InvalidOid if the node isn't known yet and missing_ok is true.
  */
 RepOriginId
-replorigin_by_name(const char *roname, bool missing_ok)
+replorigin_by_name(const char *roname, bool missing_ok) /// 根据名字在pg_replication_origin查找id
 {
 	Form_pg_replication_origin ident;
 	Oid			roident = InvalidOid;
@@ -227,7 +227,7 @@ replorigin_by_name(const char *roname, bool missing_ok)
 
 	roname_d = CStringGetTextDatum(roname);
 
-	tuple = SearchSysCache1(REPLORIGNAME, roname_d); // 在catalog里面寻找？
+	tuple = SearchSysCache1(REPLORIGNAME, roname_d); // 在pg_replication_origin中寻找
 	if (HeapTupleIsValid(tuple))
 	{
 		ident = (Form_pg_replication_origin) GETSTRUCT(tuple);
@@ -249,7 +249,7 @@ replorigin_by_name(const char *roname, bool missing_ok)
  * Needs to be called in a transaction.
  */
 RepOriginId
-replorigin_create(const char *roname) // 创建一个replication origin， 就是往pg_replication_origin表里插入一条记录
+replorigin_create(const char *roname) // 创建一个replication origin， 就是往pg_replication_origin表里插入一条记录，id是最大值再加一
 {
 	Oid			roident;
 	HeapTuple	tuple = NULL;
@@ -353,7 +353,7 @@ restart:
 	{
 		ReplicationState *state = &replication_states[i];
 
-		if (state->roident == roident)
+		if (state->roident == roident) /// 如果找到了这个id
 		{
 			/* found our slot, is it busy? */
 			if (state->acquired_by != 0)
@@ -379,12 +379,12 @@ restart:
 				LWLockRelease(ReplicationOriginLock);
 
 				ConditionVariableSleep(cv, WAIT_EVENT_REPLICATION_ORIGIN_DROP);
-				goto restart;
+				goto restart; /// 如果需要等待，就反复重试
 			}
 
 			/* first make a WAL log entry */
 			{
-				xl_replorigin_drop xlrec;
+				xl_replorigin_drop xlrec; /// 这个结构里面只有2个字节，表示id
 
 				xlrec.node_id = roident;
 				XLogBeginInsert();
@@ -409,7 +409,7 @@ restart:
  * Needs to be called in a transaction.
  */
 void
-replorigin_drop_by_name(const char *name, bool missing_ok, bool nowait)
+replorigin_drop_by_name(const char *name, bool missing_ok, bool nowait) /// 根据名字删除，就是先查系统表，拿到id，再执行删除
 {
 	RepOriginId roident;
 	Relation	rel;
@@ -441,12 +441,12 @@ replorigin_drop_by_name(const char *name, bool missing_ok, bool nowait)
 		return;
 	}
 
-	replorigin_state_clear(roident, nowait);
+	replorigin_state_clear(roident, nowait); /// 参考头顶的函数实现，把这个槽里面的数据清空
 
 	/*
 	 * Now, we can delete the catalog entry.
 	 */
-	CatalogTupleDelete(rel, &tuple->t_self);
+	CatalogTupleDelete(rel, &tuple->t_self); /// 再删除系统表里面的数据
 	ReleaseSysCache(tuple);
 
 	CommandCounterIncrement();
@@ -463,7 +463,7 @@ replorigin_drop_by_name(const char *name, bool missing_ok, bool nowait)
  * Returns true if the origin is known, false otherwise.
  */
 bool
-replorigin_by_oid(RepOriginId roident, bool missing_ok, char **roname)
+replorigin_by_oid(RepOriginId roident, bool missing_ok, char **roname) /// 根据id在系统表中查找名字
 {
 	HeapTuple	tuple;
 	Form_pg_replication_origin ric;
@@ -503,7 +503,7 @@ replorigin_by_oid(RepOriginId roident, bool missing_ok, char **roname)
  * ---------------------------------------------------------------------------
  */
 
-Size
+Size /// 根据这个函数的代码，我们可以想象共享内存中的空间布局
 ReplicationOriginShmemSize(void) // 计算共享内存的大小，ReplicationState数组共有max_replication_slots个成员
 {
 	Size		size = 0;
@@ -535,7 +535,7 @@ ReplicationOriginShmemInit(void) // 初始化共享内存池
 		ShmemInitStruct("ReplicationOriginState",
 						ReplicationOriginShmemSize(),
 						&found);
-	replication_states = replication_states_ctl->states;
+	replication_states = replication_states_ctl->states; /// 这个数组直接指向了共享内存中的数组
 
 	if (!found)
 	{
@@ -543,12 +543,12 @@ ReplicationOriginShmemInit(void) // 初始化共享内存池
 
 		MemSet(replication_states_ctl, 0, ReplicationOriginShmemSize());
 
-		replication_states_ctl->tranche_id = LWTRANCHE_REPLICATION_ORIGIN_STATE;
+		replication_states_ctl->tranche_id = LWTRANCHE_REPLICATION_ORIGIN_STATE; /// 这个是关于LW锁的信息
 
 		for (i = 0; i < max_replication_slots; i++)
 		{
 			LWLockInitialize(&replication_states[i].lock,
-							 replication_states_ctl->tranche_id);
+							 replication_states_ctl->tranche_id); /// 把tranche_id设置到每一个数组成员的LW锁中
 			ConditionVariableInit(&replication_states[i].origin_cv);
 		}
 	}
@@ -573,20 +573,20 @@ ReplicationOriginShmemInit(void) // 初始化共享内存池
 void
 CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文件，再改名
 {
-	const char *tmppath = "pg_logical/replorigin_checkpoint.tmp";
-	const char *path = "pg_logical/replorigin_checkpoint";
+	const char *tmppath = "pg_logical/replorigin_checkpoint.tmp"; /// 临时的文件名
+	const char *path = "pg_logical/replorigin_checkpoint"; /// 最终的文件名
 	int			tmpfd;
 	int			i;
-	uint32		magic = REPLICATION_STATE_MAGIC;
+	uint32		magic = REPLICATION_STATE_MAGIC; /// 魔幻数
 	pg_crc32c	crc;
 
-	if (max_replication_slots == 0)
+	if (max_replication_slots == 0) /// 如果没有复制槽，就返回，啥也不做
 		return;
 
 	INIT_CRC32C(crc);
 
 	/* make sure no old temp file is remaining */
-	if (unlink(tmppath) < 0 && errno != ENOENT)
+	if (unlink(tmppath) < 0 && errno != ENOENT) /// 先删除临时文件
 		ereport(PANIC,
 				(errcode_for_file_access(),
 				 errmsg("could not remove file \"%s\": %m",
@@ -597,7 +597,7 @@ CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文�
 	 * can happen at a time.
 	 */
 	tmpfd = OpenTransientFile(tmppath,
-							  O_CREAT | O_EXCL | O_WRONLY | PG_BINARY);
+							  O_CREAT | O_EXCL | O_WRONLY | PG_BINARY); /// 创建一个临时文件
 	if (tmpfd < 0)
 		ereport(PANIC,
 				(errcode_for_file_access(),
@@ -606,7 +606,7 @@ CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文�
 
 	/* write magic */
 	errno = 0;
-	if ((write(tmpfd, &magic, sizeof(magic))) != sizeof(magic))
+	if ((write(tmpfd, &magic, sizeof(magic))) != sizeof(magic)) /// 先写入4个字节的固定魔幻数
 	{
 		/* if write didn't set errno, assume problem is no disk space */
 		if (errno == 0)
@@ -625,14 +625,14 @@ CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文�
 	for (i = 0; i < max_replication_slots; i++) // 依次扫描数组
 	{
 		ReplicationStateOnDisk disk_state;
-		ReplicationState *curstate = &replication_states[i];
+		ReplicationState *curstate = &replication_states[i]; /// 这个数组有max_replication_slots个
 		XLogRecPtr	local_lsn;
 
 		if (curstate->roident == InvalidRepOriginId)
 			continue;
 
 		/* zero, to avoid uninitialized padding bytes */
-		memset(&disk_state, 0, sizeof(disk_state));
+		memset(&disk_state, 0, sizeof(disk_state)); /// 这10个字节清零
 
 		LWLockAcquire(&curstate->lock, LW_SHARED);
 
@@ -667,7 +667,7 @@ CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文�
 	/* write out the CRC */
 	FIN_CRC32C(crc);
 	errno = 0;
-	if ((write(tmpfd, &crc, sizeof(crc))) != sizeof(crc))
+	if ((write(tmpfd, &crc, sizeof(crc))) != sizeof(crc)) /// 最后写入CRC校验码
 	{
 		/* if write didn't set errno, assume problem is no disk space */
 		if (errno == 0)
@@ -697,7 +697,7 @@ CheckPointReplicationOrigin(void) // 检查点写磁盘，先写一个临时文�
  * state thereafter can be recovered by looking at commit records.
  */
 void
-StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkpoint
+StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkpoint，这个函数只在恢复进程启动开始调用一次
 {
 	const char *path = "pg_logical/replorigin_checkpoint";
 	int			fd;
@@ -765,10 +765,10 @@ StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkp
 	{
 		ReplicationStateOnDisk disk_state;
 
-		readBytes = read(fd, &disk_state, sizeof(disk_state));
+		readBytes = read(fd, &disk_state, sizeof(disk_state)); /// 每次读入10个字节
 
 		/* no further data */
-		if (readBytes == sizeof(crc))
+		if (readBytes == sizeof(crc)) /// 读入了最后的CRC校验码，就退出了
 		{
 			/* not pretty, but simple ... */
 			file_crc = *(pg_crc32c *) &disk_state;
@@ -800,7 +800,7 @@ StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkp
 
 		/* copy data to shared memory */
 		replication_states[last_state].roident = disk_state.roident;
-		replication_states[last_state].remote_lsn = disk_state.remote_lsn;
+		replication_states[last_state].remote_lsn = disk_state.remote_lsn; /// 把磁盘的数据读入到共享内存中
 		last_state++;
 
 		ereport(LOG,
@@ -811,7 +811,7 @@ StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkp
 
 	/* now check checksum */
 	FIN_CRC32C(crc);
-	if (file_crc != crc)
+	if (file_crc != crc) /// 对比校验码是否一致
 		ereport(PANIC,
 				(errcode(ERRCODE_DATA_CORRUPTED),
 				 errmsg("replication slot checkpoint has wrong checksum %u, expected %u",
@@ -825,7 +825,7 @@ StartupReplicationOrigin(void) // 从磁盘上读取pg_logical/replorigin_checkp
 }
 
 void
-replorigin_redo(XLogReaderState *record)
+replorigin_redo(XLogReaderState *record) /// 这个是回放相关的WAL记录
 {
 	uint8		info = XLogRecGetInfo(record) & ~XLR_INFO_MASK;
 
@@ -844,12 +844,12 @@ replorigin_redo(XLogReaderState *record)
 			}
 		case XLOG_REPLORIGIN_DROP:
 			{
-				xl_replorigin_drop *xlrec;
+				xl_replorigin_drop *xlrec; /// 这个结构很简单，就2个字节
 				int			i;
 
 				xlrec = (xl_replorigin_drop *) XLogRecGetData(record);
 
-				for (i = 0; i < max_replication_slots; i++)
+				for (i = 0; i < max_replication_slots; i++) /// 依次扫描数组，根据WAL记录中的id清空对应的槽
 				{
 					ReplicationState *state = &replication_states[i];
 
@@ -885,7 +885,7 @@ replorigin_redo(XLogReaderState *record)
  * Needs to be called with a RowExclusiveLock on pg_replication_origin,
  * unless running in recovery.
  */
-void
+void /// 基本罗就是根据node找数组，找到后设置一下后续几个参数
 replorigin_advance(RepOriginId node,
 				   XLogRecPtr remote_commit, XLogRecPtr local_commit,
 				   bool go_backward, bool wal_log)
@@ -894,10 +894,10 @@ replorigin_advance(RepOriginId node,
 	ReplicationState *replication_state = NULL;
 	ReplicationState *free_state = NULL;
 
-	Assert(node != InvalidRepOriginId);
+	Assert(node != InvalidRepOriginId); /// InvalidRepOriginId就是0， 2个字节的最大值和最小值都有特殊含义
 
 	/* we don't track DoNotReplicateId */
-	if (node == DoNotReplicateId)
+	if (node == DoNotReplicateId)  /// 就是0xFFFF，2个字节的最大值
 		return;
 
 	/*
@@ -914,7 +914,7 @@ replorigin_advance(RepOriginId node,
 	 * Search for either an existing slot for the origin, or a free one we can
 	 * use.
 	 */
-	for (i = 0; i < max_replication_slots; i++)
+	for (i = 0; i < max_replication_slots; i++) /// 扫描数组
 	{
 		ReplicationState *curstate = &replication_states[i];
 
@@ -927,13 +927,13 @@ replorigin_advance(RepOriginId node,
 		}
 
 		/* not our slot */
-		if (curstate->roident != node)
+		if (curstate->roident != node) /// 不是我要找的id，跳过
 		{
 			continue;
 		}
 
 		/* ok, found slot */
-		replication_state = curstate;
+		replication_state = curstate; /// 发现了这个槽
 
 		LWLockAcquire(&replication_state->lock, LW_EXCLUSIVE);
 
@@ -1012,7 +1012,7 @@ replorigin_advance(RepOriginId node,
 
 
 XLogRecPtr
-replorigin_get_progress(RepOriginId node, bool flush)
+replorigin_get_progress(RepOriginId node, bool flush) /// 就是数组查表法，拿到node对应的remote_lsn，作为返回值
 {
 	int			i;
 	XLogRecPtr	local_lsn = InvalidXLogRecPtr;
@@ -1264,7 +1264,7 @@ replorigin_session_get_progress(bool flush)
  * oid.
  */
 Datum
-pg_replication_origin_create(PG_FUNCTION_ARGS)
+pg_replication_origin_create(PG_FUNCTION_ARGS) /// SQL接口，处理pg_replication_origin_create()函数。输入只有字符串作为名字
 {
 	char	   *name;
 	RepOriginId roident;
@@ -1277,7 +1277,7 @@ pg_replication_origin_create(PG_FUNCTION_ARGS)
 	 * Replication origins "any and "none" are reserved for system options.
 	 * The origins "pg_xxx" are reserved for internal use.
 	 */
-	if (IsReservedName(name) || IsReservedOriginName(name))
+	if (IsReservedName(name) || IsReservedOriginName(name)) /// 不要使用none和any，这是保留关键字,pg_xxx也不行
 		ereport(ERROR,
 				(errcode(ERRCODE_RESERVED_NAME),
 				 errmsg("replication origin name \"%s\" is reserved",

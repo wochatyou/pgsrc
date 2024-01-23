@@ -107,7 +107,7 @@
 #define MAX_SEND_SIZE (XLOG_BLCKSZ * 16) // 最大128KB
 
 /* Array of WalSnds in shared memory */
-WalSndCtlData *WalSndCtl = NULL; // 这个数据结构是总控数据结构，主要的内容在共享内存中形成一个数组
+WalSndCtlData *WalSndCtl = NULL; // 这个数据结构是总控数据结构，主要的内容在共享内存中形成一个数组，每个成员是WalSnd
 
 /* My slot in the shared memory array */
 WalSnd	   *MyWalSnd = NULL; // 本进程在共享内存中的位置
@@ -263,7 +263,7 @@ static void WalSndSegmentOpen(XLogReaderState *state, XLogSegNo nextSegNo,
 
 /* Initialize walsender process before entering the main command loop */
 void
-InitWalSender(void)
+InitWalSender(void) /// 做一些初始化的工作
 {
 	am_cascading_walsender = RecoveryInProgress(); // 如果本数据库处于恢复当中，则是备库，就是级联的复制
 
@@ -312,7 +312,7 @@ InitWalSender(void)
  * process, similar to what transaction abort does in a regular backend.
  */
 void
-WalSndErrorCleanup(void)
+WalSndErrorCleanup(void) /// 如果失败，做一些清理工作
 {
 	LWLockReleaseAll();
 	ConditionVariableCancelSleep();
@@ -475,7 +475,7 @@ IdentifySystem(void)
 
 /* Handle READ_REPLICATION_SLOT command */
 static void
-ReadReplicationSlot(ReadReplicationSlotCmd *cmd)
+ReadReplicationSlot(ReadReplicationSlotCmd *cmd) /// 执行READ_REPLICATION_SLOT指令
 {
 #define READ_REPLICATION_SLOT_COLS 3   // 这条命令返回3列
 	ReplicationSlot *slot;
@@ -574,7 +574,7 @@ ReadReplicationSlot(ReadReplicationSlotCmd *cmd)
  * Handle TIMELINE_HISTORY command.
  */
 static void
-SendTimeLineHistory(TimeLineHistoryCmd *cmd)
+SendTimeLineHistory(TimeLineHistoryCmd *cmd) /// 执行TIMELINE_HISTORY指令
 {
 	DestReceiver *dest;
 	TupleDesc	tupdesc;
@@ -923,12 +923,12 @@ logical_read_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr, int req
 	 * timeline ID (so that it also cover the promotion or timeline change
 	 * cases).
 	 */
-	am_cascading_walsender = RecoveryInProgress();
+	am_cascading_walsender = RecoveryInProgress(); /// 我是不是在备库上执行的
 
 	if (am_cascading_walsender)
 		GetXLogReplayRecPtr(&currTLI);
 	else
-		currTLI = GetWALInsertionTimeLine();
+		currTLI = GetWALInsertionTimeLine();  /// 根据主库和备库两种不同的情况，获取当前时间线
 
 	XLogReadDetermineTimeline(state, targetPagePtr, reqLen, currTLI);
 	sendTimeLineIsHistoric = (state->currTLI != currTLI);
@@ -946,7 +946,7 @@ logical_read_xlog_page(XLogReaderState *state, XLogRecPtr targetPagePtr, int req
 		count = flushptr - targetPagePtr;	/* part of the page available */
 
 	/* now actually read the data, we know it's there */
-	if (!WALRead(state,
+	if (!WALRead(state,   /// 读取WAL记录
 				 cur_page,
 				 targetPagePtr,
 				 XLOG_BLCKSZ,
@@ -976,7 +976,7 @@ static void
 parseCreateReplSlotOptions(CreateReplicationSlotCmd *cmd,
 						   bool *reserve_wal,
 						   CRSSnapshotAction *snapshot_action,
-						   bool *two_phase)
+						   bool *two_phase) /// 解析字符串
 {
 	ListCell   *lc;
 	bool		snapshot_action_given = false;
@@ -1255,7 +1255,7 @@ DropReplicationSlot(DropReplicationSlotCmd *cmd) // 删除复制槽
  * WalSndLoop).
  */
 static void
-StartLogicalReplication(StartReplicationCmd *cmd)
+StartLogicalReplication(StartReplicationCmd *cmd) /// 开始逻辑复制
 {
 	StringInfoData buf;
 	QueryCompletion qc;
@@ -2035,10 +2035,10 @@ ProcessStandbyMessage(void)
  * Remember that a walreceiver just confirmed receipt of lsn `lsn`.
  */
 static void
-PhysicalConfirmReceivedLocation(XLogRecPtr lsn)
+PhysicalConfirmReceivedLocation(XLogRecPtr lsn) /// 输入参数是来自备库的反馈信息
 {
 	bool		changed = false;
-	ReplicationSlot *slot = MyReplicationSlot;
+	ReplicationSlot *slot = MyReplicationSlot; /// 这个变量记录共享内存的本进程的槽
 
 	Assert(lsn != InvalidXLogRecPtr);
 	SpinLockAcquire(&slot->mutex);
@@ -2166,7 +2166,7 @@ ProcessStandbyReplyMessage(void)
 		if (SlotIsLogical(MyReplicationSlot))
 			LogicalConfirmReceivedLocation(flushPtr);
 		else
-			PhysicalConfirmReceivedLocation(flushPtr);
+			PhysicalConfirmReceivedLocation(flushPtr); /// 根据这个值决定是否删除WAL文件
 	}
 }
 
@@ -2465,7 +2465,7 @@ WalSndLoop(WalSndSendDataCallback send_data) // send_data是一个回调函数
 		/* Clear any already-pending wakeups */
 		ResetLatch(MyLatch);
 
-		CHECK_FOR_INTERRUPTS();
+		CHECK_FOR_INTERRUPTS(); /// 处理Ctrl+C
 
 		/* Process any requests or signals received recently */
 		if (ConfigReloadPending) // pg_reload_conf()重新加载配置参数

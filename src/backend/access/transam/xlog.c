@@ -5233,7 +5233,7 @@ StartupXLOG(void) // 这个函数只在startup进程中调用一次
 	/*
 	 * Recover knowledge about replay progress of known replication partners.
 	 */
-	StartupReplicationOrigin(); // 跟踪逻辑复制的位置的
+	StartupReplicationOrigin(); // 跟踪逻辑复制的位置的，从磁盘上读取pg_logical/replorigin_checkpoint这个文件的内容，加载到共享内存中
 
 	/*
 	 * Initialize unlogged LSN. On a clean shutdown, it's restored from the
@@ -6110,7 +6110,7 @@ GetFlushRecPtr(TimeLineID *insertTLI)
  * GetWALInsertionTimeLine -- Returns the current timeline of a system that
  * is not in recovery.
  */
-TimeLineID
+TimeLineID /// 获取XLogCtl里面的时间线信息。这个是不变的，所以没有必要加锁
 GetWALInsertionTimeLine(void)
 {
 	Assert(XLogCtl->SharedRecoveryState == RECOVERY_STATE_DONE);
@@ -7014,10 +7014,10 @@ CreateOverwriteContrecordRecord(XLogRecPtr aborted_lsn, XLogRecPtr pagePtr,
  * recovery restartpoints.
  */
 static void
-CheckPointGuts(XLogRecPtr checkPointRedo, int flags)
+CheckPointGuts(XLogRecPtr checkPointRedo, int flags) /// 把共享内存中所有的数据都写入到磁盘上
 {
 	CheckPointRelationMap();
-	CheckPointReplicationSlots();
+	CheckPointReplicationSlots();  /// 把所有非空的复制槽写入到磁盘上
 	CheckPointSnapBuild();
 	CheckPointLogicalRewriteHeap();
 	CheckPointReplicationOrigin();

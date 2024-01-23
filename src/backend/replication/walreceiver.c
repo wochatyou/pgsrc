@@ -204,7 +204,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 	 * WalRcv should be set up already (if we are a backend, we inherit this
 	 * by fork() or EXEC_BACKEND mechanism from the postmaster).
 	 */
-	Assert(walrcv != NULL); // 共享内存中的内容已经设置好了
+	Assert(walrcv != NULL); // 共享内存中的内容已经设置好了，由恢复进程设置
 
 	/*
 	 * Mark walreceiver as running in shared memory.
@@ -266,7 +266,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 	/* Report the latch to use to awaken this process */
 	walrcv->latch = &MyProc->procLatch;
 
-	SpinLockRelease(&walrcv->mutex);
+	SpinLockRelease(&walrcv->mutex); /// 释放自旋锁。 上面是读写共享内存的代码
 
 	pg_atomic_write_u64(&WalRcv->writtenUpto, 0); // 原子性地往64位共享内存写入0
 
@@ -288,6 +288,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 	pqsignal(SIGCHLD, SIG_DFL);
 
 	/* Load the libpq-specific functions */
+	/// -rwxr-xr-x 1 postgres postgres  116448 Jan  2 19:55 libpqwalreceiver.so, 在lib/postgresql目录下可以找到
 	load_file("libpqwalreceiver", false); // 为了避免客户端的链接库代码连接到postgres主程序中，这里采用了动态加载的方法，因为只有walreceiver进程需要使用它
 	// load_file会自动执行动态库中的_PG_init()函数
 	// 如果加载成功，动态库在初始化函数中会设置WalReceiverFunctions，一大堆的回调函数会被正确的挂载上
@@ -313,7 +314,8 @@ WalReceiverMain(void) // wr进程的主入口函数
 	 */
 	tmp_conninfo = walrcv_get_conninfo(wrconn); // 这些信息可以通过pg_stat_wal_receiver这个系统视图查询到。这是实际上就是执行回调函数
 	walrcv_get_senderinfo(wrconn, &sender_host, &sender_port);
-	SpinLockAcquire(&walrcv->mutex);
+
+	SpinLockAcquire(&walrcv->mutex); /// 设置共享内存中的信息
 	memset(walrcv->conninfo, 0, MAXCONNINFO);
 	if (tmp_conninfo)
 		strlcpy((char *) walrcv->conninfo, tmp_conninfo, MAXCONNINFO);
@@ -333,7 +335,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 		pfree(sender_host);
 
 	first_stream = true;  // 第一次进行stream
-	for (;;)  // 无限循环
+	for (;;)  // 无限循环, 本函数的最后一个代码块，后面没有了
 	{
 		char	   *primary_sysid;
 		char		standby_sysid[32];
@@ -343,7 +345,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 		 * Check that we're connected to a valid server using the
 		 * IDENTIFY_SYSTEM replication command.
 		 */
-		primary_sysid = walrcv_identify_system(wrconn, &primaryTLI);  // 向主库索要系统标识符
+		primary_sysid = walrcv_identify_system(wrconn, &primaryTLI);  // 向主库索要系统标识符和主时间线
 
 		snprintf(standby_sysid, sizeof(standby_sysid), UINT64_FORMAT,
 				 GetSystemIdentifier()); // GetSystemIdentifier()就是直接读取控制文件中的系统标识符
@@ -412,7 +414,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 		options.startpoint = startpoint; // 向主库索取从这一个LSN开始的WAL记录
 		options.slotname = slotname[0] != '\0' ? slotname : NULL;
 		options.proto.physical.startpointTLI = startpointTLI; //开始的时间线
-		if (walrcv_startstreaming(wrconn, &options))
+		if (walrcv_startstreaming(wrconn, &options)) /// 就是执行START_REPLICATION指令
 		{
 			if (first_stream) //如果是第一次，就打印一条日志，告诉用户我是从哪个时间线，哪个LSN开始起步的
 				ereport(LOG,
@@ -495,7 +497,7 @@ WalReceiverMain(void) // wr进程的主入口函数
 							XLogWalRcvProcessMsg(buf[0], &buf[1], len - 1,
 												 startpointTLI); // 处理来自主库的消息包 ======!!!!!!!!!!!!!!!!!!!!!!!!!!
 						}
-						else if (len == 0)
+						else if (len == 0) /// 处理完一批数据，就退出这个无限循环
 							break;
 						else if (len < 0)
 						{
@@ -1109,7 +1111,7 @@ XLogWalRcvSendReply(bool force, bool requestReply)  // 想主库汇报我的位�
 		return;
 
 	/* Get current timestamp. */
-	now = GetCurrentTimestamp();
+	now = GetCurrentTimestamp(); /// 获取当前的时间
 
 	/*
 	 * We can compare the write and flush positions to the last message we
@@ -1130,16 +1132,16 @@ XLogWalRcvSendReply(bool force, bool requestReply)  // 想主库汇报我的位�
 	WalRcvComputeNextWakeup(WALRCV_WAKEUP_REPLY, now);
 
 	/* Construct a new message */
-	writePtr = LogstreamResult.Write;
+	writePtr = LogstreamResult.Write; /// 向主库汇报的三个指标
 	flushPtr = LogstreamResult.Flush;
 	applyPtr = GetXLogReplayRecPtr(NULL);
 
 	resetStringInfo(&reply_message);
-	pq_sendbyte(&reply_message, 'r');
+	pq_sendbyte(&reply_message, 'r');  /// 第一个字符是r，表示是回复信息
 	pq_sendint64(&reply_message, writePtr);
 	pq_sendint64(&reply_message, flushPtr);
 	pq_sendint64(&reply_message, applyPtr);
-	pq_sendint64(&reply_message, GetCurrentTimestamp());
+	pq_sendint64(&reply_message, GetCurrentTimestamp()); /// 当前时间
 	pq_sendbyte(&reply_message, requestReply ? 1 : 0);
 
 	/* Send it */

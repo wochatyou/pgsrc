@@ -3834,7 +3834,7 @@ PQisthreadsafe(void)
 
 /* try to force data out, really only useful for non-blocking users */
 int
-PQflush(PGconn *conn)
+PQflush(PGconn *conn) /// 发送数据
 {
 	if (!conn || conn->status == CONNECTION_BAD)
 		return -1;

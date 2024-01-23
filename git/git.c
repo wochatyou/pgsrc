@@ -26,7 +26,8 @@
 #define DELAY_PAGER_CONFIG	(1<<4)
 #define NO_PARSEOPT		(1<<5) /* parse-options is not used */
 
-struct cmd_struct {
+struct cmd_struct  /// 每一条命令对应一个函数指针
+{
 	const char *cmd;
 	int (*fn)(int, const char **, const char *);
 	unsigned int option;
@@ -489,7 +490,8 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 	return 0;
 }
 
-static struct cmd_struct commands[] = {
+static struct cmd_struct commands[] =  /// 这个是静态分配好的，不会改变了
+{
 	{ "add", cmd_add, RUN_SETUP | NEED_WORK_TREE },
 	{ "am", cmd_am, RUN_SETUP | NEED_WORK_TREE },
 	{ "annotate", cmd_annotate, RUN_SETUP },

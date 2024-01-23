@@ -278,7 +278,7 @@ SimpleLruInit(SlruCtl ctl, const char *name, int nslots, int nlsns,
  * Control lock must be held at entry, and will be held at exit.
  */
 int
-SimpleLruZeroPage(SlruCtl ctl, int pageno)
+SimpleLruZeroPage(SlruCtl ctl, int pageno) /// 把一个页面清零
 {
 	SlruShared	shared = ctl->shared;
 	int			slotno;

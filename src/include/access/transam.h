@@ -68,7 +68,7 @@ typedef struct FullTransactionId // 这个是64位的XID
 } FullTransactionId;
 
 static inline FullTransactionId
-FullTransactionIdFromEpochAndXid(uint32 epoch, TransactionId xid)
+FullTransactionIdFromEpochAndXid(uint32 epoch, TransactionId xid) /// epoch是高4个字节，xid是低四个字节
 {
 	FullTransactionId result;
 
@@ -125,12 +125,12 @@ FullTransactionIdRetreat(FullTransactionId *dest)
  * to be special only when viewed as 32bit XIDs.
  */
 static inline void
-FullTransactionIdAdvance(FullTransactionId *dest)
+FullTransactionIdAdvance(FullTransactionId *dest) /// 主要逻辑就是把事务号加一
 {
-	dest->value++;
+	dest->value++; /// 把事务号加一
 
 	/* see FullTransactionIdAdvance() */
-	if (FullTransactionIdPrecedes(*dest, FirstNormalFullTransactionId))
+	if (FullTransactionIdPrecedes(*dest, FirstNormalFullTransactionId)) /// FirstNormalFullTransactionId就是3
 		return;
 
 	while (XidFromFullTransactionId(*dest) < FirstNormalTransactionId)

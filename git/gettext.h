@@ -61,7 +61,7 @@ const char *Q_(const char *msgid, const char *plu, unsigned long n)
 }
 
 /* Mark msgid for translation but do not translate it. */
-#define N_(msgid) msgid
+#define N_(msgid) msgid  /// N_就是啥也不做，这里留给未来字符串翻译使用
 
 const char *get_preferred_languages(void);
 int is_utf8_locale(void);

@@ -14,7 +14,7 @@
  *	  This module gets handed individual pieces of transactions in the order
  *	  they are written to the WAL and is responsible to reassemble them into
  *	  toplevel transaction sized pieces. When a transaction is completely
- *	  reassembled - signaled by reading the transaction commit record - it
+ *	  reassembled - signaled by reading the transaction commit record - it   /// COMMIT的WAL记录触发事务结束
  *	  will then call the output plugin (cf. ReorderBufferCommit()) with the
  *	  individual changes. The output plugins rely on snapshots built by
  *	  snapbuild.c which hands them to us.
@@ -110,7 +110,7 @@
 
 
 /* entry for a hash table we use to map from xid to our transaction state */
-typedef struct ReorderBufferTXNByIdEnt
+typedef struct ReorderBufferTXNByIdEnt /// 哈希表的元素，K是事务号，4个字节，V是指针，指向了ReorderBufferTXN，8个字节
 {
 	TransactionId xid;
 	ReorderBufferTXN *txn;
@@ -206,7 +206,7 @@ typedef struct ReorderBufferDiskChange
  * resource management here, but it's not entirely clear what that would look
  * like.
  */
-int			logical_decoding_work_mem;
+int			logical_decoding_work_mem; /// 规定一个事务的大小，单位是什么？
 static const Size max_changes_in_memory = 4096; /* XXX for restore only */
 
 /* GUC variable */
@@ -319,12 +319,12 @@ ReorderBufferAllocate(void) // 先分配一个内存池，再在其中分配内�
 
 	memset(&hash_ctl, 0, sizeof(hash_ctl));
 
-	buffer->context = new_ctx;
+	buffer->context = new_ctx; /// 记住它所在的内存池
 
 	buffer->change_context = SlabContextCreate(new_ctx,
 											   "Change",
 											   SLAB_DEFAULT_BLOCK_SIZE,
-											   sizeof(ReorderBufferChange));
+											   sizeof(ReorderBufferChange)); /// 这两个内存池是特殊的管理方式
 
 	buffer->txn_context = SlabContextCreate(new_ctx,
 											"TXN",
@@ -396,7 +396,7 @@ ReorderBufferFree(ReorderBuffer *rb)
 	MemoryContextDelete(context); // 销毁内存池就销毁了rb的所有东西
 
 	/* Free disk space used by unconsumed reorder buffers */
-	ReorderBufferCleanupSerializedTXNs(NameStr(MyReplicationSlot->data.name));
+	ReorderBufferCleanupSerializedTXNs(NameStr(MyReplicationSlot->data.name)); /// 删除磁盘上的某些东西
 }
 
 /*
@@ -551,7 +551,7 @@ ReorderBufferReturnChange(ReorderBuffer *rb, ReorderBufferChange *change,
  * tuple_len (excluding header overhead).
  */
 ReorderBufferTupleBuf *
-ReorderBufferGetTupleBuf(ReorderBuffer *rb, Size tuple_len)
+ReorderBufferGetTupleBuf(ReorderBuffer *rb, Size tuple_len) /// 在rb所在的内存池中分配一个ReorderBufferTupleBuf内存，返回指针
 {
 	ReorderBufferTupleBuf *tuple;
 	Size		alloc_len;
@@ -572,7 +572,7 @@ ReorderBufferGetTupleBuf(ReorderBuffer *rb, Size tuple_len)
  * Free a ReorderBufferTupleBuf.
  */
 void
-ReorderBufferReturnTupleBuf(ReorderBuffer *rb, ReorderBufferTupleBuf *tuple)
+ReorderBufferReturnTupleBuf(ReorderBuffer *rb, ReorderBufferTupleBuf *tuple) /// 释放tuple所在的指针
 {
 	pfree(tuple);
 }
@@ -616,7 +616,7 @@ ReorderBufferReturnRelids(ReorderBuffer *rb, Oid *relids) // 直接释放reldis�
  */
 static ReorderBufferTXN *
 ReorderBufferTXNByXid(ReorderBuffer *rb, TransactionId xid, bool create,
-					  bool *is_new, XLogRecPtr lsn, bool create_as_top)
+					  bool *is_new, XLogRecPtr lsn, bool create_as_top) /// 在哈希表中根据xid查找，返回ReorderBufferTXN指针
 {
 	ReorderBufferTXN *txn;
 	ReorderBufferTXNByIdEnt *ent;
@@ -628,7 +628,7 @@ ReorderBufferTXNByXid(ReorderBuffer *rb, TransactionId xid, bool create,
 	 * Check the one-entry lookup cache first
 	 */
 	if (TransactionIdIsValid(rb->by_txn_last_xid) &&
-		rb->by_txn_last_xid == xid)
+		rb->by_txn_last_xid == xid) /// 直接查最后一个cache是否匹配，如果是，就返回
 	{
 		txn = rb->by_txn_last_txn;
 
@@ -659,9 +659,9 @@ ReorderBufferTXNByXid(ReorderBuffer *rb, TransactionId xid, bool create,
 		hash_search(rb->by_txn,
 					&xid,
 					create ? HASH_ENTER : HASH_FIND,
-					&found);
+					&found); /// 在哈希表中快速查找xid表示的事务
 	if (found)
-		txn = ent->txn;
+		txn = ent->txn; /// 如果找到了
 	else if (create)
 	{
 		/* initialize the new entry, if creation was requested */
@@ -684,7 +684,7 @@ ReorderBufferTXNByXid(ReorderBuffer *rb, TransactionId xid, bool create,
 		txn = NULL;				/* not found and not asked to create */
 
 	/* update cache */
-	rb->by_txn_last_xid = xid;
+	rb->by_txn_last_xid = xid; /// 记录最后一个值，作为cache
 	rb->by_txn_last_txn = txn;
 
 	if (is_new)
@@ -705,7 +705,7 @@ ReorderBufferTXNByXid(ReorderBuffer *rb, TransactionId xid, bool create,
 static void
 ReorderBufferProcessPartialChange(ReorderBuffer *rb, ReorderBufferTXN *txn,
 								  ReorderBufferChange *change,
-								  bool toast_insert)
+								  bool toast_insert) /// 处理部分change
 {
 	ReorderBufferTXN *toptxn;
 
@@ -777,7 +777,7 @@ ReorderBufferQueueChange(ReorderBuffer *rb, TransactionId xid, XLogRecPtr lsn,
 {
 	ReorderBufferTXN *txn;
 
-	txn = ReorderBufferTXNByXid(rb, xid, true, NULL, lsn, true);
+	txn = ReorderBufferTXNByXid(rb, xid, true, NULL, lsn, true); /// 就是根据xid在哈希表中查找，如果没有找到，就插入一个
 
 	/*
 	 * While streaming the previous changes we have detected that the
@@ -815,7 +815,7 @@ ReorderBufferQueueChange(ReorderBuffer *rb, TransactionId xid, XLogRecPtr lsn,
 	change->txn = txn;
 
 	Assert(InvalidXLogRecPtr != lsn);
-	dlist_push_tail(&txn->changes, &change->node);
+	dlist_push_tail(&txn->changes, &change->node); /// 把change放入队列中
 	txn->nentries++;
 	txn->nentries_mem++;
 
@@ -1006,7 +1006,7 @@ AssertChangeLsnOrder(ReorderBufferTXN *txn)
  *		Return oldest transaction in reorderbuffer
  */
 ReorderBufferTXN *
-ReorderBufferGetOldestTXN(ReorderBuffer *rb)
+ReorderBufferGetOldestTXN(ReorderBuffer *rb) /// 返回最老的事务
 {
 	ReorderBufferTXN *txn;
 
@@ -1188,7 +1188,7 @@ ReorderBufferCommitChild(ReorderBuffer *rb, TransactionId xid,
 	ReorderBufferTXN *subtxn;
 
 	subtxn = ReorderBufferTXNByXid(rb, subxid, false, NULL,
-								   InvalidXLogRecPtr, false);
+								   InvalidXLogRecPtr, false); /// 第三个参数false表示不创建，只查找
 
 	/*
 	 * No need to do anything if that subtxn didn't contain any changes
@@ -1419,7 +1419,7 @@ ReorderBufferIterTXNNext(ReorderBuffer *rb, ReorderBufferIterTXNState *state)
 	}
 
 	/* try to load changes from disk */
-	if (entry->txn->nentries != entry->txn->nentries_mem)
+	if (entry->txn->nentries != entry->txn->nentries_mem) /// 从磁盘上读取事务的数据
 	{
 		/*
 		 * Ugly: restoring changes will reuse *Change records, thus delete the
@@ -3457,7 +3457,7 @@ ReorderBufferXidHasBaseSnapshot(ReorderBuffer *rb, TransactionId xid)
  * Ensure the IO buffer is >= sz.
  */
 static void
-ReorderBufferSerializeReserve(ReorderBuffer *rb, Size sz)
+ReorderBufferSerializeReserve(ReorderBuffer *rb, Size sz) /// 确保IO缓冲区的大小大于等于sz指定的尺寸
 {
 	if (!rb->outbufsize)
 	{
@@ -3483,7 +3483,7 @@ ReorderBufferSerializeReserve(ReorderBuffer *rb, Size sz)
  * of the memory limit (e.g. 50%).
  */
 static ReorderBufferTXN *
-ReorderBufferLargestTXN(ReorderBuffer *rb)
+ReorderBufferLargestTXN(ReorderBuffer *rb) /// 寻找最大的事务，准备写入到磁盘
 {
 	HASH_SEQ_STATUS hash_seq;
 	ReorderBufferTXNByIdEnt *ent;
@@ -3584,7 +3584,7 @@ ReorderBufferCheckMemoryLimit(ReorderBuffer *rb)
 	 * haven't exceeded the memory limit.
 	 */
 	if (debug_logical_replication_streaming == DEBUG_LOGICAL_REP_STREAMING_BUFFERED &&
-		rb->size < logical_decoding_work_mem * 1024L)
+		rb->size < logical_decoding_work_mem * 1024L) /// 缺省单位是KB
 		return;
 
 	/*
@@ -3647,7 +3647,7 @@ ReorderBufferCheckMemoryLimit(ReorderBuffer *rb)
  * Spill data of a large transaction (and its subtransactions) to disk.
  */
 static void
-ReorderBufferSerializeTXN(ReorderBuffer *rb, ReorderBufferTXN *txn)
+ReorderBufferSerializeTXN(ReorderBuffer *rb, ReorderBufferTXN *txn) /// 把txn对应的事务写入到磁盘中
 {
 	dlist_iter	subtxn_i;
 	dlist_mutable_iter change_i;
@@ -3732,7 +3732,7 @@ ReorderBufferSerializeTXN(ReorderBuffer *rb, ReorderBufferTXN *txn)
 	txn->txn_flags |= RBTXN_IS_SERIALIZED;
 
 	if (fd != -1)
-		CloseTransientFile(fd);
+		CloseTransientFile(fd); /// 关闭一个文件句柄，就是调用close()这个系统调用来完成
 }
 
 /*
@@ -3923,7 +3923,7 @@ ReorderBufferSerializeChange(ReorderBuffer *rb, ReorderBufferTXN *txn,
 
 	errno = 0;
 	pgstat_report_wait_start(WAIT_EVENT_REORDER_BUFFER_WRITE);
-	if (write(fd, rb->outbuf, ondisk->size) != ondisk->size)
+	if (write(fd, rb->outbuf, ondisk->size) != ondisk->size) /// 调用write()系统调用来写入数据到磁盘
 	{
 		int			save_errno = errno;
 
@@ -4192,7 +4192,7 @@ ReorderBufferChangeSize(ReorderBufferChange *change)
  */
 static Size
 ReorderBufferRestoreChanges(ReorderBuffer *rb, ReorderBufferTXN *txn,
-							TXNEntryFile *file, XLogSegNo *segno)
+							TXNEntryFile *file, XLogSegNo *segno) /// 从磁盘上读取事务的数据
 {
 	Size		restored = 0;
 	XLogSegNo	last_segno;
