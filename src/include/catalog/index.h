@@ -184,8 +184,8 @@ extern void IndexSetParentIndex(Relation partitionIdx, Oid parentOid);
 static inline int64
 itemptr_encode(ItemPointer itemptr)
 {
-	BlockNumber block = ItemPointerGetBlockNumber(itemptr);
-	OffsetNumber offset = ItemPointerGetOffsetNumber(itemptr);
+	BlockNumber block = ItemPointerGetBlockNumber(itemptr); /// 4个字节
+	OffsetNumber offset = ItemPointerGetOffsetNumber(itemptr); /// 2个字节
 	int64		encoded;
 
 	/*
@@ -194,7 +194,7 @@ itemptr_encode(ItemPointer itemptr)
 	 * cannot be negative encoded values (We assume a two's complement
 	 * representation).
 	 */
-	encoded = ((uint64) block << 16) | (uint16) offset;
+	encoded = ((uint64) block << 16) | (uint16) offset; /// 拼凑出一个8字节的数据
 
 	return encoded;
 }

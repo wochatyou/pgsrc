@@ -1,0 +1,487 @@
+<refentry id="repmgr-standby-clone">
+  <indexterm>
+    <primary>repmgr standby clone</primary>
+    <seealso>cloning</seealso>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr standby clone</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby clone</refname>
+    <refpurpose>clone a PostgreSQL standby node from another PostgreSQL node</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr standby clone</command> clones a PostgreSQL node from another
+      PostgreSQL node, typically the primary, but optionally from any other node in
+      the cluster or from Barman. It creates the replication configuration required
+      to attach the cloned node to the primary node (or another standby, if cascading replication
+      is in use).
+    </para>
+    <note>
+      <simpara>
+        <command>repmgr standby clone</command> does not start the standby, and after cloning
+        a standby, the command <command>repmgr standby register</command> must be executed to
+        notify &repmgr; of its existence.
+      </simpara>
+    </note>
+
+  </refsect1>
+
+
+  <refsect1 id="repmgr-standby-clone-config-file-copying" xreflabel="Copying configuration files">
+   <title>Handling configuration files</title>
+
+   <para>
+    Note that by default, all configuration files in the source node's data
+    directory will be copied to the cloned node.  Typically these will be
+    <filename>postgresql.conf</filename>, <filename>postgresql.auto.conf</filename>,
+    <filename>pg_hba.conf</filename> and <filename>pg_ident.conf</filename>.
+    These may require modification before the standby is started.
+   </para>
+   <para>
+    In some cases (e.g. on Debian or Ubuntu Linux installations), PostgreSQL's
+    configuration files are located outside of the data directory and will
+    not be copied by default. &repmgr; can copy these files, either to the same
+    location on the standby server (provided appropriate directory and file permissions
+    are available), or into the standby's data directory. This requires passwordless
+    SSH access to the primary server. Add the option <option>--copy-external-config-files</option>
+    to the <command>repmgr standby clone</command> command; by default files will be copied to
+    the same path as on the upstream server. Note that the user executing <command>repmgr</command>
+    must have write access to those directories.
+   </para>
+   <para>
+    To have the configuration files placed in the standby's data directory, specify
+    <literal>--copy-external-config-files=pgdata</literal>, but note that
+    any include directives in the copied files may need to be updated.
+   </para>
+
+   <note>
+	 <para>
+	   When executing <command>repmgr standby clone</command> with the
+	   <option>--copy-external-config-files</option> aand <option>--dry-run</option>
+	   options, &repmgr; will check the SSH connection to the source node, but
+	   will not verify whether the files can actually be copied.
+	 </para>
+	 <para>
+	   During the actual clone operation, a check will be made before the database itself
+	   is cloned to determine whether the files can actually be copied; if any problems are
+	   encountered, the clone operation will be aborted, enabling the user to fix
+	   any issues before retrying the clone operation.
+	 </para>
+   </note>
+
+   <tip>
+    <simpara>
+     For reliable configuration file management we recommend using a
+     configuration management tool such as Ansible, Chef, Puppet or Salt.
+    </simpara>
+   </tip>
+
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-clone-recovery-conf">
+    <title>Customising replication configuration</title>
+    <indexterm>
+     <primary>recovery.conf</primary>
+     <secondary>customising with &quot;repmgr standby clone&quot;</secondary>
+    </indexterm>
+
+	<indexterm>
+     <primary>replication configuration</primary>
+     <secondary>customising with &quot;repmgr standby clone&quot;</secondary>
+    </indexterm>
+
+
+   <para>
+     By default, &repmgr; will create a minimal replication configuration
+     containing following parameters:
+   </para>
+
+   <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+       <simpara><varname>primary_conninfo</varname></simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>primary_slot_name</varname> (if replication slots in use)</simpara>
+     </listitem>
+
+   </itemizedlist>
+
+   <para>
+     For PostgreSQL 11 and earlier, these parameters will also be set:
+   </para>
+
+   <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+       <simpara><varname>standby_mode</varname> (always <literal>'on'</literal>)</simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>recovery_target_timeline</varname> (always <literal>'latest'</literal>)</simpara>
+     </listitem>
+   </itemizedlist>
+
+
+   <para>
+     The following additional parameters can be specified in <filename>repmgr.conf</filename>
+     for inclusion in the replication configuration:
+   </para>
+
+   <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+       <simpara><varname>restore_command</varname></simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>archive_cleanup_command</varname></simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>recovery_min_apply_delay</varname></simpara>
+     </listitem>
+
+   </itemizedlist>
+
+   <note>
+     <para>
+       We recommend using <ulink url="https://www.pgbarman.org/">Barman</ulink> to manage
+       WAL file archiving. For more details on combining &repmgr; and <application>Barman</application>,
+       in particular using <varname>restore_command</varname> to configure Barman as a backup source of
+       WAL files, see <xref linkend="cloning-from-barman"/>.
+     </para>
+   </note>
+
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-clone-wal-management">
+   <title>Managing WAL during the cloning process</title>
+   <para>
+    When initially cloning a standby, you will need to ensure
+    that all required WAL files remain available while the cloning is taking
+    place. To ensure this happens when using the default <command>pg_basebackup</command> method,
+    &repmgr; will set <command>pg_basebackup</command>'s <literal>--wal-method</literal>
+    parameter to <literal>stream</literal>,
+    which will ensure all WAL files generated during the cloning process are
+    streamed in parallel with the main backup. Note that this requires two
+    replication connections to be available (&repmgr; will verify sufficient
+    connections are available before attempting to clone, and this can be checked
+    before performing the clone using the <literal>--dry-run</literal> option).
+   </para>
+   <para>
+    To override this behaviour, in <filename>repmgr.conf</filename> set
+    <command>pg_basebackup</command>'s <literal>--wal-method</literal>
+    parameter to <literal>fetch</literal>:
+    <programlisting>
+      pg_basebackup_options='--wal-method=fetch'</programlisting>
+
+    and ensure that <literal>wal_keep_segments</literal> (PostgreSQL 13 and later:
+    <literal>wal_keep_size</literal>) is set to an appropriately high value. Note
+    however that this is not a particularly reliable way of ensuring sufficient
+    WAL is retained and is not recommended.
+    See the <ulink url="https://www.postgresql.org/docs/current/app-pgbasebackup.html">
+    pg_basebackup</ulink> documentation for details.
+   </para>
+
+   <note>
+    <simpara>
+      If using PostgreSQL 9.6 or earlier, replace <literal>--wal-method</literal>
+      with <literal>--xlog-method</literal>.
+    </simpara>
+   </note>
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-clone-wal-directory">
+
+   <title>Placing WAL files into a different directory</title>
+
+   <para>
+     To ensure that WAL files are placed in a directory outside of the main data
+     directory (e.g. to keep them on a separate disk for performance reasons),
+     specify the location with  <option>--waldir</option>
+     (PostgreSQL 9.6 and earlier: <option>--xlogdir</option>) in
+     the <filename>repmgr.conf</filename> parameter <option>pg_basebackup_options</option>,
+     e.g.:
+     <programlisting>
+pg_basebackup_options='--waldir=/path/to/wal-directory'</programlisting>
+     This setting will also be honored by &repmgr; when cloning from Barman
+     (&repmgr; 5.2 and later).
+   </para>
+
+  </refsect1>
+
+<!-- don't rename this id as it may be used in external links -->
+  <refsect1 id="repmgr-standby-create-recovery-conf">
+
+   <title>Using a standby cloned by another method</title>
+
+   <indexterm>
+     <primary>replication configuration</primary>
+     <secondary>generating for a standby cloned by another method</secondary>
+   </indexterm>
+
+   <indexterm>
+     <primary>recovery.conf</primary>
+     <secondary>generating for a standby cloned by another method</secondary>
+   </indexterm>
+
+   <para>
+     &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
+     <command><ulink url="https://docs.pgbarman.org/#recover">barman recover</ulink></command> command).
+   </para>
+   <para>
+     To integrate the standby as a &repmgr; node, once the standby has been cloned,
+     ensure the <filename>repmgr.conf</filename>
+     file is created for the node, and that it has been registered using
+     <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>.
+   </para>
+   <tip>
+     <para>
+       To register a standby which is not running, execute
+       <link linkend="repmgr-standby-register">repmgr standby register --force</link>
+       and provide the connection details for the primary.
+     </para>
+     <para>
+       See <xref linkend="repmgr-standby-register-inactive-node"/> for more details.
+     </para>
+   </tip>
+   <para>
+     Then execute the command <command>repmgr standby clone --replication-conf-only</command>.
+     This will create the <filename>recovery.conf</filename> file needed to attach
+     the node to its upstream (in PostgreSQL 12 and later: append replication configuration
+     to <filename>postgresql.auto.conf</filename>), and will also create a replication slot on the
+     upstream node if required.
+   </para>
+   <para>
+     The upstream node must be running so the correct replication configuration can be obtained.
+   </para>
+   <para>
+     If the standby is running, the replication configuration will not be written unless the
+     <option>-F/--force</option> option is provided.
+   </para>
+   <tip>
+     <para>
+       Execute <command>repmgr standby clone --replication-conf-only --dry-run</command>
+       to check the prerequisites for creating the recovery configuration,
+       and display the configuration changes which would be made without actually
+	   making any changes.
+     </para>
+   </tip>
+   <para>
+     In PostgreSQL 13 and later, the PostgreSQL configuration must be reloaded for replication
+     configuration changes to take effect.
+   </para>
+   <para>
+     In PostgreSQL 12 and earlier, the PostgreSQL instance must be restarted for replication
+     configuration changes to take effect.
+   </para>
+
+
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>-d, --dbname=CONNINFO</option></term>
+        <listitem>
+          <para>
+            Connection string of the upstream node to use for cloning.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually clone the standby.
+          </para>
+          <para>
+            If <option>--replication-conf-only</option> specified, the contents of
+            the generated recovery configuration will be displayed
+            but not written.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-c, --fast-checkpoint</option></term>
+        <listitem>
+          <para>
+            Force fast checkpoint (not effective when cloning from Barman).
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--copy-external-config-files[={samepath|pgdata}]</option></term>
+        <listitem>
+          <para>
+            Copy configuration files located outside the data directory on the source
+            node to the same path on the standby (default) or to the
+            PostgreSQL data directory.
+          </para>
+          <para>
+            Note that to be able to use this option, the &repmgr; user must be a superuser or
+            member of the <literal>pg_read_all_settings</literal> predefined role.
+            If this is not the case, provide a valid superuser with the
+            <option>-S</option>/<option>--superuser</option> option.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--no-upstream-connection</option></term>
+        <listitem>
+          <para>
+            When using Barman, do not connect to upstream node.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term><option>--recovery-min-apply-delay</option></term>
+        <listitem>
+          <para>
+            Set PostgreSQL configuration <option>recovery_min_apply_delay</option> parameter
+            to the provided value.
+          </para>
+          <para>
+            This overrides any <option>recovery_min_apply_delay</option> provided via
+            <filename>repmgr.conf</filename>.
+          </para>
+          <para>
+            For more details on this parameter, see:
+            <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-RECOVERY-MIN-APPLY-DELAY">recovery_min_apply_delay</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-R, --remote-user=USERNAME</option></term>
+        <listitem>
+          <para>
+            Remote system username for SSH operations (default: current local system username).
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--replication-conf-only</option></term>
+        <listitem>
+          <para>
+            Create recovery configuration for a previously cloned instance.
+          </para>
+		  <para>
+			In PostgreSQL 12 and later, the replication configuration will be
+			written to <filename>postgresql.auto.conf</filename>.
+		  </para>
+		  <para>
+			In PostgreSQL 11 and earlier, the replication configuration will be
+			written to <filename>recovery.conf</filename>.
+		  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--replication-user</option></term>
+        <listitem>
+          <para>
+            User to make replication connections with (optional, not usually required).
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-S</option>/<option>--superuser</option></term>
+        <listitem>
+          <para>
+            The name of a valid PostgreSQL superuser can  be provided with this option.
+          </para>
+          <para>
+            This is only required if the <option>--copy-external-config-files</option> was provided
+            and the &repmgr; user is not a superuser or member of the <literal>pg_read_all_settings</literal>
+            predefined role.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term><option>--upstream-conninfo</option></term>
+        <listitem>
+          <para>
+            <literal>primary_conninfo</literal> value to include in the recovery configuration
+            when the intended upstream server does not yet exist.
+          </para>
+          <para>
+            Note that &repmgr; may modify the provided value, in particular to set the
+            correct <literal>application_name</literal>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--upstream-node-id</option></term>
+        <listitem>
+          <para>
+            ID of the upstream node to replicate from (optional, defaults to primary node)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--verify-backup</option></term>
+        <listitem>
+          <para>
+            <!-- update link after Pg13 release -->
+            Verify a cloned node using the
+            <ulink url="https://www.postgresql.org/docs/13/app-pgverifybackup.html">pg_verifybackup</ulink>
+            utility (PostgreSQL 13 and later).
+          </para>
+          <para>
+            This option can currently only be used when cloning directly from an upstream
+            node.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--without-barman </option></term>
+        <listitem>
+          <para>
+            Do not use Barman even if configured.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-clone-events">
+    <title>Event notifications</title>
+    <para>
+      A <literal>standby_clone</literal> <link linkend="event-notifications">event notification</link> will be generated.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      See <xref linkend="cloning-standbys"/> for details about various aspects of cloning.
+    </para>
+  </refsect1>
+</refentry>
+

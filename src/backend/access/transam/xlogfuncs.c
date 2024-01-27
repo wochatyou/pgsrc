@@ -676,14 +676,14 @@ pg_wal_lsn_diff(PG_FUNCTION_ARGS)
  * "true", or initiated if "wait" is false.
  */
 Datum
-pg_promote(PG_FUNCTION_ARGS)
+pg_promote(PG_FUNCTION_ARGS) /// 把备库升级到主库的函数，两个输入参数，wait 和wait_seconds
 {
 	bool		wait = PG_GETARG_BOOL(0);
 	int			wait_seconds = PG_GETARG_INT32(1);
 	FILE	   *promote_file;
 	int			i;
 
-	if (!RecoveryInProgress())
+	if (!RecoveryInProgress()) /// 如果不处于备库模式，就报错退出
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("recovery is not in progress"),
@@ -695,7 +695,7 @@ pg_promote(PG_FUNCTION_ARGS)
 				 errmsg("\"wait_seconds\" must not be negative or zero")));
 
 	/* create the promote signal file */
-	promote_file = AllocateFile(PROMOTE_SIGNAL_FILE, "w");
+	promote_file = AllocateFile(PROMOTE_SIGNAL_FILE, "w"); // #define PROMOTE_SIGNAL_FILE		"promote" 这是文件名
 	if (!promote_file)
 		ereport(ERROR,
 				(errcode_for_file_access(),
@@ -709,7 +709,7 @@ pg_promote(PG_FUNCTION_ARGS)
 						PROMOTE_SIGNAL_FILE)));
 
 	/* signal the postmaster */
-	if (kill(PostmasterPid, SIGUSR1) != 0)
+	if (kill(PostmasterPid, SIGUSR1) != 0) /// 就是给主进程发送SIGUSR1信号
 	{
 		ereport(WARNING,
 				(errmsg("failed to send signal to postmaster: %m")));
@@ -729,7 +729,7 @@ pg_promote(PG_FUNCTION_ARGS)
 
 		ResetLatch(MyLatch);
 
-		if (!RecoveryInProgress())
+		if (!RecoveryInProgress()) /// 如果已经升级成功，就返回
 			PG_RETURN_BOOL(true);
 
 		CHECK_FOR_INTERRUPTS();
@@ -737,13 +737,13 @@ pg_promote(PG_FUNCTION_ARGS)
 		rc = WaitLatch(MyLatch,
 					   WL_LATCH_SET | WL_TIMEOUT | WL_POSTMASTER_DEATH,
 					   1000L / WAITS_PER_SECOND,
-					   WAIT_EVENT_PROMOTE);
+					   WAIT_EVENT_PROMOTE); /// 睡觉一定时间
 
 		/*
 		 * Emergency bailout if postmaster has died.  This is to avoid the
 		 * necessity for manual cleanup of all postmaster children.
 		 */
-		if (rc & WL_POSTMASTER_DEATH)
+		if (rc & WL_POSTMASTER_DEATH) /// 如果主进程死了，就返回false
 			PG_RETURN_BOOL(false);
 	}
 

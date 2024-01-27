@@ -1,0 +1,345 @@
+<refentry id="repmgr-standby-promote">
+  <indexterm>
+    <primary>repmgr standby promote</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr standby promote</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby promote</refname>
+    <refpurpose>promote a standby to a primary</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Promotes a standby to a primary if the current primary has failed. This
+      command requires a valid <filename>repmgr.conf</filename> file for the standby, either
+      specified explicitly with <literal>-f/--config-file</literal> or located in a
+      default location; no additional arguments are required.
+    </para>
+    <important>
+      <para>
+        If &repmgrd; is active, you must execute
+        <command><link linkend="repmgr-service-pause">repmgr service pause</link></command>
+        (&repmgr; 4.2 - 4.4: <command><link linkend="repmgr-service-pause">repmgr service pause</link></command>)
+        to temporarily disable &repmgrd; while making any changes
+        to the replication cluster.
+      </para>
+    </important>
+
+    <para>
+      If the standby promotion succeeds, the server will not need to be
+      restarted. However any other standbys will need to follow the new primary,
+      and will need to be restarted to do this.
+    </para>
+    <para>
+      Beginning with <link linkend="release-4.4">repmgr 4.4</link>,
+      the option <option>--siblings-follow</option> can be used to have
+      all other standbys (and a witness server, if in use)
+	  follow the new primary.
+    </para>
+
+    <note>
+      <para>
+        If using &repmgrd;, when invoking
+        <command>repmgr standby promote</command> (either directly via
+        the <option>promote_command</option>, or in a script called
+        via <option>promote_command</option>), <option>--siblings-follow</option>
+        <emphasis>must not</emphasis> be included as a
+        command line option for <command>repmgr standby promote</command>.
+      </para>
+    </note>
+
+    <para>
+      In <link linkend="release-4.3">repmgr 4.3</link> and earlier,
+      <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command>
+      must be executed on each standby individually.
+    </para>
+
+    <para>
+      &repmgr; will wait for up to <varname>promote_check_timeout</varname> seconds
+      (default: <literal>60</literal>) to verify that the standby has been promoted, and will
+      check the promotion every <varname>promote_check_interval</varname> seconds (default: 1 second).
+      Both values can be defined in <filename>repmgr.conf</filename>.
+    </para>
+
+    <warning>
+      <para>
+        In PostgreSQL 12 and earlier, if WAL replay is paused on the standby, and not all
+        WAL files on the standby have been replayed, &repmgr; will not attempt to promote it.
+      </para>
+      <para>
+        This is because if WAL replay is paused, PostgreSQL itself will not react to a promote command
+        until WAL replay is resumed and all pending WAL has been replayed. This means
+        attempting to promote PostgreSQL in this state will leave PostgreSQL in a condition where the
+        promotion may occur at a unpredictable point in the future.
+      </para>
+      <para>
+        Note that if the standby is in archive recovery, &repmgr; will not be able to determine
+        if more WAL is pending replay, and will abort the promotion attempt if WAL replay is paused.
+      </para>
+      <para>
+        This restriction does <emphasis>not</emphasis> apply to PostgreSQL 13 and later.
+      </para>
+    </warning>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+      <programlisting>
+      $ repmgr -f /etc/repmgr.conf standby promote
+      NOTICE: promoting standby to primary
+      DETAIL: promoting server "node2" (ID: 2) using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/postgres/data' promote"
+      server promoting
+      NOTICE: STANDBY PROMOTE successful
+      DETAIL: server "node2" (ID: 2) was successfully promoted to primary</programlisting>
+    </para>
+  </refsect1>
+
+
+  <refsect1>
+    <title>User permission requirements</title>
+    <para><emphasis>pg_promote() (PostgreSQL 12 and later)</emphasis></para>
+    <para>
+      From PostgreSQL 12, &repmgr; will attempt to use the built-in <function>pg_promote()</function>
+      function to promote a standby to primary.
+    </para>
+    <para>
+      By default, execution of <function>pg_promote()</function> is restricted to superusers.
+      If the <literal>repmgr</literal> user does not have permission to execute
+      <function>pg_promote()</function>, &repmgr; will fall back to using &quot;<command>pg_ctl promote</command>&quot;.
+    </para>
+    <tip>
+      <para>
+        Execute <command>repmgr standby promote</command> with the <option>--dry-run</option>
+        to check whether the &repmgr; user has permission to execute <function>pg_promote()</function>.
+      </para>
+      <para>
+        If the <literal>repmgr</literal> user is not a superuser, execution permission for this
+        function can be granted with e.g.:
+        <programlisting>
+    GRANT EXECUTE ON FUNCTION pg_catalog.pg_promote TO repmgr</programlisting>
+      </para>
+      <para>
+        Note that permissions are only effective for the database they are granted in, so
+        this <emphasis>must</emphasis> be executed in the &repmgr; database to be effective.
+      </para>
+    </tip>
+    <para>
+      For more details on <function>pg_promote()</function>, see the
+      <ulink url="https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-RECOVERY-CONTROL-TABLE">PostgreSQL documentation</ulink>.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+      <varlistentry>
+
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check if this node can be promoted, but don't carry out the promotion.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--siblings-follow</option></term>
+        <listitem>
+          <para>
+            Have all sibling nodes (nodes formerly attached to the same upstream
+            node as the promotion candidate) follow this node after it has been promoted.
+          </para>
+		  <para>
+			Note that a witness server, if in use, is also
+			counted as a &quot;sibling node&quot; as it needs to be instructed to
+			synchronise its metadata with the new primary.
+		  </para>
+          <important>
+            <para>
+              Do <emphasis>not</emphasis> provide this option when configuring
+              &repmgrd;'s <option>promote_command</option>.
+            </para>
+          </important>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-F</option></term>
+        <term><option>--force</option></term>
+        <listitem>
+          <para>
+            Ignore warnings and continue anyway.
+          </para>
+          <para>
+            This option is relevant in the following situations if <option>--siblings-follow</option> was specified:
+            <itemizedlist spacing="compact" mark="bullet">
+              <listitem>
+                <simpara>
+                  If one or more sibling nodes was not reachable via SSH, the standby will be promoted anyway.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  If the promotion candidate has insufficient free walsenders to accommodate the standbys which will
+                  be attached to it, the standby will be promoted anyway.
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  If replication slots are in use but the promotion candidate has insufficient free replication slots
+                  to accommodate the standbys which will be attached to it, the standby will be promoted anyway.
+                </simpara>
+              </listitem>
+            </itemizedlist>
+          </para>
+          <para>
+            Note that if the <option>-F</option>/<option>--force</option> option is used when any of the above
+            situations is encountered, the onus is on the user to manually resolve any resulting issues.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>Configuration file settings</title>
+   <para>
+     The following parameters in <filename>repmgr.conf</filename> are relevant to the
+     promote operation:
+    </para>
+
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+       <listitem>
+        <indexterm>
+          <primary>promote_check_interval</primary>
+          <secondary>with &quot;repmgr standby promote &quot;</secondary>
+        </indexterm>
+         <simpara>
+           <literal>promote_check_interval</literal>:
+           interval (in seconds, default: 1 second) to wait between each check
+           to determine whether the standby has been promoted.
+		 </simpara>
+	   </listitem>
+
+       <listitem>
+        <indexterm>
+          <primary>promote_check_timeout</primary>
+          <secondary>with &quot;repmgr standby promote &quot;</secondary>
+        </indexterm>
+         <simpara>
+           <literal>promote_check_timeout</literal>:
+           time (in seconds, default: 60 seconds) to wait to verify that the standby has been promoted
+           before exiting with <literal>ERR_PROMOTION_FAIL</literal>.
+		 </simpara>
+	   </listitem>
+
+       <listitem>
+        <indexterm>
+          <primary>service_promote_command</primary>
+          <secondary>with &quot;repmgr standby promote &quot;</secondary>
+        </indexterm>
+         <simpara>
+           <literal>service_promote_command</literal>:
+           a command which will be executed instead of <command>pg_ctl promote</command>
+           or (in PostgreSQL 12 and later) <function>pg_promote()</function>.
+         </simpara>
+         <simpara>
+           This is intended for systems which provide a package-level promote command,
+           such as Debian's <application>pg_ctlcluster</application>, to promote the
+           PostgreSQL from standby to primary.
+         </simpara>
+       </listitem>
+
+	  </itemizedlist>
+	</para>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <command>repmgr standby promote</command>:
+    </para>
+    <variablelist>
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            The standby was successfully promoted to primary.
+          </para>
+        </listitem>
+      </varlistentry>
+
+     <varlistentry>
+        <term><option>ERR_DB_CONN (6)</option></term>
+        <listitem>
+          <para>
+            &repmgr; was unable to connect to the local PostgreSQL node.
+          </para>
+          <para>
+            PostgreSQL must be running before the node can be promoted.
+          </para>
+        </listitem>
+      </varlistentry>
+
+     <varlistentry>
+       <term><option>ERR_PROMOTION_FAIL (8)</option></term>
+        <listitem>
+          <para>
+            The node could not be promoted to primary for one of the following
+            reasons:
+            <itemizedlist spacing="compact" mark="bullet">
+
+              <listitem>
+                <simpara>
+                  there is an existing primary node in the replication cluster
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  the node is not a standby
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  WAL replay is paused on the node
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  execution of the PostgreSQL promote command failed
+                </simpara>
+              </listitem>
+
+            </itemizedlist>
+          </para>
+        </listitem>
+     </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+
+  <refsect1 id="repmgr-standby-promote-events">
+    <title>Event notifications</title>
+    <para>
+      A <literal>standby_promote</literal> <link linkend="event-notifications">event notification</link> will be generated.
+    </para>
+  </refsect1>
+
+</refentry>

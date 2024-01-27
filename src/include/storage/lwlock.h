@@ -114,8 +114,8 @@ extern PGDLLIMPORT int NamedLWLockTrancheRequests;
 
 typedef enum LWLockMode
 {
-	LW_EXCLUSIVE,
-	LW_SHARED,
+	LW_EXCLUSIVE, /// 独占锁模式
+	LW_SHARED,    /// 共享锁模式
 	LW_WAIT_UNTIL_FREE			/* A special mode used in PGPROC->lwWaitMode,
 								 * when waiting for lock to become free. Not
 								 * to be used as LWLockAcquire argument */

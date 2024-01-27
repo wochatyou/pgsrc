@@ -35,8 +35,8 @@
  */
 typedef struct ItemPointerData
 {
-	BlockIdData ip_blkid;
-	OffsetNumber ip_posid;
+	BlockIdData ip_blkid;  /// 四个字节
+	OffsetNumber ip_posid; /// 2个字节
 }
 
 /* If compiler understands packed and aligned pragmas, use those */

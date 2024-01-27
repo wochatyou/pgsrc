@@ -38,11 +38,11 @@ static void
 create_physical_replication_slot(char *name, bool immediately_reserve,
 								 bool temporary, XLogRecPtr restart_lsn)
 {
-	Assert(!MyReplicationSlot);
+	Assert(!MyReplicationSlot); /// 此时MyReplicationSlot必须为NULL
 
 	/* acquire replication slot, this will check for conflicting names */
-	ReplicationSlotCreate(name, false,
-						  temporary ? RS_TEMPORARY : RS_PERSISTENT, false);
+	ReplicationSlotCreate(name, false, /// false表示是物理复制槽
+						  temporary ? RS_TEMPORARY : RS_PERSISTENT, false); /// 最后一个false表示two_phase为false，两阶段
 
 	if (immediately_reserve)
 	{
@@ -62,8 +62,8 @@ create_physical_replication_slot(char *name, bool immediately_reserve,
  * SQL function for creating a new physical (streaming replication)
  * replication slot.
  */
-Datum
-pg_create_physical_replication_slot(PG_FUNCTION_ARGS)
+Datum /// 这个是用户调用函数的入口
+pg_create_physical_replication_slot(PG_FUNCTION_ARGS) /// SELECT pg_create_physical_replication_slot('repmgr_slot_1642343038'); 这个函数的入口
 {
 	Name		name = PG_GETARG_NAME(0);
 	bool		immediately_reserve = PG_GETARG_BOOL(1);
@@ -77,14 +77,14 @@ pg_create_physical_replication_slot(PG_FUNCTION_ARGS)
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		elog(ERROR, "return type must be a row type");
 
-	CheckSlotPermissions();
+	CheckSlotPermissions(); /// 检查当前用户是否有replication的权限，超级用户肯定有
 
 	CheckSlotRequirements();
 
 	create_physical_replication_slot(NameStr(*name),
 									 immediately_reserve,
 									 temporary,
-									 InvalidXLogRecPtr);
+									 InvalidXLogRecPtr); /// 这个参数告诉底层函数自己决定要保存的LSN
 
 	values[0] = NameGetDatum(&MyReplicationSlot->data.name);
 	nulls[0] = false;
@@ -132,7 +132,7 @@ create_logical_replication_slot(char *name, char *plugin,
 	 * slots can be created as temporary from beginning as they get dropped on
 	 * error as well.
 	 */
-	ReplicationSlotCreate(name, true,
+	ReplicationSlotCreate(name, true, /// 这个true表示是逻辑复制槽
 						  temporary ? RS_TEMPORARY : RS_EPHEMERAL, two_phase);
 
 	/*
@@ -165,7 +165,7 @@ create_logical_replication_slot(char *name, char *plugin,
  * SQL function for creating a new logical replication slot.
  */
 Datum
-pg_create_logical_replication_slot(PG_FUNCTION_ARGS)
+pg_create_logical_replication_slot(PG_FUNCTION_ARGS) /// 四个输入参数，两个是必须的：SELECT pg_create_logical_replication_slot('pgl_onshift_schedule_db_ski_repl0104c86', 'pglogical_output');
 {
 	Name		name = PG_GETARG_NAME(0);
 	Name		plugin = PG_GETARG_NAME(1);
@@ -180,9 +180,10 @@ pg_create_logical_replication_slot(PG_FUNCTION_ARGS)
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		elog(ERROR, "return type must be a row type");
 
-	CheckSlotPermissions();
+	CheckSlotPermissions(); /// 就是检查当前用户是否有replication的权限
 
-	CheckLogicalDecodingRequirements();
+	CheckLogicalDecodingRequirements(); /// 检查复制槽是否满足要求，就是检查max_replication_slots和wal_level两个参数
+
 
 	create_logical_replication_slot(NameStr(*name),
 									NameStr(*plugin),
@@ -431,14 +432,14 @@ pg_get_replication_slots(PG_FUNCTION_ARGS)
  * checkpoints.
  */
 static XLogRecPtr
-pg_physical_replication_slot_advance(XLogRecPtr moveto)
+pg_physical_replication_slot_advance(XLogRecPtr moveto) /// 把当前复制槽的restart_lsn移动到moveto
 {
 	XLogRecPtr	startlsn = MyReplicationSlot->data.restart_lsn;
 	XLogRecPtr	retlsn = startlsn;
 
 	Assert(moveto != InvalidXLogRecPtr);
 
-	if (startlsn < moveto)
+	if (startlsn < moveto) /// 如果当前的lsn比moveto小，就移动到moveto
 	{
 		SpinLockAcquire(&MyReplicationSlot->mutex);
 		MyReplicationSlot->data.restart_lsn = moveto;

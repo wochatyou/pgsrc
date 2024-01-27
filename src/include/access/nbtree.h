@@ -215,8 +215,8 @@ typedef struct BTMetaPageData
  * Macros to test whether a page is leftmost or rightmost on its tree level,
  * as well as other state info kept in the opaque data.
  */
-#define P_LEFTMOST(opaque)		((opaque)->btpo_prev == P_NONE)
-#define P_RIGHTMOST(opaque)		((opaque)->btpo_next == P_NONE)
+#define P_LEFTMOST(opaque)		((opaque)->btpo_prev == P_NONE) /// 前导指针为0，则表示最左边的节点
+#define P_RIGHTMOST(opaque)		((opaque)->btpo_next == P_NONE) /// 后导指针为0，则表示最右边的节点
 #define P_ISLEAF(opaque)		(((opaque)->btpo_flags & BTP_LEAF) != 0)
 #define P_ISROOT(opaque)		(((opaque)->btpo_flags & BTP_ROOT) != 0)
 #define P_ISDELETED(opaque)		(((opaque)->btpo_flags & BTP_DELETED) != 0)
@@ -331,7 +331,7 @@ typedef struct BTVacState
 {
 	IndexVacuumInfo *info;
 	IndexBulkDeleteResult *stats;
-	IndexBulkDeleteCallback callback;
+	IndexBulkDeleteCallback callback; /// 这个函数负责删除某一个索引记录
 	void	   *callback_state;
 	BTCycleId	cycleid;
 	MemoryContext pagedelcontext;
@@ -366,7 +366,7 @@ typedef struct BTVacState
 
 #define P_HIKEY				((OffsetNumber) 1)
 #define P_FIRSTKEY			((OffsetNumber) 2)
-#define P_FIRSTDATAKEY(opaque)	(P_RIGHTMOST(opaque) ? P_HIKEY : P_FIRSTKEY)
+#define P_FIRSTDATAKEY(opaque)	(P_RIGHTMOST(opaque) ? P_HIKEY : P_FIRSTKEY) /// 根据是不是最右边的节点来决定选择第一个还是第二个元素作为第一个真正的成员
 
 /*
  * Notes on B-Tree tuple format, and key and non-key attributes:

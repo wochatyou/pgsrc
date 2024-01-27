@@ -216,7 +216,7 @@ XLogFilePath(char *path, TimeLineID tli, XLogSegNo logSegNo, int wal_segsz_bytes
 }
 
 static inline void
-TLHistoryFileName(char *fname, TimeLineID tli)
+TLHistoryFileName(char *fname, TimeLineID tli) /// 根据时间线形成时间线历史文件名，就是在后面加上.history
 {
 	snprintf(fname, MAXFNAMELEN, "%08X.history", tli);
 }

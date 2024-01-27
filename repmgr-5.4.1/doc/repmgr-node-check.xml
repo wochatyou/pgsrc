@@ -1,0 +1,308 @@
+<refentry id="repmgr-node-check">
+  <indexterm>
+    <primary>repmgr node check</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr node check</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr node check</refname>
+    <refpurpose>performs some health checks on a node from a replication perspective</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Performs some health checks on a node from a replication perspective.
+      This command must be run on the local node.
+    </para>
+	<note>
+	  <para>
+		Currently &repmgr; performs health checks on physical replication
+		slots only, with the aim of warning about streaming replication standbys which
+		have become detached and the associated risk of uncontrolled WAL file
+		growth.
+	  </para>
+	</note>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+      Execution on the primary server:
+      <programlisting>
+       $ repmgr -f /etc/repmgr.conf node check
+       Node "node1":
+            Server role: OK (node is primary)
+            Replication lag: OK (N/A - node is primary)
+            WAL archiving: OK (0 pending files)
+            Upstream connection: OK (N/A - is primary)
+            Downstream servers: OK (2 of 2 downstream nodes attached)
+            Replication slots: OK (node has no physical replication slots)
+            Missing replication slots: OK (node has no missing physical replication slots)
+            Configured data directory: OK (configured "data_directory" is "/var/lib/postgresql/data")</programlisting>
+    </para>
+    <para>
+      Execution on a standby server:
+      <programlisting>
+       $ repmgr -f /etc/repmgr.conf node check
+       Node "node2":
+            Server role: OK (node is standby)
+            Replication lag: OK (0 seconds)
+            WAL archiving: OK (0 pending archive ready files)
+            Upstream connection: OK (node "node2" (ID: 2) is attached to expected upstream node "node1" (ID: 1))
+            Downstream servers: OK (this node has no downstream nodes)
+            Replication slots: OK (node has no physical replication slots)
+            Missing physical replication slots: OK (node has no missing physical replication slots)
+            Configured data directory: OK (configured "data_directory" is "/var/lib/postgresql/data")</programlisting>
+    </para>
+  </refsect1>
+  <refsect1>
+    <title>Individual checks</title>
+    <para>
+      Each check can be performed individually by supplying
+      an additional command line parameter, e.g.:
+      <programlisting>
+        $ repmgr node check --role
+        OK (node is primary)</programlisting>
+    </para>
+    <para>
+	  Parameters for individual checks are as follows:
+    <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+      <simpara>
+        <option>--role</option>: checks if the node has the expected role
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--replication-lag</option>: checks if the node is lagging by more than
+        <varname>replication_lag_warning</varname> or <varname>replication_lag_critical</varname>
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--archive-ready</option>: checks for WAL files which have not yet been archived,
+        and returns <literal>WARNING</literal> or <literal>CRITICAL</literal> if the number
+        exceeds <varname>archive_ready_warning</varname> or <varname>archive_ready_critical</varname> respectively.
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--downstream</option>: checks that the expected downstream nodes are attached
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--upstream</option>: checks that the node is attached to its expected upstream
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--slots</option>: checks there are no inactive physical replication slots
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--missing-slots</option>: checks there are no missing physical replication slots
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <option>--data-directory-config</option>: checks the data directory configured in
+        <filename>repmgr.conf</filename> matches the actual data directory.
+        This check is not directly related to replication, but is useful to verify &repmgr;
+        is correctly configured.
+      </simpara>
+     </listitem>
+    </itemizedlist>
+  </para>
+  </refsect1>
+
+
+  <refsect1>
+    <title>repmgrd</title>
+    <para>
+      A separate check is available to verify whether &repmgrd; is running,
+      This is not included in the general output, as this does not
+      per-se constitute a check of the node's replication status.
+    </para>
+    <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <simpara>
+        <option>--repmgrd</option>: checks whether &repmgrd; is running.
+        If &repmgrd; is running but paused, status <literal>1</literal>
+        (<literal>WARNING</literal>) is returned.
+      </simpara>
+     </listitem>
+    </itemizedlist>
+  </refsect1>
+
+  <refsect1>
+    <title>Additional checks</title>
+    <para>
+      Several checks are provided for diagnostic purposes and are not
+      included in the general output:
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <option>--db-connection</option>: checks if &repmgr; can connect to the
+            database on the local node.
+          </simpara>
+          <simpara>
+            This option is particularly useful in combination with <command>SSH</command>, as
+            it can be used to troubleshoot connection issues encountered when &repmgr; is
+            executed remotely (e.g. during a switchover operation).
+          </simpara>
+
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <option>--replication-config-owner</option>: checks if the file containing replication
+            configuration (PostgreSQL 12 and later: <filename>postgresql.auto.conf</filename>;
+            PostgreSQL 11 and earlier: <filename>recovery.conf</filename>) is
+            owned by the same user who owns the data directory.
+          </simpara>
+          <simpara>
+            Incorrect ownership of these files (e.g. if they are owned by <literal>root</literal>)
+            will cause operations which need to update the replication configuration
+            (e.g. <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>
+            or <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>)
+            to fail.
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Connection options</title>
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <option>-S</option>/<option>--superuser</option>: connect as the
+            named superuser instead of the &repmgr; user
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Output format</title>
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <option>--csv</option>: generate output in CSV format (not available
+            for individual checks)
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <option>--nagios</option>: generate output in a Nagios-compatible format
+            (for individual checks only)
+          </simpara>
+        </listitem>
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>Exit codes</title>
+
+    <para>
+      When executing <command>repmgr node check</command> with one of the individual
+      checks listed above, &repmgr; will emit one of the following Nagios-style exit codes
+      (even if <option>--nagios</option> is not supplied):
+
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <literal>0</literal>: OK
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>1</literal>: WARNING
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>2</literal>: ERROR
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>3</literal>: UNKNOWN
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+
+
+
+    <para>
+      One of the following exit codes will be emitted by <command>repmgr status check</command>
+      if no individual check was specified.
+    </para>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            No issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_NODE_STATUS (25)</option></term>
+        <listitem>
+          <para>
+            One or more issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+     <xref linkend="repmgr-node-status"/>, <xref linkend="repmgr-cluster-show"/>
+    </para>
+  </refsect1>
+
+</refentry>

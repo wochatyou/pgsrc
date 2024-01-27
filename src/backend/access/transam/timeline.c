@@ -58,7 +58,7 @@ restoreTimeLineHistoryFiles(TimeLineID begin, TimeLineID end)
 		if (tli == 1)
 			continue;
 
-		TLHistoryFileName(histfname, tli);
+		TLHistoryFileName(histfname, tli); /// 根据时间线形成时间线历史文件名，就是在后面加上.history
 		if (RestoreArchivedFile(path, histfname, "RECOVERYHISTORY", 0, false))
 			KeepFileRestoredFromArchive(path, histfname);
 	}

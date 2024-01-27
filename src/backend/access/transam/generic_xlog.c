@@ -43,7 +43,7 @@
  * a full page's worth of data.
  *-------------------------------------------------------------------------
  */
-#define FRAGMENT_HEADER_SIZE	(2 * sizeof(OffsetNumber))
+#define FRAGMENT_HEADER_SIZE	(2 * sizeof(OffsetNumber)) /// 2个字节： typedef uint16 OffsetNumber;
 #define MATCH_THRESHOLD			FRAGMENT_HEADER_SIZE
 #define MAX_DELTA_SIZE			(BLCKSZ + 2 * FRAGMENT_HEADER_SIZE)
 

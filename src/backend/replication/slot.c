@@ -1132,7 +1132,7 @@ restart:
  * slots.
  */
 void
-CheckSlotRequirements(void) // 两点检查，一个是max_replication_slots > 0，一个是wal_level是logical
+CheckSlotRequirements(void) // 两点检查，一个是max_replication_slots > 0，一个是wal_level是logical或者replica
 {
 	/*
 	 * NB: Adding a new requirement likely means that RestoreSlotFromDisk()
@@ -1154,7 +1154,7 @@ CheckSlotRequirements(void) // 两点检查，一个是max_replication_slots > 0
  * Check whether the user has privilege to use replication slots.
  */
 void
-CheckSlotPermissions(void)
+CheckSlotPermissions(void) /// 就是检查当前用户是否有replication的权限
 {
 	if (!has_rolreplication(GetUserId()))
 		ereport(ERROR,
@@ -1171,7 +1171,7 @@ CheckSlotPermissions(void)
  * the slot and concurrency safe.
  */
 void
-ReplicationSlotReserveWal(void)
+ReplicationSlotReserveWal(void) /// 计算需要保留的LSN
 {
 	ReplicationSlot *slot = MyReplicationSlot;
 
@@ -1206,14 +1206,14 @@ ReplicationSlotReserveWal(void)
 		 * backup has to start replay at.
 		 */
 		if (SlotIsPhysical(slot)) // 如果是物理复制槽
-			restart_lsn = GetRedoRecPtr(); // 获得一个redo的LSN
+			restart_lsn = GetRedoRecPtr(); // 获得一个redo的LSN, // 从共享内存中获得redo的LSN
 		else if (RecoveryInProgress())
-			restart_lsn = GetXLogReplayRecPtr(NULL);
+			restart_lsn = GetXLogReplayRecPtr(NULL); /// 如果是逻辑复制，取下一个INSERT的LSN
 		else
 			restart_lsn = GetXLogInsertRecPtr();
 
 		SpinLockAcquire(&slot->mutex);
-		slot->data.restart_lsn = restart_lsn;
+		slot->data.restart_lsn = restart_lsn; /// 在共享内存中设置一下
 		SpinLockRelease(&slot->mutex);
 
 		/* prevent WAL removal as fast as possible */
@@ -1227,7 +1227,7 @@ ReplicationSlotReserveWal(void)
 		 * more than twice.
 		 */
 		XLByteToSeg(slot->data.restart_lsn, segno, wal_segment_size); // 这里计算segno的值
-		if (XLogGetLastRemovedSegno() < segno)
+		if (XLogGetLastRemovedSegno() < segno) /// 说明restart_lsn所在的段还没有被删除
 			break;
 	}
 

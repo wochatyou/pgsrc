@@ -223,7 +223,7 @@ static LagTracker *lag_tracker;
 static void WalSndLastCycleHandler(SIGNAL_ARGS);
 
 /* Prototypes for private functions */
-typedef void (*WalSndSendDataCallback) (void);
+typedef void (*WalSndSendDataCallback) (void); /// 回调函数
 static void WalSndLoop(WalSndSendDataCallback send_data);
 static void InitWalSenderSlot(void);
 static void WalSndKill(int code, Datum arg);
@@ -669,7 +669,7 @@ SendTimeLineHistory(TimeLineHistoryCmd *cmd) /// 执行TIMELINE_HISTORY指令
 // 复制指令的格式： START_REPLICATION [ SLOT slot_name ] [ PHYSICAL ] XXX/XXX [ TIMELINE tli ] 
 // 逻辑复制： START_REPLICATION SLOT slot_name LOGICAL XXX/XXX [ ( option_name [ option_value ] [, ...] ) ] #
 static void // 这条命令是核心指令，开始进行复制了
-StartReplication(StartReplicationCmd *cmd)
+StartReplication(StartReplicationCmd *cmd) /// 这个是物理复制
 {
 	StringInfoData buf;
 	XLogRecPtr	FlushPtr;
@@ -700,7 +700,7 @@ StartReplication(StartReplicationCmd *cmd)
 	if (cmd->slotname) // 复制槽的名称
 	{
 		ReplicationSlotAcquire(cmd->slotname, true); // 锁住这个复制槽，这个函数执行后MyReplicationSlot就有值了
-		if (SlotIsLogical(MyReplicationSlot))
+		if (SlotIsLogical(MyReplicationSlot)) /// #define SlotIsLogical(slot) ((slot)->data.database != InvalidOid)
 			ereport(ERROR,
 					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 					 errmsg("cannot use a logical replication slot for physical replication")));
@@ -1080,7 +1080,7 @@ CreateReplicationSlot(CreateReplicationSlotCmd *cmd)
 							  two_phase);
 	}
 
-	if (cmd->kind == REPLICATION_KIND_LOGICAL)
+	if (cmd->kind == REPLICATION_KIND_LOGICAL) /// 逻辑复制槽
 	{
 		LogicalDecodingContext *ctx;
 		bool		need_full_snapshot = false;
@@ -1324,7 +1324,7 @@ StartLogicalReplication(StartReplicationCmd *cmd) /// 开始逻辑复制
 	SyncRepInitConfig();
 
 	/* Main loop of walsender */
-	WalSndLoop(XLogSendLogical); // 主要的循环在这里
+	WalSndLoop(XLogSendLogical); // 主要的循环在这里 ================= ！！！！！！！！！！！！！！！！！！
 
 	FreeDecodingContext(logical_decoding_ctx); // 释放各种资源
 	ReplicationSlotRelease();
@@ -1982,7 +1982,7 @@ ProcessRepliesIfAny(void)
 				/*
 				 * 'X' means that the standby is closing down the socket.
 				 */
-			case 'X':
+			case 'X': /// 备库发一个X就表示要退出了，本进程也退出
 				proc_exit(0);
 
 			default:
@@ -3046,7 +3046,7 @@ retry:
  * Stream out logically decoded data.
  */
 static void
-XLogSendLogical(void) // 发送逻辑解码的数据
+XLogSendLogical(void) // 发送逻辑解码的数据， 这个是回调函数
 {
 	XLogRecord *record;
 	char	   *errm;

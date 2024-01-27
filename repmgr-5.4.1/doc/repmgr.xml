@@ -1,0 +1,132 @@
+<!-- doc/repmgr.xml -->
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd"
+[
+          <!ENTITY % version SYSTEM "version.xml">
+          %version;
+
+          <!ENTITY % filelist SYSTEM "filelist.xml">
+          %filelist;
+
+          <!ENTITY repmgr "<productname>repmgr</productname>">
+          <!ENTITY repmgrd "<productname>repmgrd</productname>">
+          <!ENTITY postgres "<productname>PostgreSQL</productname>">
+]>
+
+<book id="repmgr">
+ <title>repmgr &repmgrversion; Documentation</title>
+
+ <bookinfo>
+  <corpauthor>EDB</corpauthor>
+  <productname>repmgr</productname>
+  <productnumber>&repmgrversion;</productnumber>
+  &legal;
+
+  <abstract>
+   <para>
+   This is the official documentation of &repmgr; &repmgrversion; for
+   use with PostgreSQL 9.4 - PostgreSQL 15.
+   </para>
+   <para>
+     &repmgr; is being continually developed and we strongly recommend using the
+     latest version. Please check the
+     <ulink url="https://repmgr.org/">repmgr website</ulink> for details
+     about the current &repmgr; version as well as the
+     <ulink url="https://repmgr.org/docs/current/index.html">current repmgr documentation</ulink>.
+   </para>
+
+   <para>
+    &repmgr; is developed by
+    <ulink url="https://www.enterprisedb.com/">EDB</ulink>
+    along with contributions from other individuals and organisations.
+    Contributions from the community are appreciated and welcome - get
+    in touch via <ulink url="https://github.com/EnterpriseDB/repmgr">github</ulink>
+    or <ulink url="https://groups.google.com/group/repmgr">the mailing list/forum</ulink>.
+    Multiple EDB customers contribute funding to make &repmgr; development possible.
+   </para>
+
+   <para>
+     &repmgr; is fully supported by EDB's
+     <ulink url="https://www.enterprisedb.com/support/postgresql-support-overview-get-the-most-out-of-postgresql">24/7 Production Support</ulink>.
+     EDB, a Major Sponsor of the PostgreSQL project, continues to maintain &repmgr;.
+     We welcome participation from other organisations and individual developers.
+   </para>
+  </abstract>
+
+  <keywordset>
+   <keyword>repmgr</keyword>
+   <keyword>PostgreSQL</keyword>
+   <keyword>replication</keyword>
+   <keyword>asynchronous</keyword>
+   <keyword>HA</keyword>
+   <keyword>high-availability</keyword>
+  </keywordset>
+ </bookinfo>
+
+
+ <part id="getting-started">
+  <title>Getting started</title>
+  &overview;
+  &install;
+  &quickstart;
+ </part>
+
+ <part id="repmgr-administration-manual">
+  <title>repmgr administration manual</title>
+
+  &configuration;
+  &cloning-standbys;
+  &promoting-standby;
+  &follow-new-primary;
+  &switchover;
+  &event-notifications;
+  &upgrading-repmgr;
+ </part>
+
+ <part id="using-repmgrd">
+  <title>Using repmgrd</title>
+  &repmgrd-overview;
+  &repmgrd-automatic-failover;
+  &repmgrd-configuration;
+  &repmgrd-operation;
+ </part>
+
+ <part id="repmgr-command-reference">
+  <title>repmgr command reference</title>
+
+  &repmgr-primary-register;
+  &repmgr-primary-unregister;
+  &repmgr-standby-clone;
+  &repmgr-standby-register;
+  &repmgr-standby-unregister;
+  &repmgr-standby-promote;
+  &repmgr-standby-follow;
+  &repmgr-standby-switchover;
+  &repmgr-witness-register;
+  &repmgr-witness-unregister;
+  &repmgr-node-status;
+  &repmgr-node-check;
+  &repmgr-node-rejoin;
+  &repmgr-node-service;
+  &repmgr-cluster-show;
+  &repmgr-cluster-matrix;
+  &repmgr-cluster-crosscheck;
+  &repmgr-cluster-event;
+  &repmgr-cluster-cleanup;
+  &repmgr-service-status;
+  &repmgr-service-pause;
+  &repmgr-service-unpause;
+  &repmgr-daemon-start;
+  &repmgr-daemon-stop;
+ </part>
+
+ &appendix-release-notes;
+ &appendix-signatures;
+ &appendix-faq;
+ &appendix-packages;
+ &appendix-support;
+
+ <index id="bookindex"></index>
+
+</book>

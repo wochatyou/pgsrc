@@ -2553,9 +2553,9 @@ vac_max_items_to_alloc_size(int max_items)
  *		Assumes dead_items array is sorted (in ascending TID order).
  */
 static bool
-vac_tid_reaped(ItemPointer itemptr, void *state)
+vac_tid_reaped(ItemPointer itemptr, void *state) /// 这个是回调函数，在死亡记录数组中查找指定的TID
 {
-	VacDeadItems *dead_items = (VacDeadItems *) state;
+	VacDeadItems *dead_items = (VacDeadItems *) state; /// 死亡记录数组
 	int64		litem,
 				ritem,
 				item;
@@ -2563,7 +2563,7 @@ vac_tid_reaped(ItemPointer itemptr, void *state)
 
 	litem = itemptr_encode(&dead_items->items[0]);
 	ritem = itemptr_encode(&dead_items->items[dead_items->num_items - 1]);
-	item = itemptr_encode(itemptr);
+	item = itemptr_encode(itemptr); /// 拼凑出一个8字节
 
 	/*
 	 * Doing a simple bound check before bsearch() is useful to avoid the
@@ -2578,7 +2578,7 @@ vac_tid_reaped(ItemPointer itemptr, void *state)
 								dead_items->items,
 								dead_items->num_items,
 								sizeof(ItemPointerData),
-								vac_cmp_itemptr);
+								vac_cmp_itemptr); /// 二分查找
 
 	return (res != NULL);
 }

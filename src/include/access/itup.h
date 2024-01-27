@@ -50,7 +50,7 @@ typedef struct IndexTupleData
 
 } IndexTupleData;				/* MORE DATA FOLLOWS AT END OF STRUCT */
 
-typedef IndexTupleData *IndexTuple;
+typedef IndexTupleData *IndexTuple; /// 每个索引的记录是8个字节的开销
 
 typedef struct IndexAttributeBitMapData
 {

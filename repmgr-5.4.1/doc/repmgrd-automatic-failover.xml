@@ -1,0 +1,939 @@
+<chapter id="repmgrd-automatic-failover" xreflabel="Automatic failover with repmgrd">
+
+ <title>Automatic failover with repmgrd</title>
+
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>automatic failover</secondary>
+ </indexterm>
+
+ <para>
+  &repmgrd; is a management and monitoring daemon which runs
+  on each node in a replication cluster. It can automate actions such as
+  failover and updating standbys to follow the new primary, as well as
+  providing monitoring information about the state of each standby.
+ </para>
+
+ <sect1 id="repmgrd-witness-server" xreflabel="Using a witness server with repmgrd">
+   <title>Using a witness server</title>
+
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>witness server</secondary>
+ </indexterm>
+
+ <indexterm>
+   <primary>witness server</primary>
+   <secondary>repmgrd</secondary>
+ </indexterm>
+
+ <para>
+   A <xref linkend="witness-server"/> is a normal PostgreSQL instance which
+   is not part of the streaming replication cluster; its purpose is, if a
+   failover situation occurs, to provide proof that it is the primary server
+   itself which is unavailable, rather than e.g. a network split between
+   different physical locations.
+ </para>
+
+ <para>
+   A typical use case for a witness server is a two-node streaming replication
+   setup, where the primary and standby are in different locations (data centres).
+   By creating a witness server in the same location (data centre) as the primary,
+   if the primary becomes unavailable it's possible for the standby to decide whether
+   it can promote itself without risking a "split brain" scenario: if it can't see either the
+   witness or the primary server, it's likely there's a network-level interruption
+   and it should not promote itself. If it can see the witness but not the primary,
+   this proves there is no network interruption and the primary itself is unavailable,
+   and it can therefore promote itself (and ideally take action to fence the
+   former primary).
+ </para>
+ <note>
+   <para>
+     <emphasis>Never</emphasis> install a witness server on the same physical host
+     as another node in the replication cluster managed by &repmgr; - it's essential
+     the witness is not affected in any way by failure of another node.
+   </para>
+ </note>
+ <para>
+   For more complex replication scenarios, e.g. with multiple datacentres, it may
+   be preferable to use location-based failover, which ensures that only nodes
+   in the same location as the primary will ever be promotion candidates;
+   see <xref linkend="repmgrd-network-split"/> for more details.
+ </para>
+
+ <note>
+   <simpara>
+     A witness server will only be useful if &repmgrd;
+     is in use.
+   </simpara>
+ </note>
+
+ <sect2 id="creating-witness-server">
+   <title>Creating a witness server</title>
+ <para>
+   To create a witness server, set up a normal PostgreSQL instance on a server
+   in the same physical location as the cluster's primary server.
+ </para>
+ <para>
+   This instance should <emphasis>not</emphasis> be on the same physical host as the primary server,
+   as otherwise if the primary server fails due to hardware issues, the witness
+   server will be lost too.
+ </para>
+ <note>
+   <simpara>
+     A PostgreSQL instance can only accommodate a single witness server.
+   </simpara>
+   <simpara>
+     If you are planning to use a single server to support more than one
+     witness server, a separate PostgreSQL instance is required for each
+     witness server in use.
+   </simpara>
+ </note>
+
+ <para>
+   The witness server should be configured in the same way as a normal
+   &repmgr; node; see section <xref linkend="configuration"/>.
+ </para>
+ <para>
+   Register the witness server with <xref linkend="repmgr-witness-register"/>.
+   This will create the &repmgr; extension on the witness server, and make
+   a copy of the &repmgr; metadata.
+ </para>
+ <note>
+   <simpara>
+    As the witness server is not part of the replication cluster, further
+    changes to the &repmgr; metadata will be synchronised by
+    &repmgrd;.
+   </simpara>
+ </note>
+ <para>
+   Once the witness server has been configured, &repmgrd;
+   should be started.
+ </para>
+
+ <para>
+  To unregister a witness server, use <xref linkend="repmgr-witness-unregister"/>.
+ </para>
+
+ </sect2>
+
+</sect1>
+
+
+<sect1 id="repmgrd-network-split" xreflabel="Handling network splits with repmgrd">
+ <title>Handling network splits with repmgrd</title>
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>network splits</secondary>
+ </indexterm>
+
+ <indexterm>
+   <primary>network splits</primary>
+ </indexterm>
+
+ <para>
+  A common pattern for replication cluster setups is to spread servers over
+  more than one datacentre. This can provide benefits such as geographically-
+  distributed read replicas and DR (disaster recovery capability). However
+  this also means there is a risk of disconnection at network level between
+  datacentre locations, which would result in a split-brain scenario if
+  servers in a secondary data centre were no longer able to see the primary
+  in the main data centre and promoted a standby among themselves.
+ </para>
+ <para>
+  &repmgr; enables provision of &quot;<xref linkend="witness-server"/>&quot; to
+  artificially create a quorum of servers in a particular location, ensuring
+  that nodes in another location will not elect a new primary if they
+  are unable to see the majority of nodes. However this approach does not
+  scale well, particularly with more complex replication setups, e.g.
+  where the majority of nodes are located outside of the primary datacentre.
+  It also means the <literal>witness</literal> node needs to be managed as an
+  extra PostgreSQL instance outside of the main replication cluster, which
+  adds administrative and programming complexity.
+ </para>
+ <para>
+  <literal>repmgr4</literal> introduces the concept of <literal>location</literal>:
+  each node is associated with an arbitrary location string (default is
+  <literal>default</literal>); this is set in <filename>repmgr.conf</filename>, e.g.:
+  <programlisting>
+    node_id=1
+    node_name=node1
+    conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'
+    data_directory='/var/lib/postgresql/data'
+    location='dc1'</programlisting>
+ </para>
+ <para>
+  In a failover situation, &repmgrd; will check if any servers in the
+  same location as the current primary node are visible.  If not, &repmgrd;
+  will assume a network interruption and not promote any node in any
+  other location (it will however enter <link linkend="repmgrd-degraded-monitoring">degraded monitoring</link>
+  mode until a primary becomes visible).
+ </para>
+
+</sect1>
+
+
+<sect1 id="repmgrd-primary-visibility-consensus" xreflabel="Primary visibility consensus">
+  <title>Primary visibility consensus</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>primary visibility consensus</secondary>
+  </indexterm>
+
+  <indexterm>
+   <primary>primary_visibility_consensus</primary>
+  </indexterm>
+
+  <para>
+    In more complex replication setups, particularly where replication occurs between
+    multiple datacentres, it's possible that some but not all standbys get cut off from the
+    primary (but not from the other standbys).
+  </para>
+  <para>
+    In this situation, normally it's not desirable for any of the standbys which have been
+    cut off to initiate a failover, as the primary is still functioning and standbys are
+    connected. Beginning with <link linkend="release-4.4">&repmgr; 4.4</link>
+    it is now possible for the affected standbys to build a consensus about whether
+    the primary is still available to some standbys (&quot;primary visibility consensus&quot;).
+    This is done by polling each standby (and the witness, if present) for the time it last saw the
+    primary; if any have seen the primary very recently, it's reasonable
+    to infer that the primary is still available and a failover should not be started.
+  </para>
+
+  <para>
+    The time the primary was last seen by each node can be checked by executing
+    <link linkend="repmgr-service-status"><command>repmgr service status</command></link>
+    (&repmgr; 4.2 - 4.4: <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>)
+    which includes this in its output, e.g.:
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
+ ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
+----+-------+---------+-----------+----------+---------+-------+---------+--------------------
+ 1  | node1 | primary | * running |          | running | 27259 | no      | n/a
+ 2  | node2 | standby |   running | node1    | running | 27272 | no      | 1 second(s) ago
+ 3  | node3 | standby |   running | node1    | running | 27282 | no      | 0 second(s) ago
+ 4  | node4 | witness | * running | node1    | running | 27298 | no      | 1 second(s) ago</programlisting>
+
+  </para>
+
+  <para>
+    To enable this functionality, in <filename>repmgr.conf</filename> set:
+    <programlisting>
+      primary_visibility_consensus=true</programlisting>
+  </para>
+  <note>
+    <para>
+      <option>primary_visibility_consensus</option> <emphasis>must</emphasis> be set to
+      <literal>true</literal> on all nodes for it to be effective.
+    </para>
+  </note>
+
+  <para>
+    The following sample &repmgrd; log output demonstrates the behaviour in a situation
+    where one of three standbys is no longer able to connect to the primary, but <emphasis>can</emphasis>
+    connect to the two other standbys (&quot;sibling nodes&quot;):
+    <programlisting>
+    [2019-05-17 05:36:12] [WARNING] unable to reconnect to node 1 after 3 attempts
+    [2019-05-17 05:36:12] [INFO] 2 active sibling nodes registered
+    [2019-05-17 05:36:12] [INFO] local node's last receive lsn: 0/7006E58
+    [2019-05-17 05:36:12] [INFO] checking state of sibling node "node3" (ID: 3)
+    [2019-05-17 05:36:12] [INFO] node "node3" (ID: 3) reports its upstream is node 1, last seen 1 second(s) ago
+    [2019-05-17 05:36:12] [NOTICE] node 3 last saw primary node 1 second(s) ago, considering primary still visible
+    [2019-05-17 05:36:12] [INFO] last receive LSN for sibling node "node3" (ID: 3) is: 0/7006E58
+    [2019-05-17 05:36:12] [INFO] node "node3" (ID: 3) has same LSN as current candidate "node2" (ID: 2)
+    [2019-05-17 05:36:12] [INFO] checking state of sibling node "node4" (ID: 4)
+    [2019-05-17 05:36:12] [INFO] node "node4" (ID: 4) reports its upstream is node 1, last seen 0 second(s) ago
+    [2019-05-17 05:36:12] [NOTICE] node 4 last saw primary node 0 second(s) ago, considering primary still visible
+    [2019-05-17 05:36:12] [INFO] last receive LSN for sibling node "node4" (ID: 4) is: 0/7006E58
+    [2019-05-17 05:36:12] [INFO] node "node4" (ID: 4) has same LSN as current candidate "node2" (ID: 2)
+    [2019-05-17 05:36:12] [INFO] 2 nodes can see the primary
+    [2019-05-17 05:36:12] [DETAIL] following nodes can see the primary:
+     - node "node3" (ID: 3): 1 second(s) ago
+     - node "node4" (ID: 4): 0 second(s) ago
+    [2019-05-17 05:36:12] [NOTICE] cancelling failover as some nodes can still see the primary
+    [2019-05-17 05:36:12] [NOTICE] election cancelled
+    [2019-05-17 05:36:14] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state</programlisting>
+    In this situation it will cancel the failover and enter degraded monitoring node,
+    waiting for the primary to reappear.
+  </para>
+</sect1>
+
+<sect1 id="repmgrd-standby-disconnection-on-failover" xreflabel="Standby disconnection on failover">
+  <title>Standby disconnection on failover</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>standby disconnection on failover</secondary>
+ </indexterm>
+
+  <indexterm>
+    <primary>standby disconnection on failover</primary>
+  </indexterm>
+
+  <para>
+    If <option>standby_disconnect_on_failover</option> is set to <literal>true</literal> in
+    <filename>repmgr.conf</filename>, in a failover situation &repmgrd; will forcibly disconnect
+    the local node's WAL receiver, and wait for the WAL receiver on all sibling nodes to be
+	disconnected, before making a failover decision.
+  </para>
+  <note>
+    <para>
+      <option>standby_disconnect_on_failover</option> is available with PostgreSQL 9.5 and later.
+      Additionally this requires that the <literal>repmgr</literal> database user is a superuser.
+    </para>
+  </note>
+  <para>
+    By doing this, it's possible to ensure that, at the point the failover decision is made, no nodes
+    are receiving data from the primary and their LSN location will be static.
+  </para>
+  <important>
+    <para>
+      <option>standby_disconnect_on_failover</option> <emphasis>must</emphasis> be set to the same value on
+      all nodes.
+    </para>
+  </important>
+  <para>
+    Note that when using <option>standby_disconnect_on_failover</option> there will be a delay of 5 seconds
+    plus however many seconds it takes to confirm the WAL receiver is disconnected before
+    &repmgrd; proceeds with the failover decision.
+  </para>
+  <para>
+	&repmgrd; will wait up to <option>sibling_nodes_disconnect_timeout</option> seconds (default:
+	<literal>30</literal>) to confirm that the WAL receiver on all sibling nodes hase been
+	disconnected before proceding with the failover operation. If the timeout is reached, the
+	failover operation will go ahead anyway.
+  </para>
+  <para>
+    Following the failover operation, no matter what the outcome, each node will reconnect its WAL receiver.
+  </para>
+  <para>
+    If using <option>standby_disconnect_on_failover</option>, we recommend that the
+    <option>primary_visibility_consensus</option> option is also used.
+  </para>
+
+</sect1>
+
+<sect1 id="repmgrd-failover-validation" xreflabel="Failover validation">
+  <title>Failover validation</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>failover validation</secondary>
+ </indexterm>
+
+  <indexterm>
+    <primary>failover validation</primary>
+  </indexterm>
+
+  <para>
+    From <link linkend="release-4.3">repmgr 4.3</link>, &repmgr; makes it possible to provide a script
+    to &repmgrd; which, in a failover situation,
+    will be executed by the promotion candidate (the node which has been selected
+    to be the new primary) to confirm whether the node should actually be promoted.
+  </para>
+  <para>
+    To use this, <option>failover_validation_command</option> in <filename>repmgr.conf</filename>
+    to a script executable by the <literal>postgres</literal> system user, e.g.:
+    <programlisting>
+      failover_validation_command=/path/to/script.sh %n</programlisting>
+  </para>
+  <para>
+    The <literal>%n</literal> parameter will be replaced with the node ID when the script is
+    executed. A number of other parameters are also available, see section
+    &quot;<xref linkend="repmgrd-automatic-failover-configuration-optional"/>&quot; for details.
+  </para>
+  <para>
+    This script must return an exit code of <literal>0</literal> to indicate the node should promote itself.
+    Any other value will result in the promotion being aborted and the election rerun.
+    There is a pause of <option>election_rerun_interval</option> seconds before the election is rerun.
+  </para>
+  <para>
+    Sample &repmgrd; log file output during which the failover validation
+    script rejects the proposed promotion candidate:
+    <programlisting>
+[2019-03-13 21:01:30] [INFO] visible nodes: 2; total nodes: 2; no nodes have seen the primary within the last 4 seconds
+[2019-03-13 21:01:30] [NOTICE] promotion candidate is "node2" (ID: 2)
+[2019-03-13 21:01:30] [NOTICE] executing "failover_validation_command"
+[2019-03-13 21:01:30] [DETAIL] /usr/local/bin/failover-validation.sh 2
+[2019-03-13 21:01:30] [INFO] output returned by failover validation command:
+Node ID: 2
+
+[2019-03-13 21:01:30] [NOTICE] failover validation command returned a non-zero value: "1"
+[2019-03-13 21:01:30] [NOTICE] promotion candidate election will be rerun
+[2019-03-13 21:01:30] [INFO] 1 followers to notify
+[2019-03-13 21:01:30] [NOTICE] notifying node "node3" (ID: 3) to rerun promotion candidate selection
+INFO:  node 3 received notification to rerun promotion candidate election
+[2019-03-13 21:01:30] [NOTICE] rerunning election after 15 seconds ("election_rerun_interval")</programlisting>
+  </para>
+
+
+</sect1>
+
+ <sect1 id="cascading-replication" xreflabel="Cascading replication">
+  <title>repmgrd and cascading replication</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>cascading replication</secondary>
+  </indexterm>
+
+ <indexterm>
+   <primary>cascading replication</primary>
+   <secondary>repmgrd</secondary>
+ </indexterm>
+
+ <para>
+  Cascading replication - where a standby can connect to an upstream node and not
+  the primary server itself - was introduced in PostgreSQL 9.2. &repmgr; and
+  &repmgrd; support cascading replication by keeping track of the relationship
+  between standby servers - each node record is stored with the node id of its
+  upstream ("parent") server (except of course the primary server).
+ </para>
+ <para>
+  In a failover situation where the primary node fails and a top-level standby
+  is promoted, a standby connected to another standby will not be affected
+  and continue working as normal (even if the upstream standby it's connected
+  to becomes the primary node). If however the node's direct upstream fails,
+  the &quot;cascaded standby&quot; will attempt to reconnect to that node's parent
+  (unless <varname>failover</varname> is set to <literal>manual</literal> in
+  <filename>repmgr.conf</filename>).
+ </para>
+
+  </sect1>
+
+<sect1 id="repmgrd-primary-child-disconnection" xreflabel="Monitoring standby disconnections on the primary">
+  <title>Monitoring standby disconnections on the primary node</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>standby disconnection</secondary>
+  </indexterm>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>child node disconnection</secondary>
+  </indexterm>
+
+  <note>
+    <para>
+      This functionality is available in <link linkend="release-4.4">&repmgr; 4.4</link> and later.
+    </para>
+  </note>
+  <para>
+    When running on the primary node, &repmgrd; can
+    monitor connections and in particular disconnections by its attached
+    child nodes (standbys, and if in use, the witness server), and optionally
+    execute a custom command if certain criteria are met (such as the number of
+    attached nodes falling to zero following a failover to a new primary); this
+    command can be used for example to &quot;fence&quot; the node and ensure it
+    is isolated from any applications attempting to access the replication cluster.
+  </para>
+
+  <note>
+	<para>
+	  Currently &repmgrd; can only detect disconnections
+	  of streaming replication standbys and cannot determine whether a standby
+	  has disconnected and fallen back to archive recovery.
+	</para>
+	<para>
+	  See section <link linkend="repmgrd-primary-child-disconnection-caveats">caveats</link> below.
+	</para>
+  </note>
+
+  <sect2 id="repmgrd-primary-child-disconnection-monitoring-process">
+	<title>Standby disconnections monitoring process and criteria</title>
+	<para>
+	  &repmgrd; monitors attached child nodes and decides
+	  whether to invoke the user-defined command based on the following process
+	  and criteria:
+    <itemizedlist>
+
+      <listitem>
+        <para>
+          Every few seconds (defined by the configuration parameter <varname>child_nodes_check_interval</varname>;
+          default: <literal>5</literal> seconds, a value of <literal>0</literal> disables this altogether), &repmgrd; queries
+          the <literal>pg_stat_replication</literal> system view and compares
+          the nodes present there against the list of nodes registered with &repmgr; which
+          should be attached to the primary.
+        </para>
+        <para>
+          If a witness server is in use, &repmgrd; connects to it and checks which upstream node
+          it is following.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If a child node (standby) is no longer present in <literal>pg_stat_replication</literal>,
+          &repmgrd; notes the time it detected the node's absence, and additionally generates a
+          <literal>child_node_disconnect</literal> event.
+        </para>
+        <para>
+          If a witness server is in use, and it is no longer following the primary, or not
+          reachable at all, &repmgrd; notes the time it detected the node's absence, and additionally generates a
+          <literal>child_node_disconnect</literal> event.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If a child node (standby) which was absent from <literal>pg_stat_replication</literal> reappears,
+          &repmgrd; clears the time it detected the node's absence, and additionally generates a
+          <literal>child_node_reconnect</literal> event.
+        </para>
+        <para>
+          If a witness server is in use, which was previously not reachable or not following the
+          primary node, has become reachable and is following the primary node,  &repmgrd; clears the
+          time it detected the node's absence, and additionally generates a
+          <literal>child_node_reconnect</literal> event.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If an entirely new child node (standby or witness) is detected, &repmgrd; adds it to its internal list
+          and additionally generates a <literal>child_node_new_connect</literal> event.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If the <varname>child_nodes_disconnect_command</varname> parameter is set in
+          <filename>repmgr.conf</filename>, &repmgrd; will then loop through all child nodes.
+          If it determines that insufficient child nodes are connected, and a
+          minimum of <varname>child_nodes_disconnect_timeout</varname> seconds (default: <literal>30</literal>)
+          has elapsed since  the last node became disconnected, &repmgrd; will then execute the
+          <varname>child_nodes_disconnect_command</varname> script.
+        </para>
+        <para>
+          By default, the <varname>child_nodes_disconnect_command</varname> will only be executed
+          if all child nodes are disconnected. If <varname>child_nodes_connected_min_count</varname>
+          is set, the <varname>child_nodes_disconnect_command</varname> script will be triggered
+          if the number of connected child nodes falls below the specified value (e.g.
+          if set to <literal>2</literal>, the script will be triggered if only one child node
+          is connected). Alternatively, if <varname>child_nodes_disconnect_min_count</varname>
+          and more than that number of child nodes disconnects, the script will be triggered.
+        </para>
+        <note>
+          <para>
+            By default, a witness node, if in use, will <emphasis>not</emphasis> be counted as a
+            child node for the purposes of determining whether to execute
+            <varname>child_nodes_disconnect_command</varname>.
+          </para>
+          <para>
+            To enable the witness node to be counted as a child node, set
+            <varname>child_nodes_connected_include_witness</varname> in <filename>repmgr.conf</filename>
+            to <literal>true</literal>
+            (and <link linkend="repmgrd-reloading-configuration">reload the configuration</link> if &repmgrd;
+            is running).
+          </para>
+        </note>
+      </listitem>
+
+      <listitem>
+        <para>
+          Note that child nodes which are not attached when &repmgrd;
+          starts will <emphasis>not</emphasis> be considered as missing, as &repmgrd;
+          cannot know why they are not attached.
+        </para>
+      </listitem>
+
+    </itemizedlist>
+	</para>
+  </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-example">
+	<title>Standby disconnections monitoring process example</title>
+	<para>
+	  This example shows typical &repmgrd; log output from a three-node cluster
+	  (primary and two child nodes), with <varname>child_nodes_connected_min_count</varname>
+	  set to <literal>2</literal>.
+	</para>
+	<para>
+	  &repmgrd; on the primary has started up, while two child
+	  nodes are being provisioned:
+	  <programlisting>
+[2019-04-24 15:25:33] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+[2019-04-24 15:25:35] [NOTICE] new node "node2" (ID: 2) has connected
+[2019-04-24 15:25:35] [NOTICE] 1 (of 1) child nodes are connected, but at least 2 child nodes required
+[2019-04-24 15:25:35] [INFO] no child nodes have detached since repmgrd startup
+(...)
+[2019-04-24 15:25:44] [NOTICE] new node "node3" (ID: 3) has connected
+[2019-04-24 15:25:46] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+(...)</programlisting>
+	</para>
+	<para>
+	  One of the child nodes has disconnected; &repmgrd;
+	  is now waiting <varname>child_nodes_disconnect_timeout</varname> seconds
+	  before executing <varname>child_nodes_disconnect_command</varname>:
+	  <programlisting>
+[2019-04-24 15:28:11] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+[2019-04-24 15:28:17] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+[2019-04-24 15:28:19] [NOTICE] node "node3" (ID: 3) has disconnected
+[2019-04-24 15:28:19] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
+[2019-04-24 15:28:19] [INFO] most recently detached child node was 3 (ca. 0 seconds ago), not triggering "child_nodes_disconnect_command"
+[2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set To 30 seconds
+(...)</programlisting>
+	</para>
+	<para>
+	  <varname>child_nodes_disconnect_command</varname> is executed once:
+	  <programlisting>
+[2019-04-24 15:28:49] [INFO] most recently detached child node was 3 (ca. 30 seconds ago), triggering "child_nodes_disconnect_command"
+[2019-04-24 15:28:49] [INFO] "child_nodes_disconnect_command" is:
+	"/usr/bin/fence-all-the-things.sh"
+[2019-04-24 15:28:51] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
+[2019-04-24 15:28:51] [INFO] "child_nodes_disconnect_command" was previously executed, taking no action</programlisting>
+	</para>
+
+  </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-caveats">
+	<title>Standby disconnections monitoring caveats</title>
+	<para>
+	  The following caveats should be considered if you are intending to use this functionality.
+	</para>
+	<para>
+	  <itemizedlist mark="bullet">
+		<listitem>
+          <para>
+			If a child node is configured to use archive recovery, it's possible that
+			the child node will disconnect from the primary node and fall back to
+			archive recovery. In this case &repmgrd;
+			will nevertheless register a node disconnection.
+		  </para>
+		</listitem>
+
+        <listitem>
+          <para>
+			&repmgr; relies on <varname>application_name</varname> in the child node's
+			<varname>primary_conninfo</varname> string to be the same as the node name
+			defined in the node's <filename>repmgr.conf</filename> file. Furthermore,
+			this <varname>application_name</varname> must be unique across the replication
+			cluster.
+          </para>
+		  <para>
+			If a custom <varname>application_name</varname> is used, or the
+			<varname>application_name</varname> is not unique across the replication
+			cluster, &repmgr; will not be able to reliably monitor child node connections.
+		  </para>
+        </listitem>
+
+	  </itemizedlist>
+	</para>
+  </sect2>
+
+
+  <sect2 id="repmgrd-primary-child-disconnection-configuration">
+	<title>Standby disconnections monitoring process configuration</title>
+	<para>
+	  The following parameters, set in <filename>repmgr.conf</filename>,
+	  control how child node disconnection monitoring operates.
+	</para>
+	<variablelist>
+
+      <varlistentry>
+        <term><varname>child_nodes_check_interval</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_check_interval</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+			Interval (in seconds) after which &repmgrd; queries the
+			<literal>pg_stat_replication</literal> system view and compares the nodes present
+			there against the list of nodes registered with repmgr which should be attached to the primary.
+		  </para>
+		  <para>
+			Default is <literal>5</literal> seconds, a value of <literal>0</literal> disables this check
+			altogether.
+		  </para>
+		</listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+        <term><varname>child_nodes_disconnect_command</varname></term>
+
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_command</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+			User-definable script to be executed when &repmgrd;
+			determines that an insufficient number of child nodes are connected. By default
+			the script is executed when no child nodes are executed, but the execution
+			threshold can be modified by setting one of <varname>child_nodes_connected_min_count</varname>
+			or<varname>child_nodes_disconnect_min_count</varname> (see below).
+		  </para>
+		  <para>
+			The <varname>child_nodes_disconnect_command</varname> script can be
+			any user-defined script or program. It <emphasis>must</emphasis> be able
+			to be executed by the system user under which the PostgreSQL server itself
+			runs (usually <literal>postgres</literal>).
+		  </para>
+		  <note>
+			<para>
+			  If <varname>child_nodes_disconnect_command</varname> is not set, no action
+			  will be taken.
+			</para>
+		  </note>
+		  <para>
+			If specified, the following format placeholder will be substituted when
+			executing <varname>child_nodes_disconnect_command</varname>:
+		  </para>
+
+		   <variablelist>
+			 <varlistentry>
+			   <term><option>%p</option></term>
+			   <listitem>
+				 <para>
+				   ID of the node executing the <varname>child_nodes_disconnect_command</varname> script.
+				 </para>
+			   </listitem>
+			 </varlistentry>
+		   </variablelist>
+
+		  <para>
+			The <varname>child_nodes_disconnect_command</varname> script will only be executed once
+			while the criteria for its execution are met. If the criteria for its execution are no longer
+			met (i.e. some child nodes have reconnected), it will be executed again if
+			the criteria for its execution are met again.
+          </para>
+          <para>
+			The <varname>child_nodes_disconnect_command</varname> script will not be executed if
+			&repmgrd; is <link linkend="repmgrd-pausing">paused</link>.
+          </para>
+
+		</listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+        <term><varname>child_nodes_disconnect_timeout</varname></term>
+
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_timeout</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+			If &repmgrd; determines that an insufficient number of
+			child nodes are connected, it will wait for the specified number of seconds
+			to execute the <varname>child_nodes_disconnect_command</varname>.
+		  </para>
+		  <para>
+			Default: <literal>30</literal> seconds.
+		  </para>
+		</listitem>
+	  </varlistentry>
+
+      <varlistentry>
+        <term><varname>child_nodes_connected_min_count</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_connected_min_count</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+			If the number of child nodes connected falls below the number specified in
+			this parameter, the <varname>child_nodes_disconnect_command</varname> script
+			will be executed.
+		  </para>
+		  <para>
+			For example, if <varname>child_nodes_connected_min_count</varname> is set
+			to <literal>2</literal>, the <varname>child_nodes_disconnect_command</varname>
+			script will be executed if one or no child nodes are connected.
+		  </para>
+		  <para>
+			Note that <varname>child_nodes_connected_min_count</varname> overrides any value
+			set in <varname>child_nodes_disconnect_min_count</varname>.
+		  </para>
+		  <para>
+			If neither of <varname>child_nodes_connected_min_count</varname> or
+			<varname>child_nodes_disconnect_min_count</varname> are set,
+			the <varname>child_nodes_disconnect_command</varname> script
+			will be executed when no child nodes are connected.
+		  </para>
+          <para>
+            A witness node, if in use, will not be counted as a child node unless
+            <varname>child_nodes_connected_include_witness</varname> is set to <literal>true</literal>.
+          </para>
+		</listitem>
+	  </varlistentry>
+
+
+	  <varlistentry>
+        <term><varname>child_nodes_disconnect_min_count</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_min_count</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+			If the number of disconnected child nodes exceeds the number specified in
+			this parameter, the <varname>child_nodes_disconnect_command</varname> script
+			will be executed.
+		  </para>
+
+		  <para>
+			For example, if <varname>child_nodes_disconnect_min_count</varname> is set
+			to <literal>2</literal>, the <varname>child_nodes_disconnect_command</varname>
+			script will be executed if more than two child nodes are disconnected.
+		  </para>
+
+		  <para>
+			Note that any value set in <varname>child_nodes_disconnect_min_count</varname>
+			will be overriden by <varname>child_nodes_connected_min_count</varname>.
+		  </para>
+		  <para>
+			If neither of <varname>child_nodes_connected_min_count</varname> or
+			<varname>child_nodes_disconnect_min_count</varname> are set,
+			the <varname>child_nodes_disconnect_command</varname> script
+			will be executed when no child nodes are connected.
+		  </para>
+
+          <para>
+            A witness node, if in use, will not be counted as a child node unless
+            <varname>child_nodes_connected_include_witness</varname> is set to <literal>true</literal>.
+          </para>
+
+		</listitem>
+	  </varlistentry>
+
+
+	  <varlistentry>
+        <term><varname>child_nodes_connected_include_witness</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_connected_include_witness</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+            Whether to count the witness node (if in use) as a child node when
+            determining whether to execute <varname>child_nodes_disconnect_command</varname>.
+          </para>
+          <para>
+            Default to <literal>false</literal>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+	</variablelist>
+
+  </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-events">
+	<title>Standby disconnections monitoring process event notifications</title>
+	<para>
+	  The following <link linkend="event-notifications">event notifications</link> may be generated:
+	</para>
+	<variablelist>
+
+      <varlistentry>
+        <term><varname>child_node_disconnect</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_node_disconnect</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
+          <para>
+			This event is generated after &repmgrd;
+			detects that a child node is no longer streaming from the primary node.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_node_disconnect
+ Node ID | Name  | Event                 | OK | Timestamp           | Details
+---------+-------+-----------------------+----+---------------------+--------------------------------------------
+ 1       | node1 | child_node_disconnect | t  | 2019-04-24 12:41:36 | node "node3" (ID: 3) has disconnected</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+	  <varlistentry>
+        <term><varname>child_node_reconnect</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_node_reconnect</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
+          <para>
+			This event is generated after &repmgrd;
+			detects that a child node has resumed streaming from the primary node.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_node_reconnect
+ Node ID | Name  | Event                | OK | Timestamp           | Details
+---------+-------+----------------------+----+---------------------+------------------------------------------------------------
+ 1       | node1 | child_node_reconnect | t  | 2019-04-24 12:42:19 | node "node3" (ID: 3) has reconnected after 42 seconds</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+	  <varlistentry>
+        <term><varname>child_node_new_connect</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_node_new_connect</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
+          <para>
+			This event is generated after &repmgrd;
+			detects that a new child node has been registered with &repmgr; and has
+			connected to the primary.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_node_new_connect
+ Node ID | Name  | Event                  | OK | Timestamp           | Details
+---------+-------+------------------------+----+---------------------+---------------------------------------------
+ 1       | node1 | child_node_new_connect | t  | 2019-04-24 12:41:30 | new node "node3" (ID: 3) has connected</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>child_nodes_disconnect_command</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_command</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
+          <para>
+			This event is generated after &repmgrd; detects
+			that sufficient child nodes have been disconnected for a sufficient amount
+			of time to trigger execution of the <varname>child_nodes_disconnect_command</varname>.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_nodes_disconnect_command
+ Node ID | Name  | Event                          | OK | Timestamp           | Details
+---------+-------+--------------------------------+----+---------------------+--------------------------------------------------------
+ 1       | node1 | child_nodes_disconnect_command | t  | 2019-04-24 13:08:17 | "child_nodes_disconnect_command" successfully executed</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+	</variablelist>
+
+  </sect2>
+
+
+</sect1>
+
+
+</chapter>

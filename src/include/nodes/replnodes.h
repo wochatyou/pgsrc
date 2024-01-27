@@ -17,7 +17,7 @@
 #include "access/xlogdefs.h"
 #include "nodes/pg_list.h"
 
-typedef enum ReplicationKind // 复制的类型，只有物理复制和逻辑复制两种
+typedef enum ReplicationKind /// 复制的类型，只有物理复制和逻辑复制两种
 {
 	REPLICATION_KIND_PHYSICAL,
 	REPLICATION_KIND_LOGICAL

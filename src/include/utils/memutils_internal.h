@@ -102,9 +102,9 @@ extern Size AlignedAllocGetChunkSpace(void *pointer);
  * but it happens that glibc stores flag bits in the same place where we put
  * the MemoryContextMethodID, so the possible values are predictable for it.)
  */
-typedef enum MemoryContextMethodID
+typedef enum MemoryContextMethodID /// 定义了8种可能的方法
 {
-	MCTX_UNUSED1_ID,			/* 000 occurs in never-used memory */
+	MCTX_UNUSED1_ID,			/* 000 occurs in never-used memory */  /// 这个没有使用
 	MCTX_UNUSED2_ID,			/* glibc malloc'd chunks usually match 001 */
 	MCTX_UNUSED3_ID,			/* glibc malloc'd chunks > 128kB match 010 */
 	MCTX_ASET_ID,

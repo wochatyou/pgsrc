@@ -85,7 +85,7 @@ typedef struct ReplicationSlotPersistentData
 	TransactionId catalog_xmin;
 
 	/* oldest LSN that might be required by this replication slot */
-	XLogRecPtr	restart_lsn; // 这个复制槽所需要的最老的LSN
+	XLogRecPtr	restart_lsn; // 这个复制槽所需要的最老的LSN ======================================================
 
 	/* RS_INVAL_NONE if valid, or the reason for having been invalidated */
 	ReplicationSlotInvalidationCause invalidated;

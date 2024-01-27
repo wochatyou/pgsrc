@@ -1,0 +1,9 @@
+HTML.index
+bookindex.xml
+html-stamp
+html/
+repmgr.html
+version.xml
+*.fo
+*.pdf
+*.sgml

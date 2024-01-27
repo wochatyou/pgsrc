@@ -107,7 +107,7 @@ static void LoadOutputPlugin(OutputPluginCallbacks *callbacks, const char *plugi
 void // 检查服务器的配置是否满足逻辑解码的要求。如果不满足，就直接退出了。
 CheckLogicalDecodingRequirements(void)
 {
-	CheckSlotRequirements(); // 检查复制槽是否满足要求，就是检查max_replication_slots和wal_level两个参数
+	CheckSlotRequirements(); /// 检查复制槽是否满足要求，就是检查max_replication_slots和wal_level两个参数
 
 	/*
 	 * NB: Adding a new requirement likely means that RestoreSlotFromDisk()

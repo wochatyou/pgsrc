@@ -787,7 +787,7 @@ _bt_parallel_advance_array_keys(IndexScanDesc scan)
  */
 IndexBulkDeleteResult *
 btbulkdelete(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
-			 IndexBulkDeleteCallback callback, void *callback_state)
+			 IndexBulkDeleteCallback callback, void *callback_state) /// 批量删除索引上的死亡记录
 {
 	Relation	rel = info->index;
 	BTCycleId	cycleid;
@@ -937,7 +937,7 @@ btvacuumscan(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 	/* Set up info to pass down to btvacuumpage */
 	vstate.info = info;
 	vstate.stats = stats;
-	vstate.callback = callback;
+	vstate.callback = callback;  /// 这个是删除一个TID的回调函数
 	vstate.callback_state = callback_state;
 	vstate.cycleid = cycleid;
 
@@ -1042,7 +1042,7 @@ btvacuumpage(BTVacState *vstate, BlockNumber scanblkno) // Vacuum索引的一个
 {
 	IndexVacuumInfo *info = vstate->info;
 	IndexBulkDeleteResult *stats = vstate->stats;
-	IndexBulkDeleteCallback callback = vstate->callback;
+	IndexBulkDeleteCallback callback = vstate->callback; /// 这个回调函数负责在死亡记录数组中二分法查找索引的记录
 	void	   *callback_state = vstate->callback_state;
 	Relation	rel = info->index;
 	Relation	heaprel = info->heaprel;
@@ -1077,7 +1077,7 @@ backtrack:
 	if (!PageIsNew(page))
 	{
 		_bt_checkpage(rel, buf);
-		opaque = BTPageGetOpaque(page);
+		opaque = BTPageGetOpaque(page); /// opaque指向了这个数据页的特殊区域，一共16个字节
 	}
 
 	Assert(blkno <= scanblkno);
@@ -1137,7 +1137,7 @@ backtrack:
 		stats->pages_deleted++;
 		stats->pages_free++;
 	}
-	else if (P_ISDELETED(opaque))
+	else if (P_ISDELETED(opaque)) /// 就是根据特殊区域的flags标志位来判断各种属性
 	{
 		/*
 		 * Already deleted page (which could be leaf or internal).  Can't
@@ -1157,7 +1157,7 @@ backtrack:
 	}
 	else if (P_ISLEAF(opaque))
 	{
-		OffsetNumber deletable[MaxIndexTuplesPerPage];
+		OffsetNumber deletable[MaxIndexTuplesPerPage]; /// 开辟291条记录的数组
 		int			ndeletable;
 		BTVacuumPosting updatable[MaxIndexTuplesPerPage];
 		int			nupdatable;
@@ -1197,25 +1197,25 @@ backtrack:
 		maxoff = PageGetMaxOffsetNumber(page);
 		nhtidsdead = 0;
 		nhtidslive = 0;
-		if (callback)
+		if (callback) /// 如果回调函数存在
 		{
 			/* btbulkdelete callback tells us what to delete (or update) */
 			for (offnum = minoff;
 				 offnum <= maxoff;
-				 offnum = OffsetNumberNext(offnum))
+				 offnum = OffsetNumberNext(offnum)) /// 依次扫描本数据页上的整个记录指针数组
 			{
 				IndexTuple	itup;
 
 				itup = (IndexTuple) PageGetItem(page,
-												PageGetItemId(page, offnum));
+												PageGetItemId(page, offnum)); /// 指向了真正的记录数据
 
 				Assert(!BTreeTupleIsPivot(itup));
 				if (!BTreeTupleIsPosting(itup))
 				{
 					/* Regular tuple, standard table TID representation */
-					if (callback(&itup->t_tid, callback_state))
+					if (callback(&itup->t_tid, callback_state)) /// 这个回调函数判断指定的TID是否存在，返回true或者false
 					{
-						deletable[ndeletable++] = offnum;
+						deletable[ndeletable++] = offnum; /// 记录一下，这条记录会被删除掉考
 						nhtidsdead++;
 					}
 					else

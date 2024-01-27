@@ -508,7 +508,7 @@ static bool SetRoleIsActive = false;
  * Note: there's no SetUserId() anymore; use SetUserIdAndSecContext().
  */
 Oid
-GetUserId(void)
+GetUserId(void) /// 获取当前用户的id
 {
 	Assert(OidIsValid(CurrentUserId));
 	return CurrentUserId;
@@ -711,7 +711,7 @@ has_rolreplication(Oid roleid)
 	HeapTuple	utup;
 
 	/* Superusers bypass all permission checking. */
-	if (superuser_arg(roleid))
+	if (superuser_arg(roleid)) /// 超级用户就不用检查了，直接返回true
 		return true;
 
 	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(roleid));

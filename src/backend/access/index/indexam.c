@@ -698,8 +698,8 @@ index_getbitmap(IndexScanDesc scan, TIDBitmap *bitmap)
 IndexBulkDeleteResult * //批量删除索引中的死亡记录
 index_bulk_delete(IndexVacuumInfo *info,
 				  IndexBulkDeleteResult *istat,
-				  IndexBulkDeleteCallback callback,
-				  void *callback_state)
+				  IndexBulkDeleteCallback callback, /// 删除一条记录的回调函数
+				  void *callback_state) /// 这个参数就是死亡记录的数组
 {
 	Relation	indexRelation = info->index;
 

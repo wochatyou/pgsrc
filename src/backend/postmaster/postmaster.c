@@ -2688,7 +2688,7 @@ InitProcessGlobals(void)
  * SIGUSR1 to ask postmaster to check for logrotate and promote files.
  */
 static void
-handle_pm_pmsignal_signal(SIGNAL_ARGS)
+handle_pm_pmsignal_signal(SIGNAL_ARGS) /// 
 {
 	int			save_errno = errno;
 

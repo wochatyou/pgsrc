@@ -29,7 +29,7 @@ typedef struct ItemIdData
 				lp_len:15;		/* byte length of tuple */
 } ItemIdData;
 
-typedef ItemIdData *ItemId;
+typedef ItemIdData *ItemId; /// 四个字节
 
 /*
  * lp_flags has these possible states.  An UNUSED line pointer is available

@@ -98,7 +98,7 @@ LogicalDecodingProcessRecord(LogicalDecodingContext *ctx, XLogReaderState *recor
 	buf.endptr = ctx->reader->EndRecPtr;
 	buf.record = record;
 
-	txid = XLogRecGetTopXid(record);
+	txid = XLogRecGetTopXid(record); /// #define XLogRecGetTopXid(decoder) ((decoder)->record->toplevel_xid)
 
 	/*
 	 * If the top-level xid is valid, we need to assign the subxact to the
@@ -113,7 +113,7 @@ LogicalDecodingProcessRecord(LogicalDecodingContext *ctx, XLogReaderState *recor
 								 buf.origptr);
 	}
 
-	rmgr = GetRmgr(XLogRecGetRmid(record));
+	rmgr = GetRmgr(XLogRecGetRmid(record)); /// #define XLogRecGetRmid(decoder) ((decoder)->record->header.xl_rmid)
 
 	if (rmgr.rm_decode != NULL)
 		rmgr.rm_decode(ctx, &buf);

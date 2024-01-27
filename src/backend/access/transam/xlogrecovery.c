@@ -542,7 +542,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
 	readRecoverySignalFile(); // 读取恢复的信号文件，包括standby.signal和recovery.signal
 	validateRecoveryParameters(); // 检查恢复参数
 
-	if (ArchiveRecoveryRequested) /// 归档恢复模式
+	if (ArchiveRecoveryRequested) /// 归档恢复模式，standby.signal或者recovery.signal只要存在一个，ArchiveRecoveryRequested就为true
 	{
 		if (StandbyModeRequested)
 			ereport(LOG,
@@ -988,7 +988,7 @@ InitWalRecovery(ControlFileData *ControlFile, bool *wasShutdown_ptr,
  * throw an ERROR since as of PG12 we no longer recognize that.
  */
 static void
-readRecoverySignalFile(void)
+readRecoverySignalFile(void)  /// 就是检测两个信号文件，如果找到了，设置一下全局变量表示找到了，StandbyModeRequested和ArchiveRecoveryRequested
 {
 	struct stat stat_buf;
 
@@ -3534,7 +3534,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 * finish replaying as much as we can from archive and
 					 * pg_wal before failover.
 					 */
-					if (StandbyMode && CheckForStandbyTrigger())
+					if (StandbyMode && CheckForStandbyTrigger()) /// 如果发现了promote信号，就中断恢复
 					{
 						XLogShutdownWalRcv();
 						return XLREAD_FAIL;

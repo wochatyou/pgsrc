@@ -1,0 +1,121 @@
+<refentry id="repmgr-service-unpause">
+  <indexterm>
+    <primary>repmgr service unpause</primary>
+  </indexterm>
+
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>unpausing</secondary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr service unpause</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr service unpause</refname>
+    <refpurpose>Instruct all &repmgrd; instances in the replication cluster to resume failover operations</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      This command can be run on any active node in the replication cluster to instruct all
+      running &repmgrd; instances to &quot;unpause&quot;
+      (following a previous execution of <xref linkend="repmgr-service-pause"/>)
+      and resume normal failover/monitoring operation.
+    </para>
+
+    <note>
+      <para>
+        It's important to wait a few seconds after restarting PostgreSQL on any node before running
+        <command>repmgr service pause</command>, as the &repmgrd; instance
+        on the restarted node will take a second or two before it has updated its status.
+      </para>
+    </note>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Prerequisites</title>
+    <para>
+      PostgreSQL must be accessible on all nodes (using the <varname>conninfo</varname> string shown by
+      <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>)
+      from the node where <command>repmgr service pause</command> is executed.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Execution</title>
+    <para>
+     <command>repmgr service unpause</command> can be executed on any active node in the
+      replication cluster. A valid <filename>repmgr.conf</filename> file is required.
+      It will have no effect on nodes which are not already paused.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+    <programlisting>
+$ repmgr -f /etc/repmgr.conf service unpause
+NOTICE: node 1 (node1) unpaused
+NOTICE: node 2 (node2) unpaused
+NOTICE: node 3 (node3) unpaused</programlisting>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check if nodes are reachable but don't unpause &repmgrd;.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      One of the following exit codes will be emitted by <command>repmgr service unpause</command>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            &repmgrd; could be unpaused on all nodes.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_REPMGRD_PAUSE (26)</option></term>
+        <listitem>
+          <para>
+           &repmgrd; could not be unpaused on one or mode nodes.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      <xref linkend="repmgr-service-pause"/>,
+      <xref linkend="repmgr-service-status"/>,
+      <xref linkend="repmgrd-pausing"/>,
+      <xref linkend="repmgr-daemon-start"/>,
+      <xref linkend="repmgr-daemon-stop"/>
+    </para>
+  </refsect1>
+</refentry>
+

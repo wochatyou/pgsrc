@@ -43,7 +43,7 @@ typedef struct WalSnd
 {
 	pid_t		pid;			/* this walsender's PID, or 0 if not active */
 
-	WalSndState state;			/* this walsender's state */
+	WalSndState state;			/* this walsender's state */ /// 本WALsender进程所处的状态
 	XLogRecPtr	sentPtr;		/* WAL has been sent up to this point */
 	bool		needreload;		/* does currently-open file need to be
 								 * reloaded? */
@@ -82,7 +82,7 @@ typedef struct WalSnd
 	 */
 	TimestampTz replyTime;
 
-	ReplicationKind kind;
+	ReplicationKind kind; /// 复制的类型，只有物理复制和逻辑复制两种
 } WalSnd;
 
 extern PGDLLIMPORT WalSnd *MyWalSnd;

@@ -1,0 +1,215 @@
+<refentry id="repmgr-service-status">
+  <indexterm>
+    <primary>repmgr service status</primary>
+  </indexterm>
+
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>displaying service status</secondary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr service status</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr service status</refname>
+    <refpurpose>display information about the status of &repmgrd; on each node in the cluster</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      This command provides an overview over all active nodes in the cluster and the state
+      of each node's &repmgrd; instance. It can be used to check
+      the result of <xref linkend="repmgr-service-pause"/> and <xref linkend="repmgr-service-unpause"/>
+      operations.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Prerequisites</title>
+    <para>
+      PostgreSQL should be accessible on all nodes (using the <varname>conninfo</varname> string shown by
+      <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>)
+      from the node where <command>repmgr service status</command> is executed.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Execution</title>
+    <para>
+      <command>repmgr service status</command> can be executed on any active node in the
+      replication cluster. A valid <filename>repmgr.conf</filename> file is required.
+    </para>
+    <para>
+      If a node is not accessible, or PostgreSQL itself is not running on the node,
+      &repmgr; will not be able to determine the status of that node's &repmgrd; instance,
+      and &quot;<literal>n/a</literal>&quot; will be displayed in the node's <literal>repmgrd</literal>
+      column.
+    </para>
+
+    <note>
+      <para>
+        After restarting PostgreSQL on any node, the &repmgrd; instance
+        will take a second or two before it is able to update its status. Until then,
+        &repmgrd; will be shown as not running.
+      </para>
+    </note>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Examples</title>
+    <para>
+      &repmgrd; running normally on all nodes:
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
+ ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
+----+-------+---------+-----------+----------+---------+-------+---------+--------------------
+ 1  | node1 | primary | * running |          | running | 96563 | no      | n/a
+ 2  | node2 | standby |   running | node1    | running | 96572 | no      | 1 second(s) ago
+ 3  | node3 | standby |   running | node1    | running | 96584 | no      | 0 second(s) ago</programlisting>
+    </para>
+
+    <para>
+      &repmgrd; paused on all nodes (using <xref linkend="repmgr-service-pause"/>):
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
+ ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
+----+-------+---------+-----------+----------+---------+-------+---------+--------------------
+ 1  | node1 | primary | * running |          | running | 96563 | yes     | n/a
+ 2  | node2 | standby |   running | node1    | running | 96572 | yes     | 1 second(s) ago
+ 3  | node3 | standby |   running | node1    | running | 96584 | yes     | 0 second(s) ago</programlisting>
+    </para>
+
+    <para>
+      &repmgrd; not running on one node:
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
+ ID | Name  | Role    | Status    | Upstream | repmgrd     | PID   | Paused? | Upstream last seen
+----+-------+---------+-----------+----------+-------------+-------+---------+--------------------
+ 1  | node1 | primary | * running |          | running     | 96563 | yes     | n/a
+ 2  | node2 | standby |   running | node1    | not running | n/a   | n/a     | n/a
+ 3  | node3 | standby |   running | node1    | running     | 96584 | yes     | 0 second(s) ago</programlisting>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--csv</option></term>
+        <listitem>
+          <para>
+            <command>repmgr service status</command> accepts an optional parameter <literal>--csv</literal>, which
+            outputs the replication cluster's status in a simple CSV format, suitable for
+            parsing by scripts, e.g.:
+            <programlisting>
+    $ repmgr -f /etc/repmgr.conf service status --csv
+    1,node1,primary,1,1,5722,1,100,-1,default
+    2,node2,standby,1,0,-1,1,100,1,default
+    3,node3,standby,1,1,5779,1,100,1,default</programlisting>
+          </para>
+          <para>
+            The columns have following meanings:
+            <itemizedlist spacing="compact" mark="bullet">
+              <listitem>
+                <simpara>
+                  node ID
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  node name
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  node type (primary or standby)
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  PostgreSQL server running (1 = running, 0 = not running)
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  &repmgrd; running (1 = running, 0 = not running, -1 = unknown)
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  &repmgrd; PID (-1 if not running or status unknown)
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  &repmgrd; paused (1 = paused, 0 = not paused, -1 = unknown)
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  &repmgrd; node priority
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  interval in seconds since the node's upstream was last seen (this will be -1 if the value could not be retrieved, or the node is primary)
+                </simpara>
+              </listitem>
+
+			  <listitem>
+                <simpara>
+                  node location
+                </simpara>
+              </listitem>
+
+            </itemizedlist>
+          </para>
+        </listitem>
+	  </varlistentry>
+
+	  <varlistentry>
+        <term><option>--detail</option></term>
+        <listitem>
+          <para>
+            Display additional information (<literal>location</literal>, <literal>priority</literal>)
+	    about the &repmgr; configuration.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--verbose</option></term>
+        <listitem>
+          <para>
+            Display the full text of any database connection error messages.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      <xref linkend="repmgr-service-pause"/>,
+      <xref linkend="repmgr-service-unpause"/>,
+      <xref linkend="repmgr-cluster-show"/>,
+      <xref linkend="repmgrd-pausing"/>,
+      <xref linkend="repmgr-daemon-start"/>,
+      <xref linkend="repmgr-daemon-stop"/>
+    </para>
+  </refsect1>
+</refentry>

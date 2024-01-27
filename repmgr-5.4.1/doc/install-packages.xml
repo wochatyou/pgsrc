@@ -1,0 +1,285 @@
+<sect1 id="installation-packages" xreflabel="Installing from packages">
+ <title>Installing &repmgr; from packages</title>
+
+  <indexterm>
+   <primary>installation</primary>
+   <secondary>from packages</secondary>
+  </indexterm>
+
+ <para>
+  We recommend installing &repmgr; using the available packages for your
+  system.
+ </para>
+
+ <sect2 id="installation-packages-redhat" xreflabel="Installing from packages on RHEL, CentOS and Fedora">
+
+  <title>RedHat/CentOS/Fedora</title>
+
+  <indexterm>
+   <primary>installation</primary>
+   <secondary>on Red Hat/CentOS/Fedora etc.</secondary>
+  </indexterm>
+
+  <para>
+	&repmgr; RPM packages for RedHat/CentOS variants and Fedora are available from the
+	<ulink url="https://www.enterprisedb.com">EDB</ulink>
+	<ulink url="https://dl.enterprisedb.com/">public repository</ulink>; see following
+	section for details.
+  </para>
+  <note>
+    <para>
+      Currently the <ulink url="https://www.enterprisedb.com">EDB</ulink>
+	  <ulink url="https://dl.enterprisedb.com/">public repository</ulink> provides
+      support for RedHat/CentOS versions 6,7 and 8.
+    </para>
+  </note>
+  <para>
+   RPM packages for &repmgr; are also available via Yum through
+   the PostgreSQL Global Development Group (PGDG) RPM repository
+   (<ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink>).
+   Follow the instructions for your distribution (RedHat, CentOS,
+   Fedora, etc.) and architecture as detailed there. Note that it can take some days
+   for new &repmgr; packages to become available via the this repository.
+  </para>
+  <note>
+    <para>
+      &repmgr; RPM packages are designed to be compatible with the community-provided PostgreSQL packages
+      and EDB's PostgreSQL Extended Server (formerly 2ndQPostgres).
+      They may not work with vendor-specific packages such as those provided by RedHat for RHEL
+      customers, as the PostgreSQL filesystem layout may be different to the community RPMs.
+      Please contact your support vendor for assistance.
+    </para>
+    <para>
+      See also <link linkend="appendix-faq">FAQ</link> entry
+      <xref linkend="faq-third-party-packages"/>.
+    </para>
+  </note>
+
+  <para>
+    For more information on the package contents, including details of installation
+    paths and relevant <link linkend="configuration-file-service-commands">service commands</link>,
+    see the appendix section <xref linkend="packages-centos"/>.
+  </para>
+
+
+  <sect3 id="installation-packages-redhat-2ndq">
+    <title>EDB public RPM yum repository</title>
+
+    <para>
+      <ulink url="https://www.enterprisedb.com/">EDB</ulink> provides a dedicated <literal>yum</literal>
+      <ulink url="https://dl.enterprisedb.com/">public repository</ulink> for EDB software,
+      including &repmgr;. We recommend using this for all future &repmgr; releases.
+    </para>
+    <para>
+      General instructions for using this repository can be found on its
+      <ulink url="https://dl.enterprisedb.com/">homepage</ulink>. Specific instructions
+      for installing &repmgr; follow below.
+    </para>
+    <para>
+      <emphasis>Installation</emphasis>
+
+      <itemizedlist>
+	<listitem>
+	  <para>
+	    Locate the repository RPM for your PostgreSQL version from the list at:
+	    <ulink url="https://dl.enterprisedb.com/">https://dl.enterprisedb.com/</ulink>
+	  </para>
+	</listitem>
+
+    <listitem>
+      <para>
+        Install the repository definition for your distribution and PostgreSQL version
+	    (this enables the EDB repository as a source of &repmgr; packages).
+	  </para>
+	  <para>
+	    For example, for PostgreSQL 14 on Rocky Linux 8, execute:
+	    <programlisting>
+curl https://dl.enterprisedb.com/default/release/get/14/rpm | sudo bash</programlisting>
+	  </para>
+
+	  <para>
+	    Verify that the repository is installed with:
+	    <programlisting>
+sudo dnf repolist</programlisting>
+	    The output should contain two entries like this:
+	    <programlisting>
+2ndquadrant-dl-default-release-pg14                  2ndQuadrant packages (PG14) for 8 - x86_64
+2ndquadrant-dl-default-release-pg14-debug            2ndQuadrant packages (PG14) for 8 - x86_64 - Debug</programlisting>
+	  </para>
+	</listitem>
+
+        <listitem>
+          <para>
+            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr14</literal>):
+            <programlisting>
+sudo dnf install repmgr14</programlisting>
+          </para>
+          <tip>
+            <para>
+              To determine the names of available packages, execute:
+              <programlisting>
+dnf search repmgr</programlisting>
+            </para>
+            <para>
+              In CentOS 7 and earlier, use <literal>yum</literal> instead of <literal>dnf</literal>.
+            </para>
+          </tip>
+
+        </listitem>
+      </itemizedlist>
+    </para>
+
+    <para>
+      <emphasis>Compatibility with PGDG Repositories</emphasis>
+    </para>
+    <para>
+      The EDB &repmgr; yum repository packages use the same definitions and file system layout as the
+      main PGDG repository.
+    </para>
+    <para>
+      Normally <application>yum</application> will prioritize the repository with the most recent &repmgr; version.
+      Once the PGDG repository has been updated, it doesn't matter which repository
+      the packages are installed from.
+    </para>
+    <para>
+      To ensure the EDB repository is always prioritised, set the <literal>priority</literal> option
+      in the repository configuration file (e.g. <filename>/etc/yum.repos.d/2ndquadrant-dl-default-release-pg14.repo</filename>
+      accordingly.
+    </para>
+    <note>
+      <para>
+        With CentOS 7 and earlier, the package <literal>yum-plugin-priorities</literal> must be installed
+        to be able to set the repository priority.
+      </para>
+    </note>
+
+    <para>
+      <emphasis>Installing a specific package version</emphasis>
+    </para>
+    <para>
+      To install a specific package version, execute <command>dnf --showduplicates list</command>
+      for the package in question:
+      <programlisting>
+[root@localhost ~]# dnf --showduplicates list repmgr10
+Last metadata expiration check: 0:09:15 ago on Fri 11 Mar 2022 01:09:19 AM UTC.
+Installed Packages
+repmgr10.x86_64                            5.3.1-1.el8                              @2ndquadrant-dl-default-release-pg10
+Available Packages
+repmgr10.x86_64                            5.0.0-1.rhel8                            pgdg10
+repmgr10.x86_64                            5.1.0-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.1.0-1.rhel8                            pgdg10
+repmgr10.x86_64                            5.1.0-2.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.2.0-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.2.0-1.rhel8                            pgdg10
+repmgr10.x86_64                            5.2.1-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.3.0-1.el8                              2ndquadrant-dl-default-release-pg10
+repmgr10.x86_64                            5.3.1-1.el8                              2ndquadrant-dl-default-release-pg10</programlisting>
+      then append the appropriate version number to the package name with a hyphen, e.g.:
+      <programlisting>
+[root@localhost ~]# dnf install repmgr10-5.3.0-1.el8</programlisting>
+    </para>
+    <para>
+      <emphasis>Installing old packages</emphasis>
+    </para>
+    <para>
+      See appendix <link linkend="packages-old-versions-rhel-centos">Installing old package versions</link>
+      for details on how to retrieve older package versions.
+    </para>
+  </sect3>
+
+ </sect2>
+
+ <sect2 id="installation-packages-debian" xreflabel="Installing from packages on Debian or Ubuntu">
+
+  <title>Debian/Ubuntu</title>
+
+  <indexterm>
+   <primary>installation</primary>
+   <secondary>on Debian/Ubuntu etc.</secondary>
+  </indexterm>
+
+  <para>.deb packages for &repmgr; are available from the
+  PostgreSQL Community APT repository (<ulink url="https://apt.postgresql.org/">https://apt.postgresql.org/</ulink>).
+  Instructions can be found in the APT section of the PostgreSQL Wiki
+  (<ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</ulink>).
+  </para>
+  <para>
+    For more information on the package contents, including details of installation
+    paths and relevant <link linkend="configuration-file-service-commands">service commands</link>,
+    see the appendix section <xref linkend="packages-debian-ubuntu"/>.
+  </para>
+
+  <sect3 id="installation-packages-debian-ubuntu-2ndq">
+    <title>EDB public apt repository for Debian/Ubuntu</title>
+
+    <para>
+      <ulink url="https://www.enterprisedb.com/">EDB</ulink> provides a
+      <ulink url="https://dl.enterprisedb.com/">public apt repository</ulink> for EDB software,
+      including &repmgr;.
+    </para>
+    <para>
+      General instructions for using this repository can be found on its
+      <ulink url="https://dl.enterprisedb.com/">homepage</ulink>. Specific instructions
+      for installing &repmgr; follow below.
+    </para>
+
+    <para>
+
+      <emphasis>Installation</emphasis>
+
+      <itemizedlist>
+
+	    <listitem>
+	      <para>
+            Install the repository definition for your distribution and PostgreSQL version
+	        (this enables the EDB repository as a source of &repmgr; packages) by executing:
+            <programlisting>
+              curl https://dl.enterprisedb.com/default/release/get/deb | sudo bash</programlisting>
+	      </para>
+          <note>
+            <para>
+              This will automatically install the following additional packages, if not already present:
+              <itemizedlist spacing="compact" mark="bullet">
+                <listitem>
+                  <simpara><literal>lsb-release</literal></simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>apt-transport-https</literal></simpara>
+                </listitem>
+              </itemizedlist>
+            </para>
+          </note>
+        </listitem>
+
+	    <listitem>
+	      <para>
+            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr11</literal>):
+            <programlisting>
+              sudo apt-get install postgresql-11-repmgr</programlisting>
+	      </para>
+          <note>
+            <para>
+              For packages for PostgreSQL 9.6 and earlier, the package name includes
+              a period between major and minor version numbers, e.g.
+              <literal>postgresql-9.6-repmgr</literal>.
+            </para>
+          </note>
+	    </listitem>
+
+      </itemizedlist>
+
+    </para>
+
+    <para>
+      <emphasis>Installing old packages</emphasis>
+    </para>
+    <para>
+      See appendix <link linkend="packages-old-versions-debian">Installing old package versions</link>
+      for details on how to retrieve older package versions.
+    </para>
+
+
+  </sect3>
+ </sect2>
+
+</sect1>

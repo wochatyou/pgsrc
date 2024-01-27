@@ -334,7 +334,7 @@ PageValidateSpecialPointer(Page page)
  *		Returns pointer to special space on a page.
  */
 static inline char *
-PageGetSpecialPointer(Page page)
+PageGetSpecialPointer(Page page) /// 获取一个数据页的special指针
 {
 	PageValidateSpecialPointer(page);
 	return (char *) page + ((PageHeader) page)->pd_special;

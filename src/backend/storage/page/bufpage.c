@@ -1158,7 +1158,7 @@ PageIndexTupleDelete(Page page, OffsetNumber offnum)
  * of item numbers to be deleted in item number order!
  */
 void
-PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems)
+PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems) /// 根据死亡记录数组，批量删除一批记录
 {
 	PageHeader	phdr = (PageHeader) page;
 	Offset		pd_lower = phdr->pd_lower;
@@ -1219,7 +1219,7 @@ PageIndexMultiDelete(Page page, OffsetNumber *itemnos, int nitems)
 	nused = 0;
 	nextitm = 0;
 	last_offset = pd_special;
-	for (offnum = FirstOffsetNumber; offnum <= nline; offnum = OffsetNumberNext(offnum))
+	for (offnum = FirstOffsetNumber; offnum <= nline; offnum = OffsetNumberNext(offnum)) /// 依次扫描本数据页的记录数组
 	{
 		lp = PageGetItemId(page, offnum);
 		Assert(ItemIdHasStorage(lp));
