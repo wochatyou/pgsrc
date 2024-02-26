@@ -3642,7 +3642,7 @@ cleanup:
 
 
 void
-do_standby_switchover(void)
+do_standby_switchover(void) /// 做正常切换
 {
 	PGconn	   *local_conn = NULL;
 	PGconn	   *superuser_conn = NULL;
